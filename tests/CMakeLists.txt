@@ -21,7 +21,7 @@ add_executable(
 )
 
 add_definitions("-DGUID_CFUUID")
-set(CMAKE_CXX_FLAGS "-std=c++11 -stdlib=libc++")
+set(CMAKE_CXX_FLAGS "-std=c++17 -stdlib=libc++")
 
 target_link_libraries(${PROJECT_NAME}
     ${DEPENDENCIES_DIR}/openssl/1.1.1d/libs/osx/libcrypto.a

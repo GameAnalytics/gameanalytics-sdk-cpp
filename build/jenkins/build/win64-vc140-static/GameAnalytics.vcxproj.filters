@@ -1,0 +1,174 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\crossguid\guid.cpp">
+      <Filter>source\dependencies\crossguid</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\crypto\aes.cpp">
+      <Filter>source\dependencies\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\crypto\hmac_sha2.c">
+      <Filter>source\dependencies\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\crypto\md5.cpp">
+      <Filter>source\dependencies\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\crypto\sha2.c">
+      <Filter>source\dependencies\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\miniz\miniz.c">
+      <Filter>source\dependencies\miniz</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\sqlite\sqlite3.c">
+      <Filter>source\dependencies\sqlite</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\stacktrace\stacktrace\call_stack_gcc.cpp">
+      <Filter>source\dependencies\stacktrace\stacktrace</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\stacktrace\stacktrace\call_stack_msvc.cpp">
+      <Filter>source\dependencies\stacktrace\stacktrace</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\stackwalker\StackWalker.cpp">
+      <Filter>source\dependencies\stackwalker</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\zf_log\zf_log.c">
+      <Filter>source\dependencies\zf_log</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GADevice.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAEvents.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAHTTPApi.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAHTTPApiUWP.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GALogger.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAState.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAStore.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAThreading.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAThreadingTizen.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAUncaughtExceptionHandler.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAUtilities.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAValidator.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GameAnalytics.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GameAnalyticsExtern.cpp">
+      <Filter>source\gameanalytics</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\sqlite\sqlite3.h">
+      <Filter>source\dependencies\sqlite</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\sqlite\sqlite3ext.h">
+      <Filter>source\dependencies\sqlite</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\stacktrace\stacktrace\call_stack.hpp">
+      <Filter>source\dependencies\stacktrace\stacktrace</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\stacktrace\stacktrace\stack_exception.hpp">
+      <Filter>source\dependencies\stacktrace\stacktrace</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\dependencies\zf_log\zf_log.h">
+      <Filter>source\dependencies\zf_log</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GADevice.h">
+      <Filter>source\gameanalytics</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GADeviceOSX.h">
+      <Filter>source\gameanalytics</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAEvents.h">
+      <Filter>source\gameanalytics</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAHTTPApi.h">
+      <Filter>source\gameanalytics</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GALogger.h">
+      <Filter>source\gameanalytics</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAState.h">
+      <Filter>source\gameanalytics</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAStore.h">
+      <Filter>source\gameanalytics</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAThreading.h">
+      <Filter>source\gameanalytics</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAUncaughtExceptionHandler.h">
+      <Filter>source\gameanalytics</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAUtilities.h">
+      <Filter>source\gameanalytics</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GAValidator.h">
+      <Filter>source\gameanalytics</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GameAnalytics.h">
+      <Filter>source\gameanalytics</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\source\gameanalytics\GameAnalyticsExtern.h">
+      <Filter>source\gameanalytics</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Workspace\Work_irl\GA-SDK-CPP-master\build\cmake\gameanalytics\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="source">
+      <UniqueIdentifier>{C1209526-8038-3E16-9C08-74BB2A0C5EBB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\dependencies">
+      <UniqueIdentifier>{254A5649-EDB8-3722-AD8B-03DCD7BE0416}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\dependencies\crossguid">
+      <UniqueIdentifier>{1B4B9785-366B-3C38-A0BD-03C114B2C381}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\dependencies\crypto">
+      <UniqueIdentifier>{E5964ED9-385B-3A43-9960-885DB2225FE0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\dependencies\miniz">
+      <UniqueIdentifier>{281582DD-8EE4-3CAC-9703-614155BD1CF3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\dependencies\sqlite">
+      <UniqueIdentifier>{E393F373-9EEB-3D21-8B25-790DACF170D5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\dependencies\stacktrace">
+      <UniqueIdentifier>{DA2AD9BC-9DC3-3B74-A5CE-75D966E65286}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\dependencies\stacktrace\stacktrace">
+      <UniqueIdentifier>{06D299AD-DC68-36ED-BD13-94E735978392}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\dependencies\stackwalker">
+      <UniqueIdentifier>{E4FB2095-4D06-351B-A126-C4650CBC8961}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\dependencies\zf_log">
+      <UniqueIdentifier>{B28BECD4-D42C-36D9-AE10-BF370CD73186}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\gameanalytics">
+      <UniqueIdentifier>{2719ED18-8104-3DF8-BF52-5E9BF8B14B87}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

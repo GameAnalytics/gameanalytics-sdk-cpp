@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED (VERSION 3.0)
+CMAKE_MINIMUM_REQUIRED (VERSION 3.5)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG -D_DEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG")
@@ -15,6 +15,8 @@ message(STATUS ${CMAKE_MODULE_PATH})
 set(GA_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../../../source/gameanalytics")
 set(DEPENDENCIES_DIR "${PROJECT_SOURCE_DIR}/../../../source/dependencies")
 
+set(PLATFORM "win64-vc140-shared")
+set(NO_SQLITE_SRC "NO")
 message(STATUS "********************** platform is ${PLATFORM}")
 
 # osx platforms

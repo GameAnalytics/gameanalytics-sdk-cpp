@@ -2,23 +2,7 @@
 
 #include "GameAnalytics.h"
 #include "GAUtilities.h"
-#include "rapidjson/document.h"
 #include <vector>
-
-void configureAvailableCustomDimensions01(const char *customDimensionsJson)
-{
-    gameanalytics::GameAnalytics::configureAvailableCustomDimensions01(customDimensionsJson);
-}
-
-void configureAvailableCustomDimensions02(const char *customDimensionsJson)
-{
-    gameanalytics::GameAnalytics::configureAvailableCustomDimensions02(customDimensionsJson);
-}
-
-void configureAvailableCustomDimensions03(const char *customDimensionsJson)
-{
-    gameanalytics::GameAnalytics::configureAvailableCustomDimensions03(customDimensionsJson);
-}
 
 void configureAvailableResourceCurrencies(const char *resourceCurrenciesJson)
 {
@@ -239,7 +223,7 @@ void onQuit()
 
 const char* getRemoteConfigsValueAsString(const char *key)
 {
-    std::vector<char> returnValue = gameanalytics::GameAnalytics::getRemoteConfigsValueAsString(key);
+    std::string returnValue = gameanalytics::GameAnalytics::getRemoteConfigsValueAsString(key);
     char* result = new char[returnValue.size()];
     snprintf(result, returnValue.size(), "%s", returnValue.data());
     return result;
@@ -247,7 +231,7 @@ const char* getRemoteConfigsValueAsString(const char *key)
 
 const char* getRemoteConfigsValueAsStringWithDefaultValue(const char *key, const char *defaultValue)
 {
-    std::vector<char> returnValue = gameanalytics::GameAnalytics::getRemoteConfigsValueAsString(key, defaultValue);
+    std::string returnValue = gameanalytics::GameAnalytics::getRemoteConfigsValueAsString(key, defaultValue);
     char* result = new char[returnValue.size()];
     snprintf(result, returnValue.size(), "%s", returnValue.data());
     return result;
@@ -260,7 +244,7 @@ double isRemoteConfigsReady()
 
 const char* getRemoteConfigsContentAsString()
 {
-    std::vector<char> returnValue = gameanalytics::GameAnalytics::getRemoteConfigsContentAsString();
+    std::string returnValue = gameanalytics::GameAnalytics::getRemoteConfigsContentAsString();
     char* result = new char[returnValue.size()];
     snprintf(result, returnValue.size(), "%s", returnValue.data());
     return result;
@@ -268,7 +252,7 @@ const char* getRemoteConfigsContentAsString()
 
 const char* getABTestingId()
 {
-    std::vector<char> returnValue = gameanalytics::GameAnalytics::getABTestingId();
+    std::string returnValue = gameanalytics::GameAnalytics::getABTestingId();
     char* result = new char[returnValue.size()];
     snprintf(result, returnValue.size(), "%s", returnValue.data());
     return result;
@@ -276,7 +260,7 @@ const char* getABTestingId()
 
 const char* getABTestingVariantId()
 {
-    std::vector<char> returnValue = gameanalytics::GameAnalytics::getABTestingVariantId();
+    std::string returnValue = gameanalytics::GameAnalytics::getABTestingVariantId();
     char* result = new char[returnValue.size()];
     snprintf(result, returnValue.size(), "%s", returnValue.data());
     return result;

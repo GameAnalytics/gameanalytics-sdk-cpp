@@ -36,7 +36,8 @@ namespace gameanalytics
             Unauthorized = 7, // 401
             UnknownResponseCode = 8,
             Ok = 9,
-            Created = 10
+            Created = 10,
+            InternalError
         };
 
         enum EGASdkErrorCategory
@@ -106,15 +107,29 @@ namespace gameanalytics
 
         struct ResponseData
         {
-            char *ptr;
-            size_t len;
+            std::unique_ptr<char[]> ptr;
+            size_t len = 0;
+
+            std::string toString() const;
         };
 
         typedef std::tuple<EGASdkErrorCategory, EGASdkErrorArea> ErrorType;
 
         class GAHTTPApi
         {
+            static constexpr const char* PROTOCOL               = "https";
+            static constexpr const char* HOST_NAME              = "api.gameanalytics.com";
+            static constexpr const char* VERSION                = "v2";
+            static constexpr const char* REMOTE_CONFIG_VERSION  = "v1";
+            static constexpr const char* INIT_URL_PATH          = "init";
+            static constexpr const char* EVENT_URL_PATH         = "events";
+
         public:
+
+            static constexpr const char* sdkErrorCategoryString(EGASdkErrorCategory value);
+            static constexpr const char* sdkErrorAreaString(EGASdkErrorArea value);
+            static constexpr const char* sdkErrorActionString(EGASdkErrorAction value);
+            static constexpr const char* sdkErrorParameterString(EGASdkErrorParameter value);
 
             static GAHTTPApi* getInstance();
 
@@ -123,225 +138,44 @@ namespace gameanalytics
             concurrency::task<std::pair<EGAHTTPApiResponse, std::string>> sendEventsInArray(const rapidjson::Value& eventArray);
             void sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string reason, std::string gameKey, std::string secretKey);
 #else
-            void requestInitReturningDict(EGAHTTPApiResponse& response_out, rapidjson::Document& json_out, const char* configsHash);
+            EGAHTTPApiResponse requestInitReturningDict(rapidjson::Document& json_out, const char* configsHash);
             void sendEventsInArray(EGAHTTPApiResponse& response_out, rapidjson::Value& json_out, const rapidjson::Value& eventArray);
             void sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, const char* reason, const char* gameKey, const char* secretKey);
 #endif
 
-            static void sdkErrorCategoryString(EGASdkErrorCategory value, char* out)
-            {
-                switch (value)
-                {
-                    case EventValidation:
-                        snprintf(out, 40, "%s", "event_validation");
-                        return;
-                    case Database:
-                        snprintf(out, 40, "%s", "db");
-                        return;
-                    case Init:
-                        snprintf(out, 40, "%s", "init");
-                        return;
-                    case Http:
-                        snprintf(out, 40, "%s", "http");
-                        return;
-                    case Json:
-                        snprintf(out, 40, "%s", "json");
-                        return;
-                    default:
-                        break;
-                }
-                snprintf(out, 40, "%s", "");
-            }
-
-            static void sdkErrorAreaString(EGASdkErrorArea value, char* out)
-            {
-                switch (value)
-                {
-                    case BusinessEvent:
-                        snprintf(out, 40, "%s", "business");
-                        return;
-                    case ResourceEvent:
-                        snprintf(out, 40, "%s", "resource");
-                        return;
-                    case ProgressionEvent:
-                        snprintf(out, 40, "%s", "progression");
-                        return;
-                    case DesignEvent:
-                        snprintf(out, 40, "%s", "design");
-                        return;
-                    case ErrorEvent:
-                        snprintf(out, 40, "%s", "error");
-                        return;
-                    case InitHttp:
-                        snprintf(out, 40, "%s", "init_http");
-                        return;
-                    case EventsHttp:
-                        snprintf(out, 40, "%s", "events_http");
-                        return;
-                    case ProcessEvents:
-                        snprintf(out, 40, "%s", "process_events");
-                        return;
-                    case AddEventsToStore:
-                        snprintf(out, 40, "%s", "add_events_to_store");
-                        return;
-                    default:
-                        break;
-                }
-                snprintf(out, 40, "%s", "");
-            }
-
-            static void sdkErrorActionString(EGASdkErrorAction value, char* out)
-            {
-                switch (value)
-                {
-                    case InvalidCurrency:
-                        snprintf(out, 40, "%s", "invalid_currency");
-                        return;
-                    case InvalidShortString:
-                        snprintf(out, 40, "%s", "invalid_short_string");
-                        return;
-                    case InvalidEventPartLength:
-                        snprintf(out, 40, "%s", "invalid_event_part_length");
-                        return;
-                    case InvalidEventPartCharacters:
-                        snprintf(out, 40, "%s", "invalid_event_part_characters");
-                        return;
-                    case InvalidStore:
-                        snprintf(out, 40, "%s", "invalid_store");
-                        return;
-                    case InvalidFlowType:
-                        snprintf(out, 40, "%s", "invalid_flow_type");
-                        return;
-                    case StringEmptyOrNull:
-                        snprintf(out, 40, "%s", "string_empty_or_null");
-                        return;
-                    case NotFoundInAvailableCurrencies:
-                        snprintf(out, 40, "%s", "not_found_in_available_currencies");
-                        return;
-                    case InvalidAmount:
-                        snprintf(out, 40, "%s", "invalid_amount");
-                        return;
-                    case NotFoundInAvailableItemTypes:
-                        snprintf(out, 40, "%s", "not_found_in_available_item_types");
-                        return;
-                    case WrongProgressionOrder:
-                        snprintf(out, 40, "%s", "wrong_progression_order");
-                        return;
-                    case InvalidEventIdLength:
-                        snprintf(out, 40, "%s", "invalid_event_id_length");
-                        return;
-                    case InvalidEventIdCharacters:
-                        snprintf(out, 40, "%s", "invalid_event_id_characters");
-                        return;
-                    case InvalidProgressionStatus:
-                        snprintf(out, 40, "%s", "invalid_progression_status");
-                        return;
-                    case InvalidSeverity:
-                        snprintf(out, 40, "%s", "invalid_severity");
-                        return;
-                    case InvalidLongString:
-                        snprintf(out, 40, "%s", "invalid_long_string");
-                        return;
-                    case DatabaseTooLarge:
-                        snprintf(out, 40, "%s", "db_too_large");
-                        return;
-                    case DatabaseOpenOrCreate:
-                        snprintf(out, 40, "%s", "db_open_or_create");
-                        return;
-                    case JsonError:
-                        snprintf(out, 40, "%s", "json_error");
-                        return;
-                    case FailHttpJsonDecode:
-                        snprintf(out, 40, "%s", "fail_http_json_decode");
-                        return;
-                    case FailHttpJsonEncode:
-                        snprintf(out, 40, "%s", "fail_http_json_encode");
-                        return;
-                    default:
-                        break;
-                }
-                snprintf(out, 40, "%s", "");
-            }
-
-            static void sdkErrorParameterString(EGASdkErrorParameter value, char* out)
-            {
-                switch (value)
-                {
-                    case Currency:
-                        snprintf(out, 40, "%s", "currency");
-                        return;
-                    case CartType:
-                        snprintf(out, 40, "%s", "cart_type");
-                        return;
-                    case ItemType:
-                        snprintf(out, 40, "%s", "item_type");
-                        return;
-                    case ItemId:
-                        snprintf(out, 40, "%s", "item_id");
-                        return;
-                    case Store:
-                        snprintf(out, 40, "%s", "store");
-                        return;
-                    case FlowType:
-                        snprintf(out, 40, "%s", "flow_type");
-                        return;
-                    case Amount:
-                        snprintf(out, 40, "%s", "amount");
-                        return;
-                    case Progression01:
-                        snprintf(out, 40, "%s", "progression01");
-                        return;
-                    case Progression02:
-                        snprintf(out, 40, "%s", "progression02");
-                        return;
-                    case Progression03:
-                        snprintf(out, 40, "%s", "progression03");
-                        return;
-                    case EventId:
-                        snprintf(out, 40, "%s", "event_id");
-                        return;
-                    case ProgressionStatus:
-                        snprintf(out, 40, "%s", "progression_status");
-                        return;
-                    case Severity:
-                        snprintf(out, 40, "%s", "severity");
-                        return;
-                    case Message:
-                        snprintf(out, 40, "%s", "message");
-                        return;
-                    default:
-                        break;
-                }
-                snprintf(out, 40, "%s", "");
-            }
+            
 
         private:
+
             GAHTTPApi();
             ~GAHTTPApi();
             GAHTTPApi(const GAHTTPApi&) = delete;
             GAHTTPApi& operator=(const GAHTTPApi&) = delete;
-            std::vector<char> createPayloadData(const char* payload, bool gzip);
+            std::vector<char> createPayloadData(std::string const& payload, bool gzip);
 
 #if USE_UWP
             std::vector<char> createRequest(Windows::Web::Http::HttpRequestMessage^ message, const std::string& url, const std::vector<char>& payloadData, bool gzip);
             EGAHTTPApiResponse processRequestResponse(Windows::Web::Http::HttpResponseMessage^ response, const std::string& requestId);
             concurrency::task<Windows::Storage::Streams::InMemoryRandomAccessStream^> createStream(std::string data);
 #else
-            std::vector<char> createRequest(CURL *curl, const char* url, const std::vector<char>& payloadData, bool gzip);
+            std::vector<char>  createRequest(CURL *curl, const char* url, const std::vector<char>& payloadData, bool gzip);
             EGAHTTPApiResponse processRequestResponse(long statusCode, const char* body, const char* requestId);
 #endif
-            static char protocol[];
-            static char hostName[];
-            static char version[];
-            static char remoteConfigsVersion[];
-            static char baseUrl[];
-            static char remoteConfigsBaseUrl[];
-            static char initializeUrlPath[];
-            static char eventsUrlPath[];
+            std::string protocol                = PROTOCOL;
+            std::string hostName                = HOST_NAME;
+            std::string version                 = VERSION;
+            std::string remoteConfigsVersion    = REMOTE_CONFIG_VERSION;
+
+            std::string initializeUrlPath = INIT_URL_PATH;
+            std::string eventsUrlPath     = EVENT_URL_PATH;
+
+            std::string baseUrl;
+            std::string remoteConfigsBaseUrl;
+
             bool useGzip;
-            static const int MaxCount;
-            static std::map<ErrorType, int> countMap;
-            static std::map<ErrorType, int64_t> timestampMap;
+            const int MaxCount;
+            std::map<ErrorType, int> countMap;
+            std::map<ErrorType, int64_t> timestampMap;
 
             static bool _destroyed;
             static GAHTTPApi* _instance;
@@ -370,5 +204,189 @@ namespace gameanalytics
             static bool hasInternetAccess;
         };
 #endif
+
+        constexpr const char* GAHTTPApi::sdkErrorCategoryString(EGASdkErrorCategory value)
+        {
+            switch (value)
+            {
+                case EventValidation:
+                    return "event_validation";
+
+                case Database:
+                    return "db";
+
+                case Init:
+                    return "init";
+
+                case Http:
+                    return "http";
+
+                case Json:
+                    return "json";
+
+                default:
+                    return "";
+            }
+        }
+
+        constexpr const char* GAHTTPApi::sdkErrorAreaString(EGASdkErrorArea value)
+        {
+            switch (value)
+            {
+                case BusinessEvent:
+                    return "business";
+
+                case ResourceEvent:
+                    return "resource";
+
+                case ProgressionEvent:
+                    return "progression";
+
+                case DesignEvent:
+                    return "design";
+
+                case ErrorEvent:
+                    return "error";
+
+                case InitHttp:
+                    return "init_http";
+
+                case EventsHttp:
+                    return "events_http";
+
+                case ProcessEvents:
+                    return "process_events";
+
+                case AddEventsToStore:
+                    return "add_events_to_store";
+
+                default:
+                    return "";
+            }
+        }
+
+        constexpr const char* GAHTTPApi::sdkErrorActionString(EGASdkErrorAction value)
+        {
+            switch (value)
+            {
+                case InvalidCurrency:
+                    return "invalid_currency";
+
+                case InvalidShortString:
+                    return "invalid_short_string";
+
+                case InvalidEventPartLength:
+                    return "invalid_event_part_length";
+
+                case InvalidEventPartCharacters:
+                    return "invalid_event_part_characters";
+
+                case InvalidStore:
+                    return "invalid_store";
+
+                case InvalidFlowType:
+                    return "invalid_flow_type";
+
+                case StringEmptyOrNull:
+                    return "string_empty_or_null";
+
+                case NotFoundInAvailableCurrencies:
+                    return "not_found_in_available_currencies";
+
+                case InvalidAmount:
+                    return "invalid_amount";
+
+                case NotFoundInAvailableItemTypes:
+                    return "not_found_in_available_item_types";
+
+                case WrongProgressionOrder:
+                    return "wrong_progression_order";
+
+                case InvalidEventIdLength:
+                    return "invalid_event_id_length";
+
+                case InvalidEventIdCharacters:
+                    return "invalid_event_id_characters";
+
+                case InvalidProgressionStatus:
+                    return "invalid_progression_status";
+
+                case InvalidSeverity:
+                    return "invalid_severity";
+
+                case InvalidLongString:
+                    return "invalid_long_string";
+
+                case DatabaseTooLarge:
+                    return "db_too_large";
+
+                case DatabaseOpenOrCreate:
+                    return "db_open_or_create";
+
+                case JsonError:
+                    return "json_error";
+
+                case FailHttpJsonDecode:
+                    return "fail_http_json_decode";
+
+                case FailHttpJsonEncode:
+                    return "fail_http_json_encode";
+
+                default:
+                    return "";
+            }
+        }
+
+        constexpr const char* GAHTTPApi::sdkErrorParameterString(EGASdkErrorParameter value)
+        {
+            switch (value)
+            {
+                case Currency:
+                    return "currency";
+
+                case CartType:
+                    return "cart_type";
+
+                case ItemType:
+                    return "item_type";
+
+                case ItemId:
+                    return "item_id";
+
+                case Store:
+                    return "store";
+
+                case FlowType:
+                    return "flow_type";
+
+                case Amount:
+                    return "amount";
+
+                case Progression01:
+                    return "progression01";
+
+                case Progression02:
+                    return "progression02";
+
+                case Progression03:
+                    return "progression03";
+
+                case EventId:
+                    return "event_id";
+
+                case ProgressionStatus:
+                    return "progression_status";
+
+                case Severity:
+                    return "severity";
+
+                case Message:
+                    return "message";
+
+                default:
+                    return "";
+                }
+        }
     }
+
 }

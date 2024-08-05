@@ -20,7 +20,7 @@ namespace gameanalytics
             http::EGASdkErrorArea area;
             http::EGASdkErrorAction action;
             http::EGASdkErrorParameter parameter;
-            char reason[8193] = {'\0'};
+            std::string reason;
             bool result = false;
         };
 
@@ -31,65 +31,70 @@ namespace gameanalytics
 
             // user created events
             static void validateBusinessEvent(
-                const char* currency,
-                long amount,
-                const char* cartType,
-                const char* itemType,
-                const char* itemId,
+                std::string const& currency,
+                std::int64_t amount,
+                std::string const& cartType,
+                std::string const& itemType,
+                std::string const& itemId,
                 ValidationResult& out
                 );
 
             static void validateResourceEvent(
                 EGAResourceFlowType flowType,
-                const char* currency,
+                std::string const& currency,
                 double amount,
-                const char* itemType,
-                const char* itemId,
+                std::string const& itemType,
+                std::string const& itemId,
                 ValidationResult& out
                 );
 
 
             static void validateProgressionEvent(
                 EGAProgressionStatus progressionStatus,
-                const char* progression01,
-                const char* progression02,
-                const char* progression03,
+                std::string const& progression01,
+                std::string const& progression02,
+                std::string const& progression03,
                 ValidationResult& out
                 );
 
             static void validateDesignEvent(
-                const char* eventId,
+                std::string const& eventId,
                 ValidationResult& out
                 );
 
             static void validateErrorEvent(
                 EGAErrorSeverity severity,
-                const char* message,
+                std::string const& message,
                 ValidationResult& out
                 );
 
-            static bool validateSdkErrorEvent(const char* gameKey, const char* gameSecret, http::EGASdkErrorCategory category, http::EGASdkErrorArea area, http::EGASdkErrorAction action);
+            static bool validateSdkErrorEvent(
+                std::string const& gameKey, 
+                std::string const& gameSecret, 
+                http::EGASdkErrorCategory category, 
+                http::EGASdkErrorArea area, 
+                http::EGASdkErrorAction action);
 
 
             // -------------------- HELPERS --------------------- //
 
             // event params
-            static bool validateKeys(const char* gameKey, const char* gameSecret);
-            static bool validateCurrency(const char* currency);
-            static bool validateEventPartLength(const char* eventPart, bool allowNull);
-            static bool validateEventPartCharacters(const char* eventPart);
-            static bool validateEventIdLength(const char* eventId);
-            static bool validateEventIdCharacters(const char* eventId);
-            static bool validateShortString(const char* shortString, bool canBeEmpty);
-            static bool validateString(const char* string, bool canBeEmpty);
-            static bool validateLongString(const char* longString, bool canBeEmpty);
+            static bool validateKeys(std::string const& gameKey, std::string const& gameSecret);
+            static bool validateCurrency(std::string const& currency);
+            static bool validateEventPartLength(std::string const& eventPart, bool allowNull);
+            static bool validateEventPartCharacters(std::string const& eventPart);
+            static bool validateEventIdLength(std::string const& eventId);
+            static bool validateEventIdCharacters(std::string const& eventId);
+            static bool validateShortString(std::string const& shortString, bool canBeEmpty);
+            static bool validateString(std::string const& string, bool canBeEmpty);
+            static bool validateLongString(std::string const& longString, bool canBeEmpty);
 
             // validate wrapper version, build, engine version, store
-            static bool validateSdkWrapperVersion(const char* wrapperVersion);
-            static bool validateBuild(const char* build);
-            static bool validateEngineVersion(const char* engineVersion);
-            static bool validateStore(const char* store);
-            static bool validateConnectionType(const char* connectionType);
+            static bool validateSdkWrapperVersion(std::string const& wrapperVersion);
+            static bool validateBuild(std::string const& build);
+            static bool validateEngineVersion(std::string const& engineVersion);
+            static bool validateStore(std::string const& store);
+            static bool validateConnectionType(std::string const& connectionType);
 
             // dimensions
             static bool validateCustomDimensions(const StringVector& customDimensions);
@@ -98,9 +103,9 @@ namespace gameanalytics
             static bool validateResourceCurrencies(const StringVector& resourceCurrencies);
             static bool validateResourceItemTypes(const StringVector& resourceItemTypes);
 
-            static bool validateDimension01(const char* dimension01);
-            static bool validateDimension02(const char* dimension02);
-            static bool validateDimension03(const char* dimension03);
+            static bool validateDimension01(std::string const& dimension01);
+            static bool validateDimension02(std::string const& dimension02);
+            static bool validateDimension03(std::string const& dimension03);
 
             static void validateAndCleanInitRequestResponse(const rapidjson::Value& initResponse, rapidjson::Document& out, bool configsCreated);
 

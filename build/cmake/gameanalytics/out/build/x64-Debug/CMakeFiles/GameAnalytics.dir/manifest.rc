@@ -1,0 +1,2 @@
+#pragma code_page(65001)
+2 /* CREATEPROCESS_MANIFEST_RESOURCE_ID */ 24 /* RT_MANIFEST */ "D:/Workspace/contracts/GA/GA-SDK-CPP/build/cmake/gameanalytics/out/build/x64-Debug/CMakeFiles/GameAnalytics.dir/embed.manifest"

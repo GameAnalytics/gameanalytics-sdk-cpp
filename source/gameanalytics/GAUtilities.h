@@ -6,43 +6,62 @@
 #pragma once
 
 #include <vector>
-#include "rapidjson/document.h"
+#include "GACommon.h"
 #include "GameAnalytics.h"
-#if USE_UWP
 #include <string>
 #include <locale>
 #include <codecvt>
 #include <exception>
 #include "GALogger.h"
-#endif
 
 namespace gameanalytics
 {
     namespace utilities
     {
+        static inline void addIfNotEmpty(json& out, std::string const& key, std::string const& str)
+        {
+            if (!key.empty() && !str.empty())
+                out[key] = str;
+        }
+
+        static inline int64_t getTimestamp()
+        {
+            return std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::high_resolution_clock::now().time_since_epoch()
+            ).count();
+        }
+
+        static inline std::string toLowerCase(std::string const& str)
+        {
+            std::string s = str;
+            std::transform(s.begin(), s.end(), s.begin(), 
+                [](char a) -> char {return std::tolower(a); });
+
+            return s;
+        }
+
+
         class GAUtilities
         {
         public:
             static const char* getPathSeparator();
-            static void generateUUID(char* out);
+            static std::string generateUUID();
             static void hmacWithKey(const char* key, const std::vector<char>& data, char* out);
-            static bool stringMatch(const char* string, const char* pattern);
+            static bool stringMatch(std::string const& string, std::string const& pattern);
             static std::vector<char> gzipCompress(const char* data);
 
             // added for C++ port
             static bool isStringNullOrEmpty(const char* s);
             static void uppercaseString(char* s);
             static void lowercaseString(char* s);
-            static bool stringVectorContainsString(const StringVector& vector, const char* search);
+            static bool stringVectorContainsString(const StringVector& vector, const std::string& search);
             static int64_t timeIntervalSince1970();
             static void printJoinStringArray(const StringVector& v, const char* format, const char* delimiter = ", ");
-#if !USE_UWP
+
             static int base64_needed_encoded_length(int length_of_data);
             static void base64_encode(const unsigned char * src, int src_len, unsigned char *buf_);
-#endif
 
-#if USE_UWP
-            inline static std::string ws2s(const std::wstring wstr)
+            inline static std::string ws2s(const std::wstring& wstr)
             {
                 try
                 {
@@ -55,7 +74,7 @@ namespace gameanalytics
                 }
             }
 
-            inline static std::wstring s2ws(const std::string str)
+            inline static std::wstring s2ws(const std::string& str)
             {
                 try
                 {
@@ -67,7 +86,7 @@ namespace gameanalytics
                     return L"";
                 }
             }
-#endif
+
         private:
             static char pathSeparator[];
         };

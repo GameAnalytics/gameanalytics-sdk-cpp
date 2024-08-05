@@ -62,7 +62,7 @@ def main(argv):
     silent = False
     visual_studio = "2019"
     installTizen = False
-    skip_tizen = False
+    skip_tizen = True
     no_sqlite_src = False
 
     for opt, arg in opts:

@@ -7,10 +7,10 @@
 
 #include <sqlite3.h>
 #include <vector>
-#include "rapidjson/document.h"
 #include "GameAnalytics.h"
 #include <mutex>
 #include <cstdlib>
+#include "GACommon.h"
 
 namespace gameanalytics
 {
@@ -28,13 +28,13 @@ namespace gameanalytics
             static void setState(const char* key, const char* value);
 
             static bool executeQuerySync(const char* sql);
-            static void executeQuerySync(const char* sql, rapidjson::Document& out);
+            static void executeQuerySync(const char* sql, json& out);
 
             static void executeQuerySync(const char* sql, const char* parameters[], size_t size);
-            static void executeQuerySync(const char* sql, const char* parameters[], size_t size, rapidjson::Document& out);
+            static void executeQuerySync(const char* sql, const char* parameters[], size_t size, json& out);
 
             static void executeQuerySync(const char* sql, const char* parameters[], size_t size, bool useTransaction);
-            static void executeQuerySync(const char* sql, const char* parameters[], size_t size, bool useTransaction, rapidjson::Document& out);
+            static void executeQuerySync(const char* sql, const char* parameters[], size_t size, bool useTransaction, json& out);
 
             static long long getDbSizeBytes();
 

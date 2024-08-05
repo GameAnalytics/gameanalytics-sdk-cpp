@@ -19,70 +19,10 @@
 #include "rapidjson/error/en.h"
 #include <inttypes.h>
 
-bool mergeObjects(rapidjson::Value &dstObject, const rapidjson::Value &srcObject, rapidjson::Document::AllocatorType &allocator, bool overwrite)
-{
-    for (auto srcIt = srcObject.MemberBegin(); srcIt != srcObject.MemberEnd(); ++srcIt)
-    {
-        auto dstIt = dstObject.FindMember(srcIt->name);
-        if (dstIt == dstObject.MemberEnd())
-        {
-            rapidjson::Value dstName;
-            dstName.CopyFrom(srcIt->name, allocator);
-            rapidjson::Value dstVal;
-            dstVal.CopyFrom(srcIt->value, allocator);
-
-            dstObject.AddMember(dstName, dstVal, allocator);
-
-            dstName.CopyFrom(srcIt->name, allocator);
-            dstIt = dstObject.FindMember(dstName);
-            if (dstIt == dstObject.MemberEnd())
-                return false;
-        }
-        else if(overwrite)
-        {
-            auto srcT = srcIt->value.GetType();
-            auto dstT = dstIt->value.GetType();
-            if (srcT != dstT)
-                return false;
-
-            if (srcIt->value.IsArray())
-            {
-                for (auto arrayIt = srcIt->value.Begin(); arrayIt != srcIt->value.End(); ++arrayIt)
-                {
-                    rapidjson::Value dstVal;
-                    dstVal.CopyFrom(*arrayIt, allocator);
-                    dstIt->value.PushBack(dstVal, allocator);
-                }
-            }
-            else if (srcIt->value.IsObject())
-            {
-                if (!mergeObjects(dstIt->value, srcIt->value, allocator, overwrite))
-                    return false;
-            }
-            else
-            {
-                dstIt->value.CopyFrom(srcIt->value, allocator);
-            }
-        }
-    }
-
-    return true;
-}
-
 namespace gameanalytics
 {
     namespace events
     {
-        const char* GAEvents::CategorySessionStart = "user";
-        const char* GAEvents::CategorySessionEnd = "session_end";
-        const char* GAEvents::CategoryDesign = "design";
-        const char* GAEvents::CategoryBusiness = "business";
-        const char* GAEvents::CategoryProgression = "progression";
-        const char* GAEvents::CategoryResource = "resource";
-        const char* GAEvents::CategoryError = "error";
-        const double GAEvents::ProcessEventsIntervalInSeconds = 8.0;
-        const int GAEvents::MaxEventCount = 500;
-
         bool GAEvents::_destroyed = false;
         GAEvents* GAEvents::_instance = 0;
         std::once_flag GAEvents::_initInstanceFlag;
@@ -1238,20 +1178,17 @@ namespace gameanalytics
             snprintf(out, 10, "%s", "");
         }
 
-        void GAEvents::resourceFlowTypeString(EGAResourceFlowType flowType, char* out)
+        std::string GAEvents::resourceFlowTypeString(EGAResourceFlowType flowType)
         {
             switch (flowType) {
             case Source:
-                snprintf(out, 10, "%s", "Source");
-                return;
+                return "Source";
             case Sink:
-                snprintf(out, 10, "%s", "Sink");
-                return;
+                return "Sink";
             default:
-                break;
+                return "";
             }
 
-            snprintf(out, 10, "%s", "");
         }
     }
 }

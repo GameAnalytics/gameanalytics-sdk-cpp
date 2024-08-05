@@ -36,49 +36,7 @@ namespace gameanalytics
         int GAUncaughtExceptionHandler::MAX_ERROR_TYPE_COUNT = 5;
 
 #if defined(_WIN32)
-        void GAUncaughtExceptionHandler::signalHandler(int sig)
-        {
-            if(state::GAState::useErrorReporting())
-            {
-                if(errorCount <= MAX_ERROR_TYPE_COUNT)
-                {
-                    stacktrace::call_stack st;
-                    size_t totalSize = 0;
-                    totalSize += formatSize("Uncaught Signal (%d)\n", sig);
-                    totalSize += strlen("Stack trace:\n");
-                    totalSize += st.to_string_size() + strlen("\n");
-                    char* buffer = new char[totalSize + 1];
-                    buffer[0] = 0;
 
-                    formatConcat(buffer, "Uncaught Signal (%d)\n", sig);
-                    strcat(buffer, "Stack trace:\n");
-                    st.to_string(buffer);
-                    strcat(buffer, "\n");
-
-                    errorCount = errorCount + 1;
-                    events::GAEvents::addErrorEvent(EGAErrorSeverity::Critical, buffer, {}, false);
-                    events::GAEvents::processEvents("error", false);
-                    delete[] buffer;
-                }
-            }
-
-            if(sig == SIGILL && old_state_ill != NULL)
-            {
-                old_state_ill(sig);
-            }
-            else if(sig == SIGABRT && old_state_abrt != NULL)
-            {
-                old_state_abrt(sig);
-            }
-            else if(sig == SIGFPE && old_state_fpe != NULL)
-            {
-                old_state_fpe(sig);
-            }
-            else if(sig == SIGSEGV && old_state_segv != NULL)
-            {
-                old_state_segv(sig);
-            }
-        }
 
         void GAUncaughtExceptionHandler::setupUncaughtSignals()
         {

@@ -25,6 +25,8 @@
 #endif
 #include <cctype>
 
+#include "GAConstants.h"
+
 // From crypto
 #define MINIZ_HEADER_FILE_ONLY
 #include "miniz.c"
@@ -34,9 +36,9 @@ namespace gameanalytics
     namespace utilities
     {
 #ifdef _WIN32
-        char GAUtilities::pathSeparator[2] = "\\";
+        char GAUtilities::pathSeparator[] = "\\";
 #else
-        char GAUtilities::pathSeparator[2] = "/";
+        char GAUtilities::pathSeparator[] = "/";
 #endif
 
         // Compress a STL string using zlib with given compression level and return the binary data.
@@ -261,8 +263,10 @@ namespace gameanalytics
             return pathSeparator;
         }
 
-        void GAUtilities::generateUUID(char* out)
+        std::string GAUtilities::generateUUID()
         {
+            char out[UUID_STR_LENGTH] = "";
+
 #if USE_UWP
             GUID result;
             CoCreateGuid(&result);
@@ -283,6 +287,8 @@ namespace gameanalytics
             auto myGuid = generator.newGuid();
             myGuid.to_string(out);
 #endif
+
+            return out;
         }
 
         // TODO(nikolaj): explain function
@@ -318,30 +324,16 @@ namespace gameanalytics
                 SHA256_DIGEST_SIZE
             );
             int output_size = base64_needed_encoded_length(SHA256_DIGEST_SIZE);
-            unsigned char* ret = new unsigned char[output_size];
-            GAUtilities::base64_encode(mac, SHA256_DIGEST_SIZE, ret);
+            std::unique_ptr<unsigned char[]> ret = std::make_unique<unsigned char[]>(output_size);
+            GAUtilities::base64_encode(mac, SHA256_DIGEST_SIZE, ret.get());
 
             snprintf(out, output_size, "%s", ret);
-            delete[] ret;
 #endif
         }
 
         // TODO(nikolaj): explain function
-        bool GAUtilities::stringMatch(const char* string, const char* pattern)
+        bool GAUtilities::stringMatch(std::string const& string, std::string const& pattern)
         {
-
-#if USE_LINUX
-           int status;
-           regex_t re;
-           if(regcomp(&re, pattern, REG_EXTENDED|REG_NOSUB) != 0)
-           {
-               return true;
-           }
-
-           status = regexec(&re, string, (size_t)0, NULL, 0);
-           regfree(&re);
-           return status == 0;
-#else
             try
             {
                 std::regex expression(pattern);
@@ -350,14 +342,13 @@ namespace gameanalytics
             catch (const std::regex_error& e)
             {
                 logging::GALogger::e("failed to parse regular expression '%s', code: %d, what: %s", pattern, e.code(), e.what());
-                logging::GALogger::e("Please note, that the gnustl might not have regex support yet: https://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html");
+
                 #if _DEBUG
-                throw;
+                    throw;
                 #else
-                return true;
+                    return true;
                 #endif
             }
-#endif
         }
 
         std::vector<char> GAUtilities::gzipCompress(const char* data)
@@ -366,19 +357,12 @@ namespace gameanalytics
         }
 
         // TODO(nikolaj): explain function
-        bool GAUtilities::stringVectorContainsString(const StringVector& vector, const char* search)
+        bool GAUtilities::stringVectorContainsString(const StringVector& vector, std::string const& str)
         {
-            if (vector.getVector().size() == 0)
+            for (std::string const& s : vector)
             {
-                return false;
-            }
-
-            for (CharArray entry : vector.getVector())
-            {
-                if(strcmp(entry.array, search) == 0)
-                {
+                if (s == str)
                     return true;
-                }
             }
 
             return false;
@@ -387,7 +371,7 @@ namespace gameanalytics
         // using std::chrono to get time
         int64_t GAUtilities::timeIntervalSince1970()
         {
-            return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
         }
 
         bool GAUtilities::isStringNullOrEmpty(const char* s)
@@ -411,33 +395,6 @@ namespace gameanalytics
             {
                 ++s;
             }
-        }
-
-        // TODO(nikolaj): explain function
-        void GAUtilities::printJoinStringArray(const StringVector& v, const char* format, const char* delimiter)
-        {
-            size_t delimiterSize = strlen(delimiter);
-            size_t vectorSize = v.getVector().size();
-            size_t totalSize = (vectorSize - 1) * delimiterSize + 1;
-
-            for (size_t i = 0; i < vectorSize; ++i)
-            {
-                totalSize += strlen(v.getVector()[i].array);
-            }
-
-            char* result = new char[totalSize];
-            result[0] = 0;
-            for (size_t i = 0; i < vectorSize; ++i)
-            {
-                strcat(result, v.getVector()[i].array);
-                if(i < vectorSize - 1)
-                {
-                    strcat(result, delimiter);
-                }
-            }
-
-            logging::GALogger::i(format, result);
-            delete[] result;
         }
     }
 }

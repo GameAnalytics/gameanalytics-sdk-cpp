@@ -42,24 +42,6 @@ namespace gameanalytics
 
          private:
 
-#if USE_TIZEN
-            struct BlockHolder
-            {
-                BlockHolder() {}
-
-                BlockHolder(const Block& block) :block(block) {}
-
-                Block block;
-            };
-
-            static Eina_Bool _scheduled_function(void* data);
-            static void _perform_task_function(void* data, Ecore_Thread* thread);
-            static void _end_function(void* data, Ecore_Thread* thread);
-
-            static std::atomic<bool> initialized;
-            static void initIfNeeded();
-#else
-            //timers
             struct TimedBlock
             {
                 typedef std::chrono::steady_clock::time_point time_point;

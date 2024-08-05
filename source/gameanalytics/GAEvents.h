@@ -17,6 +17,7 @@ namespace gameanalytics
         class GAEvents
         {
          public:
+
             static void stopEventQueue();
             static void ensureEventQueueIsRunning();
             static void addSessionStartEvent();
@@ -28,33 +29,36 @@ namespace gameanalytics
             static void addErrorEvent(EGAErrorSeverity severity, const char* message, const rapidjson::Value& fields, bool mergeFields);
             static void addErrorEvent(EGAErrorSeverity severity, const char* message, const rapidjson::Value& fields, bool mergeFields, bool skipAddingFields);
             static void progressionStatusString(EGAProgressionStatus progressionStatus, char* out);
-            static void errorSeverityString(EGAErrorSeverity errorSeverity, char* out);
-            static void resourceFlowTypeString(EGAResourceFlowType flowType, char* out);
-            static void processEvents(const char* category, bool performCleanUp);
+
+            static std::string errorSeverityString(EGAErrorSeverity errorSeverity);
+            static std::string resourceFlowTypeString(EGAResourceFlowType flowType);
+
+            static void processEvents(std::string const& category, bool performCleanUp);
 
         private:
+
+            static constexpr const char* CategorySessionStart           = "user";
+            static constexpr const char* CategorySessionEnd             = "session_end";
+            static constexpr const char* CategoryDesign                 = "design";
+            static constexpr const char* CategoryBusiness               = "business";
+            static constexpr const char* CategoryProgression            = "progression";
+            static constexpr const char* CategoryResource               = "resource";
+            static constexpr const char* CategoryError                  = "error";
+            static constexpr double      ProcessEventsIntervalInSeconds = 8.0;
+            static constexpr int         MaxEventCount                  = 500;
+
             GAEvents();
             ~GAEvents();
             GAEvents(const GAEvents&) = delete;
             GAEvents& operator=(const GAEvents&) = delete;
 
-            static void processEventQueue();
-            static void cleanupEvents();
-            static void fixMissingSessionEndEvents();
-            static void addEventToStore(rapidjson::Document &eventData);
-            static void addDimensionsToEvent(rapidjson::Document& eventData);
-            static void addCustomFieldsToEvent(rapidjson::Document& eventData, rapidjson::Document& fields);
-            static void updateSessionTime();
-
-            static const char* CategorySessionStart;
-            static const char* CategorySessionEnd;
-            static const char* CategoryDesign;
-            static const char* CategoryBusiness;
-            static const char* CategoryProgression;
-            static const char* CategoryResource;
-            static const char* CategoryError;
-            static const double ProcessEventsIntervalInSeconds;
-            static const int MaxEventCount;
+            void processEventQueue();
+            void cleanupEvents();
+            void fixMissingSessionEndEvents();
+            void addEventToStore(rapidjson::Document &eventData);
+            void addDimensionsToEvent(rapidjson::Document& eventData);
+            void addCustomFieldsToEvent(rapidjson::Document& eventData, rapidjson::Document& fields);
+            void updateSessionTime();
 
             static bool _destroyed;
             static GAEvents* _instance;

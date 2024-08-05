@@ -5,8 +5,9 @@
 
 #pragma once
 
-#include "Common.h"
-#include "Constants.h"
+#include "GAConstants.h"
+#include "GACommon.h"
+#include "Platform/GAPlatform.h"
 
 namespace gameanalytics
 {
@@ -14,60 +15,71 @@ namespace gameanalytics
     {
         class GADevice
         {
-        public:
-            static void disableDeviceInfo();
-            static void setSdkGameEngineVersion(const char* sdkGameEngineVersion);
-            static const char* getGameEngineVersion();
-            static void setGameEngineVersion(const char* gameEngineVersion);
-            static void setConnectionType(const char* connectionType);
-            static const char* getConnectionType();
-            static const char* getRelevantSdkVersion();
-            static const char* getBuildPlatform();
-            static void setBuildPlatform(const char* platform);
-            static const char* getOSVersion();
-            static void setDeviceModel(const char* deviceModel);
-            static const char* getDeviceModel();
-            static void setDeviceManufacturer(const char* deviceManufacturer);
-            static const char* getDeviceManufacturer();
-            static void setWritablePath(const char* writablePath);
-            static const char* getWritablePath();
-            static int getWritablePathStatus();
-#if USE_UWP
-            static const char* getDeviceId();
-            static const char* getAdvertisingId();
-#elif USE_TIZEN
-            static const char* getDeviceId();
-#endif
-            static void UpdateConnectionType();
+            static std::unique_ptr<GADevice> _instance; 
+            static std::unique_ptr<GADevice>& GetInstance();
 
-        private:
-            static void initOSVersion();
-            static void initDeviceManufacturer();
-            static void initDeviceModel();
-            static void initRuntimePlatform();
-            static void initPersistentPath();
-#if USE_UWP
-            static const std::string deviceId();
+            GADevice();
+            GADevice(GADevice const&)            = delete;
+            GADevice& operator=(GADevice const&) = delete;
 
-            static const std::string _advertisingId;
-            static const std::string _deviceId;
-#elif USE_TIZEN
-            static void initDeviceId();
+            public:
 
-            static char _deviceId[];
-#endif
+                static void         disableDeviceInfo();
+                static void         setSdkGameEngineVersion(std::string const& sdkGameEngineVersion);
+                static std::string  getGameEngineVersion();
 
-            static bool _useDeviceInfo;
-            static char _buildPlatform[];
-            static char _osVersion[];
-            static char _deviceModel[];
-            static char _deviceManufacturer[];
-            static char _writablepath[];
-            static int _writablepathStatus;
-            static char _sdkGameEngineVersion[];
-            static char _gameEngineVersion[];
-            static char _connectionType[];
-            static const char* _sdkWrapperVersion;
+                static void         setGameEngineVersion(std::string const& gameEngineVersion);
+                static void         setConnectionType(std::string const& connectionType);
+
+                static std::string  getConnectionType();
+                static std::string  getRelevantSdkVersion();
+
+                static std::string  getBuildPlatform();
+                static void         setBuildPlatform(std::string const& platform);
+
+                static std::string  getOSVersion();
+
+                static void         setDeviceModel(std::string const& deviceModel);
+                static std::string  getDeviceModel();
+
+                static void         setDeviceManufacturer(std::string const& deviceManufacturer);
+                static std::string  getDeviceManufacturer();
+
+                static void         setWritablePath(std::string const& writablePath);
+                static std::string  getWritablePath();
+                static bool         getWritablePathStatus();
+
+                static std::string  getDeviceId();
+                static std::string  getAdvertisingId();
+
+            private:
+
+                std::unique_ptr<GAPlatform> _platform;
+
+                void initDeviceId();
+                void initOSVersion();
+                void initDeviceManufacturer();
+                void initDeviceModel();
+                void initRuntimePlatform();
+                void initPersistentPath();
+
+                std::string _deviceId;
+                std::string _advertisingId;
+
+                bool        _useDeviceInfo = true;
+
+                std::string _buildPlatform      = UNKNOWN_VALUE;
+                std::string _osVersion          = UNKNOWN_VALUE;
+                std::string _deviceModel        = UNKNOWN_VALUE;
+                std::string _deviceManufacturer = UNKNOWN_VALUE;
+
+                std::string _writablepath;
+                bool        _writablepathStatus{false};
+
+                std::string _sdkGameEngineVersion   = UNKNOWN_VALUE;
+                std::string _gameEngineVersion      = UNKNOWN_VALUE;
+                std::string _connectionType         = UNKNOWN_VALUE;
+                std::string _sdkWrapperVersion      = UNKNOWN_VALUE;
         };
     }
 }

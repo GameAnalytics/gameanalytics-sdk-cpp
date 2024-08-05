@@ -25,41 +25,26 @@ namespace gameanalytics
 {
     namespace http
     {
-        // base url settings
-        char GAHTTPApi::protocol[6] = "https";
-        char GAHTTPApi::hostName[22] = "api.gameanalytics.com";
-
-        char GAHTTPApi::version[3] = "v2";
-        char GAHTTPApi::remoteConfigsVersion[3] = "v1";
-
-        // create base url
-        char GAHTTPApi::baseUrl[257] = "";
-        char GAHTTPApi::remoteConfigsBaseUrl[257] = "";
-
-        // route paths
-        char GAHTTPApi::initializeUrlPath[5] = "init";
-        char GAHTTPApi::eventsUrlPath[7] = "events";
-
-        void initResponseData(struct ResponseData *s)
+        size_t writefunc(void *ptr, size_t size, size_t nmemb, ResponseData *s)
         {
-            s->len = 0;
-            s->ptr = static_cast<char*>(malloc(s->len+1));
-            if (s->ptr == NULL)
-            {
-                exit(EXIT_FAILURE);
-            }
-            s->ptr[0] = '\0';
-        }
+            const size_t new_len = s->len + size*nmemb;
 
-        size_t writefunc(void *ptr, size_t size, size_t nmemb, struct ResponseData *s)
-        {
-            size_t new_len = s->len + size*nmemb;
-            s->ptr = static_cast<char*>(realloc(s->ptr, new_len+1));
-            if (s->ptr == NULL)
+            if (s->ptr)
             {
-                exit(EXIT_FAILURE);
+                std::unique_ptr<char[]> buffer = std::make_unique<char[]>(new_len);
+
+                if (!buffer)
+                    throw std::runtime_error("Failed to allocate buffer!");
+
+                std::memcpy(buffer->get(), s->ptr.get(), s->len);
+                s->ptr = std::move(buffer);
             }
-            memcpy(s->ptr+s->len, ptr, size*nmemb);
+            else
+            {
+                s->ptr = std::make_unique<char[]>(new_len);
+            }
+
+            std::memcpy(s->ptr.get() + s->len, ptr, size * nmemb);
             s->ptr[new_len] = '\0';
             s->len = new_len;
 
@@ -75,8 +60,9 @@ namespace gameanalytics
         {
             curl_global_init(CURL_GLOBAL_DEFAULT);
 
-            snprintf(GAHTTPApi::baseUrl, sizeof(GAHTTPApi::baseUrl), "%s://%s/%s", protocol, hostName, version);
-            snprintf(GAHTTPApi::remoteConfigsBaseUrl, sizeof(GAHTTPApi::remoteConfigsBaseUrl), "%s://%s/remote_configs/%s", protocol, hostName, remoteConfigsVersion);
+            baseUrl              = protocol + "://" + hostName + "/" + version;
+            remoteConfigsBaseUrl = protocol + "://" + hostName + "/remote_configs/" + remoteConfigsVersion;
+
             // use gzip compression on JSON body
 #if defined(_DEBUG)
             useGzip = false;
@@ -103,291 +89,217 @@ namespace gameanalytics
             return _instance;
         }
 
-        void GAHTTPApi::requestInitReturningDict(EGAHTTPApiResponse& response_out, rapidjson::Document& json_out, const char* configsHash)
+        EGAHTTPApiResponse GAHTTPApi::requestInitReturningDict(json& json_out, const char* configsHash)
         {
-            const char* gameKey = state::GAState::getGameKey();
+            std::string gameKey = state::GAState::getGameKey();
 
             // Generate URL
-            char url[513] = "";
-            snprintf(url, sizeof(url), "%s/%s?game_key=%s&interval_seconds=0&configs_hash=%s", remoteConfigsBaseUrl, initializeUrlPath, gameKey, configsHash);
+            std::string url = remoteConfigsBaseUrl + "/" + initializeUrlPath + "?game_key=" + gameKey + "&interval_seconds=0&configs_hash=" + configsHash;
 
-            logging::GALogger::d("Sending 'init' URL: %s", url);
+            logging::GALogger::d("Sending 'init' URL: %s", url.c_str());
 
-            rapidjson::Document initAnnotations;
-            initAnnotations.SetObject();
+            json initAnnotations;
             state::GAState::getInitAnnotations(initAnnotations);
-
-            // make JSON string from data
-            rapidjson::StringBuffer buffer;
+            
+            try
             {
-                rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-                initAnnotations.Accept(writer);
-            }
-            const char* JSONstring = buffer.GetString();
+                std::string jsonString = initAnnotations.dump();
+                if (jsonString.empty())
+                {
+                    return; JsonEncodeFailed;
+                }
 
-            if (strlen(JSONstring) == 0)
+                std::vector<char> payloadData = createPayloadData(jsonString, useGzip);
+
+                CURL* curl;
+                CURLcode res;
+                curl = curl_easy_init();
+                if (!curl)
+                {
+                    return NoResponse;
+                }
+
+                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+
+                ResponseData s;
+
+                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
+                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
+
+                std::vector<char> authorization = createRequest(curl, url, payloadData, useGzip);
+
+                res = curl_easy_perform(curl);
+                if (res != CURLE_OK)
+                {
+                    logging::GALogger::d(curl_easy_strerror(res));
+                    return NoResponse;
+                }
+
+                long response_code;
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+                curl_easy_cleanup(curl);
+
+                // process the response
+                logging::GALogger::d("init request content: %s, json: %s", s.ptr, jsonString.c_str());
+
+                json requestJsonDict = json::parse(s.ptr);
+                if (!ok)
+                {
+                    logging::GALogger::d("requestInitReturningDict -- JSON error (offset %u): %s", static_cast<unsigned int>(ok.Offset()), GetParseError_En(ok.Code()));
+                    logging::GALogger::d("%s", s.ptr);
+                }
+
+                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.ptr, "Init");
+
+                // if not 200 result
+                if (requestResponseEnum != Ok && requestResponseEnum != Created && requestResponseEnum != BadRequest)
+                {
+                    logging::GALogger::d("Failed Init Call. URL: %s, JSONString: %s, Authorization: %s", url, jsonString.c_str(), authorization.data());
+
+                    return requestResponseEnum;
+                }
+
+                if (requestJsonDict.is_null())
+                {
+                    logging::GALogger::d("Failed Init Call. Json decoding failed");
+                    return JsonDecodeFailed;
+                }
+
+                // print reason if bad request
+                if (requestResponseEnum == BadRequest)
+                {
+
+                    logging::GALogger::d("Failed Init Call. Bad request. Response: %s", requestJsonDict.dump().c_str());
+
+                    // return bad request result
+                    return requestResponseEnum;
+                }
+
+                // validate Init call values
+                validators::GAValidator::validateAndCleanInitRequestResponse(requestJsonDict, json_out, requestResponseEnum == Created);
+
+                if (json_out.is_null())
+                {
+                    return BadResponse;
+                }
+
+                // all ok
+                return requestResponseEnum;
+            }
+            catch (json::exception& e)
             {
-                response_out = JsonEncodeFailed;
-                json_out.SetNull();
-                return;
+                logging::GALogger::e(e.what());
+                return InternalError;
             }
-
-            std::vector<char> payloadData = createPayloadData(JSONstring, useGzip);
-
-            CURL *curl;
-            CURLcode res;
-            curl = curl_easy_init();
-            if(!curl)
+            catch (std::exception& e)
             {
-                response_out = NoResponse;
-                json_out.SetNull();
-                return;
+                logging::GALogger::e(e.what());
+                return InternalError;
             }
-
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-
-            struct ResponseData s;
-            initResponseData(&s);
-
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
-#if USE_TIZEN
-            connection_h connection;
-            int conn_err;
-            conn_err = connection_create(&connection);
-            if (conn_err != CONNECTION_ERROR_NONE)
-            {
-                response_out = NoResponse;
-                json_out.SetNull();
-                return;
-            }
-#endif
-
-            std::vector<char> authorization = createRequest(curl, url, payloadData, useGzip);
-
-            res = curl_easy_perform(curl);
-            if(res != CURLE_OK)
-            {
-                logging::GALogger::d(curl_easy_strerror(res));
-                response_out = NoResponse;
-                json_out.SetNull();
-                return;
-            }
-
-            long response_code;
-            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-            curl_easy_cleanup(curl);
-
-            // process the response
-            logging::GALogger::d("init request content: %s, JSONString: %s", s.ptr, JSONstring);
-
-            rapidjson::Document requestJsonDict;
-            rapidjson::ParseResult ok = requestJsonDict.Parse(s.ptr);
-            if(!ok)
-            {
-                logging::GALogger::d("requestInitReturningDict -- JSON error (offset %u): %s", (unsigned)ok.Offset(), GetParseError_En(ok.Code()));
-                logging::GALogger::d("%s", s.ptr);
-            }
-            EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.ptr, "Init");
-            free(s.ptr);
-
-            // if not 200 result
-            if (requestResponseEnum != Ok && requestResponseEnum != Created && requestResponseEnum != BadRequest)
-            {
-                logging::GALogger::d("Failed Init Call. URL: %s, JSONString: %s, Authorization: %s", url, JSONstring, authorization.data());
-#if USE_TIZEN
-                connection_destroy(connection);
-#endif
-                response_out = requestResponseEnum;
-                json_out.SetNull();
-                return;
-            }
-
-            if (requestJsonDict.IsNull())
-            {
-                logging::GALogger::d("Failed Init Call. Json decoding failed");
-#if USE_TIZEN
-                connection_destroy(connection);
-#endif
-                response_out = JsonDecodeFailed;
-                json_out.SetNull();
-                return;
-            }
-
-            // print reason if bad request
-            if (requestResponseEnum == BadRequest)
-            {
-                rapidjson::StringBuffer buffer;
-                rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-                requestJsonDict.Accept(writer);
-                logging::GALogger::d("Failed Init Call. Bad request. Response: %s", buffer.GetString());
-                // return bad request result
-#if USE_TIZEN
-                connection_destroy(connection);
-#endif
-                response_out = requestResponseEnum;
-                json_out.SetNull();
-                return;
-            }
-
-            // validate Init call values
-            validators::GAValidator::validateAndCleanInitRequestResponse(requestJsonDict, json_out, requestResponseEnum == Created);
-
-            if (json_out.IsNull())
-            {
-#if USE_TIZEN
-                connection_destroy(connection);
-#endif
-                response_out = BadResponse;
-                json_out.SetNull();
-                return;
-            }
-
-#if USE_TIZEN
-            connection_destroy(connection);
-#endif
-
-            // all ok
-            response_out = requestResponseEnum;
         }
 
-        void GAHTTPApi::sendEventsInArray(EGAHTTPApiResponse& response_out, rapidjson::Value& json_out, const rapidjson::Value& eventArray)
+        EGAHTTPApiResponse GAHTTPApi::sendEventsInArray(json& json_out, const json& eventArray)
         {
-            if (eventArray.Empty())
+            if (eventArray.empty())
             {
                 logging::GALogger::d("sendEventsInArray called with missing eventArray");
-                return;
+                return JsonEncodeFailed;
             }
 
-            auto gameKey = state::GAState::getGameKey();
+            std::string gameKey = state::GAState::getGameKey();
 
-            // Generate URL
-            char url[513] = "";
-            snprintf(url, sizeof(url), "%s/%s/%s", baseUrl, gameKey, eventsUrlPath);
-
-            logging::GALogger::d("Sending 'events' URL: %s", url);
-
-            // make JSON string from data
-            rapidjson::StringBuffer buffer;
+            try
             {
-                rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-                eventArray.Accept(writer);
+                // Generate URL
+                const std::string url = baseUrl + '/' + gameKey + '/' + eventsUrlPath;
+                logging::GALogger::d("Sending 'events' URL: %s", url.c_str());
+
+                std::string const jsonString = eventArray.dump();
+
+                if (jsonString.empty())
+                {
+                    logging::GALogger::d("sendEventsInArray JSON encoding failed of eventArray");
+                    return JsonEncodeFailed;
+                }
+
+                std::vector<char> payloadData = createPayloadData(jsonString, useGzip);
+
+                CURL* curl;
+                CURLcode res;
+                curl = curl_easy_init();
+                if (!curl)
+                {
+                    return NoResponse;
+                }
+
+                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+
+                ResponseData s = {};
+
+                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
+                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
+
+                std::vector<char> authorization = createRequest(curl, url, payloadData, useGzip);
+
+                res = curl_easy_perform(curl);
+                if (res != CURLE_OK)
+                {
+                    logging::GALogger::d(curl_easy_strerror(res));
+                    return NoResponse;
+                }
+
+                long response_code{};
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+                curl_easy_cleanup(curl);
+
+                logging::GALogger::d("body: %s", s.toString().c_str());
+
+                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.ptr.get(), "Events");
+
+                // if not 200 result
+                if (requestResponseEnum != Ok && requestResponseEnum != Created && requestResponseEnum != BadRequest)
+                {
+                    logging::GALogger::d("Failed Events Call. URL: %s, JSONString: %s, Authorization: %s", url.c_str(), jsonString.c_str(), authorization.data());
+                    return requestResponseEnum;
+                }
+
+                // decode JSON
+                json requestJsonDict = json::parse(s.toString());
+                if (requestJsonDict.is_null())
+                {
+                    return JsonDecodeFailed;
+                }
+
+                // print reason if bad request
+                if (requestResponseEnum == BadRequest)
+                {
+                    rapidjson::StringBuffer buffer;
+                    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+                    requestJsonDict.Accept(writer);
+
+                    logging::GALogger::d("Failed Events Call. Bad request. Response: %s", buffer.GetString());
+
+                    return requestResponseEnum;
+                }
+
+                json_out.merge_patch(requestJsonDict);
+
+                // return response
+                return requestResponseEnum;
             }
-
-            const char* JSONstring = buffer.GetString();
-
-            if (strlen(JSONstring) == 0)
+            catch (json::exception& e)
             {
-                logging::GALogger::d("sendEventsInArray JSON encoding failed of eventArray");
-                response_out = JsonEncodeFailed;
-                json_out.SetNull();;
-                return;
+                logging::GALogger::e(e.what());
+                return JsonDecodeFailed;
             }
-
-            std::vector<char> payloadData = createPayloadData(JSONstring, useGzip);
-
-            CURL *curl;
-            CURLcode res;
-            curl = curl_easy_init();
-            if(!curl)
+            catch (std::exception& e)
             {
-                response_out = NoResponse;
-                json_out.SetNull();
-                return;
+                logging::GALogger::e(e.what());
+                return InternalError;
             }
-
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-
-            struct ResponseData s;
-            initResponseData(&s);
-
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
-#if USE_TIZEN
-            connection_h connection;
-            int conn_err;
-            conn_err = connection_create(&connection);
-            if (conn_err != CONNECTION_ERROR_NONE)
-            {
-                response_out = NoResponse;
-                json_out = rapidjson::Value();
-                return;
-            }
-#endif
-            std::vector<char> authorization = createRequest(curl, url, payloadData, useGzip);
-
-            res = curl_easy_perform(curl);
-            if(res != CURLE_OK)
-            {
-                logging::GALogger::d(curl_easy_strerror(res));
-                response_out = NoResponse;
-                json_out.SetNull();
-                return;
-            }
-
-            long response_code;
-            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-            curl_easy_cleanup(curl);
-
-            logging::GALogger::d("body: %s", s.ptr);
-
-            EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.ptr, "Events");
-
-            // if not 200 result
-            if (requestResponseEnum != Ok && requestResponseEnum != Created && requestResponseEnum != BadRequest)
-            {
-                logging::GALogger::d("Failed Events Call. URL: %s, JSONString: %s, Authorization: %s", url, JSONstring, authorization.data());
-#if USE_TIZEN
-                connection_destroy(connection);
-#endif
-                response_out = requestResponseEnum;
-                json_out = rapidjson::Value();
-            }
-
-            // decode JSON
-            rapidjson::Document requestJsonDict;
-            rapidjson::ParseResult ok = requestJsonDict.Parse(s.ptr);
-            if(!ok)
-            {
-                logging::GALogger::d("sendEventsInArray -- JSON error (offset %u): %s", (unsigned)ok.Offset(), GetParseError_En(ok.Code()));
-                logging::GALogger::d("%s", s.ptr);
-            }
-            free(s.ptr);
-
-            if (requestJsonDict.IsNull())
-            {
-#if USE_TIZEN
-                connection_destroy(connection);
-#endif
-                response_out = JsonDecodeFailed;
-                json_out = rapidjson::Value();
-                return;
-            }
-
-            // print reason if bad request
-            if (requestResponseEnum == BadRequest)
-            {
-                rapidjson::StringBuffer buffer;
-                rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-                requestJsonDict.Accept(writer);
-
-                logging::GALogger::d("Failed Events Call. Bad request. Response: %s", buffer.GetString());
-
-                response_out = requestResponseEnum;
-                json_out = rapidjson::Value();
-                return;
-            }
-
-#if USE_TIZEN
-            connection_destroy(connection);
-#endif
-
-            // return response
-            response_out = requestResponseEnum;
-            json_out.CopyFrom(requestJsonDict, requestJsonDict.GetAllocator());
         }
 
-        void GAHTTPApi::sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, const char* reason, const char* gameKey, const char* secretKey)
+        void GAHTTPApi::sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string const& reason, std::string const& gameKey, const std::string const& secretKey)
         {
             if(!state::GAState::isEventSubmissionEnabled())
             {
@@ -401,74 +313,36 @@ namespace gameanalytics
             }
 
             // Generate URL
+            const std::string url = baseUrl + "/" + gameKey + "/" + eventsUrlPath;
 
-            std::array<char, 257> url = {'\0'};
-            snprintf(url.data(), url.size(), "%s/%s/%s", baseUrl, gameKey, eventsUrlPath);
+            logging::GALogger::d("Sending 'events' URL: %s", url.c_str());
 
-            logging::GALogger::d("Sending 'events' URL: %s", url);
+            json jsonObject;
+            state::GAState::getSdkErrorEventAnnotations(jsonObject);
 
-            rapidjson::Document json;
-            json.SetObject();
-            state::GAState::getSdkErrorEventAnnotations(json);
 
-            char categoryString[40] = "";
-            sdkErrorCategoryString(category, categoryString);
-            {
-                rapidjson::Value v(categoryString, json.GetAllocator());
-                json.AddMember("error_category", v.Move(), json.GetAllocator());
-            }
+            jsonObject["error_category"] = sdkErrorCategoryString(category);
+            jsonObject["error_area"]     = sdkErrorAreaString(area);
+            jsonObject["error_action"]   = sdkErrorActionString(action);
+            
+            utilities::addIfNotEmpty(jsonObject, "error_parameter", parameter);
+            utilities::addIfNotEmpty(jsonObject, "reason", reason);
 
-            char areaString[40] = "";
-            sdkErrorAreaString(area, areaString);
-            {
-                rapidjson::Value v(areaString, json.GetAllocator());
-                json.AddMember("error_area", v.Move(), json.GetAllocator());
-            }
+            json eventArray;
+            eventArray.push_back(jsonObject);
 
-            char actionString[40] = "";
-            sdkErrorActionString(action, actionString);
-            {
-                rapidjson::Value v(actionString, json.GetAllocator());
-                json.AddMember("error_action", v.Move(), json.GetAllocator());
-            }
-
-            char parameterString[40] = "";
-            sdkErrorParameterString(parameter, parameterString);
-            if(strlen(parameterString) > 0)
-            {
-                rapidjson::Value v(parameterString, json.GetAllocator());
-                json.AddMember("error_parameter", v.Move(), json.GetAllocator());
-            }
-
-            if(strlen(reason) > 0)
-            {
-                rapidjson::Value v(reason, json.GetAllocator());
-                json.AddMember("reason", v.Move(), json.GetAllocator());
-            }
-
-            rapidjson::Document eventArray;
-            eventArray.SetArray();
-            rapidjson::Document::AllocatorType& allocator = eventArray.GetAllocator();
-            eventArray.PushBack(json, allocator);
-            rapidjson::StringBuffer buffer;
-            {
-                rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-                eventArray.Accept(writer);
-            }
-            std::array<char, 10000> payloadJSONString = {'\0'};
-            snprintf(payloadJSONString.data(), payloadJSONString.size(), "%s", buffer.GetString());
-
-            if(strlen(payloadJSONString.data()) == 0)
+            std::string payloadJSONString = eventArray.dump();
+            if(payloadJSONString.empty())
             {
                 logging::GALogger::w("sendSdkErrorEvent: JSON encoding failed.");
                 return;
             }
 
-            logging::GALogger::d("sendSdkErrorEvent json: %s", payloadJSONString.data());
-
-            ErrorType errorType = std::make_tuple(category, area);
+            logging::GALogger::d("sendSdkErrorEvent json: %s", payloadJSONString.c_str());
 
 #if !NO_ASYNC
+            ErrorType errorType = std::make_tuple(category, area);
+
             bool useGzip = this->useGzip;
 
             std::async(std::launch::async, [url, payloadJSONString, useGzip, errorType]() -> void
@@ -495,7 +369,7 @@ namespace gameanalytics
                     return;
                 }
 
-                std::vector<char> payloadData = GAHTTPApi::getInstance()->createPayloadData(payloadJSONString.data(), useGzip);
+                std::vector<char> payloadData = GAHTTPApi::getInstance()->createPayloadData(payloadJSONString, useGzip);
 
                 CURL *curl;
                 CURLcode res;
@@ -507,20 +381,11 @@ namespace gameanalytics
 
                 curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
 
-                struct ResponseData s;
-                initResponseData(&s);
+                ResponseData s = {};
 
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
-#if USE_TIZEN
-                connection_h connection;
-                int conn_err;
-                conn_err = connection_create(&connection);
-                if (conn_err != CONNECTION_ERROR_NONE)
-                {
-                    return;
-                }
-#endif
+
                 GAHTTPApi::getInstance()->createRequest(curl, url.data(), payloadData, useGzip);
 
                 res = curl_easy_perform(curl);
@@ -530,61 +395,48 @@ namespace gameanalytics
                     return;
                 }
 
-                long statusCode;
+                long statusCode{};
                 curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &statusCode);
                 curl_easy_cleanup(curl);
 
                 // process the response
-                logging::GALogger::d("sdk error content : %s", s.ptr);
-                free(s.ptr);
+                logging::GALogger::d("sdk error content : %s", s.toString().c_str());;
 
                 // if not 200 result
                 if (statusCode != 200)
                 {
                     logging::GALogger::d("sdk error failed. response code not 200. status code: %u", CURLE_OK);
-#if USE_TIZEN
-                    connection_destroy(connection);
-#endif
                     return;
                 }
-
-#if USE_TIZEN
-                connection_destroy(connection);
-#endif
 
                 countMap[errorType] = countMap[errorType] + 1;
             });
 #endif
         }
 
-        const int GAHTTPApi::MaxCount = 10;
-        std::map<ErrorType, int> GAHTTPApi::countMap = std::map<ErrorType, int>();
-        std::map<ErrorType, int64_t> GAHTTPApi::timestampMap = std::map<ErrorType, int64_t>();
-
-        std::vector<char> GAHTTPApi::createPayloadData(const char* payload, bool gzip)
+        std::vector<char> GAHTTPApi::createPayloadData(std::string const& payload, bool gzip)
         {
+            if (payload.empty())
+            {
+                return {};
+            }
+
             std::vector<char> payloadData;
 
             if (gzip)
             {
-                payloadData = utilities::GAUtilities::gzipCompress(payload);
-
-                logging::GALogger::d("Gzip stats. Size: %lu, Compressed: %lu", strlen(payload), payloadData.size());
+                payloadData = utilities::GAUtilities::gzipCompress(payload.c_str());
+                logging::GALogger::d("Gzip stats. Size: %lu, Compressed: %lu", payload.size(), payloadData.size());
             }
             else
             {
-                size_t s = strlen(payload);
-
-                for(size_t i = 0; i < s; ++i)
-                {
-                    payloadData.push_back(payload[i]);
-                }
+                payloadData = std::vector<char>(payload.begin(), payload.end());
             }
 
             return payloadData;
         }
 
-        std::vector<char> GAHTTPApi::createRequest(CURL *curl, const char* url, const std::vector<char>& payloadData, bool gzip)
+        std::string GAHTTPApi::createRequest(CURL *curl, const char* url, const std::vector<char>& payloadData, bool gzip)
         {
             curl_easy_setopt(curl, CURLOPT_URL, url);
             curl_easy_setopt(curl, CURLOPT_POST, 1L);
@@ -596,13 +448,12 @@ namespace gameanalytics
             }
 
             // create authorization hash
-            const char* key = state::GAState::getGameSecret();
+            std::string const key = state::GAState::getGameSecret();
 
-            char authorization[257] = "";
-            utilities::GAUtilities::hmacWithKey(key, payloadData, authorization);
-            char auth[129] = "";
-            snprintf(auth, sizeof(auth), "Authorization: %s", authorization);
-            header = curl_slist_append(header, auth);
+            std::string authorization = utilities::GAUtilities::hmacWithKey(key, payloadData, authorization);
+            std::string auth = "Authorization: " + authorization;
+
+            header = curl_slist_append(header, auth.c_str());
 
             // always JSON
             header = curl_slist_append(header, "Content-Type: application/json");
@@ -612,15 +463,8 @@ namespace gameanalytics
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payloadData.size());
 
-            std::vector<char> result;
-            size_t s = strlen(authorization);
-            for(size_t i = 0; i < s; ++i)
-            {
-                result.push_back(authorization[i]);
-            }
-            result.push_back('\0');
 
-            return result;
+            return authorization;
         }
 
         EGAHTTPApiResponse GAHTTPApi::processRequestResponse(long statusCode, const char* body, const char* requestId)
@@ -662,6 +506,17 @@ namespace gameanalytics
             }
             return UnknownResponseCode;
         }
-    }
+
+        std::string ResponseData::toString() const
+        {
+            std::string str;
+            if (ptr && len)
+            {
+                str = std::string(ptr.get(), len);
+            }
+
+            return str;
+        }
+}
 }
 #endif
