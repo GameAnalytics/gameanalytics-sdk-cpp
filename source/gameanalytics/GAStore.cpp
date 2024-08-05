@@ -23,8 +23,8 @@ namespace gameanalytics
 {
     namespace store
     {
-        const int GAStore::MaxDbSizeBytes = 6291456;
-        const int GAStore::MaxDbSizeBytesBeforeTrim = 5242880;
+        constexpr int MaxDbSizeBytes = 6291456;
+        constexpr int MaxDbSizeBytesBeforeTrim = 5242880;
 
         bool GAStore::_destroyed = false;
         GAStore* GAStore::_instance = 0;
@@ -53,37 +53,37 @@ namespace gameanalytics
             return _destroyed;
         }
 
-        bool GAStore::executeQuerySync(const char* sql)
+        bool GAStore::executeQuerySync(std::string const& sql)
         {
-            rapidjson::Document d;
+            json d;
             executeQuerySync(sql, d);
-            return !d.IsNull();
+            return !d.is_null();
         }
 
-        void GAStore::executeQuerySync(const char* sql, rapidjson::Document& out)
+        void GAStore::executeQuerySync(std::string const& sql, json& out)
         {
             executeQuerySync(sql, {}, 0, out);
         }
 
 
-        void GAStore::executeQuerySync(const char* sql, const char* parameters[], size_t size)
+        void GAStore::executeQuerySync(std::string const& sql, const char* parameters[], size_t size)
         {
-            rapidjson::Document d;
+            json d;
             executeQuerySync(sql, parameters, size, false, d);
         }
 
-        void GAStore::executeQuerySync(const char* sql, const char* parameters[], size_t size, rapidjson::Document& out)
+        void GAStore::executeQuerySync(std::string const& sql, const char* parameters[], size_t size, json& out)
         {
             executeQuerySync(sql, parameters, size, false, out);
         }
 
-        void GAStore::executeQuerySync(const char* sql, const char* parameters[], size_t size, bool useTransaction)
+        void GAStore::executeQuerySync(std::string const& sql, const char* parameters[], size_t size, bool useTransaction)
         {
-            rapidjson::Document d;
+            json d;
             executeQuerySync(sql, parameters, size, useTransaction, d);
         }
 
-        void GAStore::executeQuerySync(const char* sql, const char* parameters[], size_t size, bool useTransaction, rapidjson::Document& out)
+        void GAStore::executeQuerySync(std::string const& sql, const char* parameters[], size_t size, bool useTransaction, json& out)
         {
             GAStore* i = getInstance();
             if(!i)
@@ -91,29 +91,20 @@ namespace gameanalytics
                 return;
             }
             // Force transaction if it is an update, insert or delete.
-            size_t arraySize = strlen(sql) + 1;
-            char* sqlUpper = new char[arraySize];
-            snprintf(sqlUpper, arraySize, "%s", sql);
-            utilities::GAUtilities::uppercaseString(sqlUpper);
+            std::string sqlUpper = utilities::toUpperCase(sql);
             if (utilities::GAUtilities::stringMatch(sqlUpper, "^(UPDATE|INSERT|DELETE)"))
             {
                 useTransaction = true;
             }
-            delete[] sqlUpper;
 
             // Get database connection from singelton getInstance
             sqlite3 *sqlDatabasePtr = i->getDatabase();
-
-            // Create mutable array for results
-            out.SetArray();
-            rapidjson::Document::AllocatorType& allocator = out.GetAllocator();
 
             if (useTransaction)
             {
                 if (sqlite3_exec(sqlDatabasePtr, "BEGIN;", 0, 0, 0) != SQLITE_OK)
                 {
                     logging::GALogger::e("SQLITE3 BEGIN ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
-                    out.SetNull();
                     return;
                 }
             }
@@ -122,7 +113,7 @@ namespace gameanalytics
             sqlite3_stmt *statement;
 
             // Prepare statement
-            if (sqlite3_prepare_v2(sqlDatabasePtr, sql, -1, &statement, nullptr) == SQLITE_OK)
+            if (sqlite3_prepare_v2(sqlDatabasePtr, sql.c_str(), -1, &statement, nullptr) == SQLITE_OK)
             {
                 // Bind parameters
                 if (size > 0)
@@ -139,11 +130,11 @@ namespace gameanalytics
                 // Loop through results
                 while (sqlite3_step(statement) == SQLITE_ROW)
                 {
-                    rapidjson::Value row(rapidjson::kObjectType);
+                    json row;
                     for (int i = 0; i < columnCount; i++)
                     {
-                        const char *column = (const char *)sqlite3_column_name(statement, i);
-                        const char *value = (const char *)sqlite3_column_text(statement, i);
+                        const char *column = reinterpret_cast<const char *>(sqlite3_column_name(statement, i));
+                        const char *value = reinterpret_cast<const char *>(sqlite3_column_text(statement, i));
 
                         if (!column || !value)
                         {
@@ -154,36 +145,45 @@ namespace gameanalytics
                         {
                             case SQLITE_INTEGER:
                             {
-                                rapidjson::Value v(column, allocator);
-                                row.AddMember(v.Move(), (int)strtol(value, NULL, 10), allocator);
+                                try
+                                {
+                                    int64_t valInt = std::stoll(value);
+                                    row[column] = valInt;
+                                }
+                                catch(std::exception& e)
+                                {
+                                    logging::GALogger::e(e.what());
+                                }
+
                                 break;
                             }
                             case SQLITE_FLOAT:
                             {
-                                rapidjson::Value v(column, allocator);
-                                double d;
-                                sscanf(value, "%lf", &d);
-                                row.AddMember(v.Move(), d, allocator);
+                                try
+                                {
+                                    double valFloat = std::stod(value);
+                                    row[column] = valFloat;
+                                }
+                                catch(std::exception& e)
+                                {
+                                    logging::GALogger::e(e.what());
+                                }
+                                
                                 break;
                             }
                             default:
                             {
-                                rapidjson::Value v(column, allocator);
-                                rapidjson::Value v1(value, allocator);
-                                row.AddMember(v.Move(), v1.Move(), allocator);
+                                row[column] = value;
                             }
                         }
-
-                        //row[column] = value;
                     }
-                    out.PushBack(row, allocator);
+                    out.push_back(std::move(row));
                 }
             }
             else
             {
                 // TODO(nikolaj): Should we do a db validation to see if the db is corrupt here?
                 logging::GALogger::e("SQLITE3 PREPARE ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
-                out.SetNull();
                 return;
             }
 
@@ -195,7 +195,6 @@ namespace gameanalytics
                     if (sqlite3_exec(sqlDatabasePtr, "COMMIT", 0, 0, 0) != SQLITE_OK)
                     {
                         logging::GALogger::e("SQLITE3 COMMIT ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
-                        out.SetNull();
                         return;
                     }
                 }
@@ -204,7 +203,6 @@ namespace gameanalytics
             {
                 logging::GALogger::d("SQLITE3 FINALIZE ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
 
-                out.Clear();
                 if (useTransaction)
                 {
                     if (sqlite3_exec(sqlDatabasePtr, "ROLLBACK", 0, 0, 0) != SQLITE_OK)
@@ -212,7 +210,7 @@ namespace gameanalytics
                         logging::GALogger::e("SQLITE3 ROLLBACK ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
                     }
                 }
-                out.SetNull();
+
                 return;
             }
         }
@@ -230,42 +228,23 @@ namespace gameanalytics
                 return false;
             }
             // lazy creation of db path
-            if(strlen(i->dbPath) == 0)
+            if(i->dbPath.empty())
             {
-#if USE_UWP
-                snprintf(i->dbPath, sizeof(i->dbPath), "%s\\ga.sqlite3", device::GADevice::getWritablePath());
-#elif USE_TIZEN
-                snprintf(i->dbPath, sizeof(i->dbPath), "%s%sga.sqlite3", device::GADevice::getWritablePath(), utilities::GAUtilities::getPathSeparator());
-#else
-                char d[513] = "";
-                const char* writablepath = device::GADevice::getWritablePath();
-
-                if(device::GADevice::getWritablePathStatus() <= 0)
-                {
-                    return false;
-                }
-                snprintf(d, sizeof(d), "%s%s%s", writablepath, utilities::GAUtilities::getPathSeparator(), key);
-#ifdef _WIN32
-                _mkdir(d);
-#else
-                mode_t nMode = 0733;
-                mkdir(d,nMode);
-#endif
-                snprintf(i->dbPath, sizeof(i->dbPath), "%s%sga.sqlite3", d, utilities::GAUtilities::getPathSeparator());
-#endif
+                // device::GADevice::getWritablePath()
+                i->dbPath = device::GADevice::getWritablePath() + "/ga.sqlite3";
             }
 
             // Open database
-            if (sqlite3_open(i->dbPath, &i->sqlDatabase) != SQLITE_OK)
+            if (sqlite3_open(i->dbPath.c_str(), &i->sqlDatabase) != SQLITE_OK)
             {
                 i->dbReady = false;
-                logging::GALogger::w("Could not open database: %s", i->dbPath);
+                logging::GALogger::w("Could not open database: %s", i->dbPath.c_str());
                 return false;
             }
             else
             {
                 i->dbReady = true;
-                logging::GALogger::i("Database opened: %s", i->dbPath);
+                logging::GALogger::i("Database opened: %s", i->dbPath.c_str());
             }
 
             if (dropDatabase)
@@ -279,10 +258,10 @@ namespace gameanalytics
             }
 
             // Create statements
-            const char* sql_ga_events = "CREATE TABLE IF NOT EXISTS ga_events(status CHAR(50) NOT NULL, category CHAR(50) NOT NULL, session_id CHAR(50) NOT NULL, client_ts CHAR(50) NOT NULL, event TEXT NOT NULL);";
-            const char* sql_ga_session = "CREATE TABLE IF NOT EXISTS ga_session(session_id CHAR(50) PRIMARY KEY NOT NULL, timestamp CHAR(50) NOT NULL, event TEXT NOT NULL);";
-            const char* sql_ga_state = "CREATE TABLE IF NOT EXISTS ga_state(key CHAR(255) PRIMARY KEY NOT NULL, value TEXT);";
-            const char* sql_ga_progression = "CREATE TABLE IF NOT EXISTS ga_progression(progression CHAR(255) PRIMARY KEY NOT NULL, tries CHAR(255));";
+            constexpr const char* sql_ga_events = "CREATE TABLE IF NOT EXISTS ga_events(status CHAR(50) NOT NULL, category CHAR(50) NOT NULL, session_id CHAR(50) NOT NULL, client_ts CHAR(50) NOT NULL, event TEXT NOT NULL);";
+            constexpr const char* sql_ga_session = "CREATE TABLE IF NOT EXISTS ga_session(session_id CHAR(50) PRIMARY KEY NOT NULL, timestamp CHAR(50) NOT NULL, event TEXT NOT NULL);";
+            constexpr const char* sql_ga_state = "CREATE TABLE IF NOT EXISTS ga_state(key CHAR(255) PRIMARY KEY NOT NULL, value TEXT);";
+            constexpr const char* sql_ga_progression = "CREATE TABLE IF NOT EXISTS ga_progression(progression CHAR(255) PRIMARY KEY NOT NULL, tries CHAR(255));";
 
             if (!GAStore::executeQuerySync(sql_ga_events))
             {
@@ -349,9 +328,9 @@ namespace gameanalytics
                 }
             }
 
-            trimEventTable();
-
+            i->trimEventTable();
             i->tableReady = true;
+
             logging::GALogger::d("Database tables ensured present");
 
             return true;
@@ -371,8 +350,7 @@ namespace gameanalytics
             }
         }
 
-        // long long is C 64 bit int
-        long long GAStore::getDbSizeBytes()
+        int64_t GAStore::getDbSizeBytes()
         {
             std::ifstream in(getInstance()->dbPath, std::ifstream::ate | std::ifstream::binary);
             return in.tellg();
@@ -398,34 +376,30 @@ namespace gameanalytics
         {
             if(getDbSizeBytes() > MaxDbSizeBytesBeforeTrim)
             {
-                rapidjson::Document resultSessionArray;
+                json resultSessionArray;
                 executeQuerySync("SELECT session_id, Max(client_ts) FROM ga_events GROUP BY session_id ORDER BY client_ts LIMIT 3", resultSessionArray);
 
-                if(!resultSessionArray.IsNull() && resultSessionArray.Size() > 0)
+                if(!resultSessionArray.is_null() && resultSessionArray.size() > 0)
                 {
-                    char sessionDeleteString[257] = "";
+                    std::string sessionDeleteString;
 
                     unsigned int i = 0;
-                    for (rapidjson::Value::ConstValueIterator itr = resultSessionArray.Begin(); itr != resultSessionArray.End(); ++itr)
+                    for (auto itr = resultSessionArray.begin(); itr != resultSessionArray.end(); ++itr)
                     {
-                        const rapidjson::Value& result = *itr;
-                        const char* session_id = result.GetString();
-                        char tmp[257] = "";
+                        std::string const session_id = itr->get<std::string>();
 
-                        if(i < resultSessionArray.Size() - 1)
+                        if(i < resultSessionArray.size() - 1)
                         {
-                            snprintf(tmp, 257, "%s%s%s", sessionDeleteString, session_id, ",");
+                            sessionDeleteString += session_id + ",";
                         }
                         else
                         {
-                            snprintf(tmp, 257, "%s%s", sessionDeleteString, session_id);
+                            sessionDeleteString += session_id;
                         }
-                        snprintf(sessionDeleteString, 257, "%s", tmp);
                         ++i;
                     }
 
-                    char deleteOldSessionsSql[513] = "";
-                    snprintf(deleteOldSessionsSql, 513, "DELETE FROM ga_events WHERE session_id IN (\"%s\");", sessionDeleteString);
+                    const std::string deleteOldSessionsSql = "DELETE FROM ga_events WHERE session_id IN (\"" + sessionDeleteString + "\");";
                     logging::GALogger::w("Database too large when initializing. Deleting the oldest 3 sessions.");
                     executeQuerySync(deleteOldSessionsSql);
                     executeQuerySync("VACUUM");
