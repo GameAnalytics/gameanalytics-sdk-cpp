@@ -27,14 +27,14 @@ namespace gameanalytics
 
             static void setState(const char* key, const char* value);
 
-            static bool executeQuerySync(const char* sql);
-            static void executeQuerySync(const char* sql, json& out);
+            static bool executeQuerySync(std::string const& sql);
+            static void executeQuerySync(std::string const& sql, json& out);
 
-            static void executeQuerySync(const char* sql, const char* parameters[], size_t size);
-            static void executeQuerySync(const char* sql, const char* parameters[], size_t size, json& out);
+            static void executeQuerySync(std::string const& sql, const char* parameters[], size_t size);
+            static void executeQuerySync(std::string const& sql, const char* parameters[], size_t size, json& out);
 
-            static void executeQuerySync(const char* sql, const char* parameters[], size_t size, bool useTransaction);
-            static void executeQuerySync(const char* sql, const char* parameters[], size_t size, bool useTransaction, json& out);
+            static void executeQuerySync(std::string const& sql, const char* parameters[], size_t size, bool useTransaction);
+            static void executeQuerySync(std::string const& sql, const char* parameters[], size_t size, bool useTransaction, json& out);
 
             static long long getDbSizeBytes();
 
@@ -61,11 +61,11 @@ namespace gameanalytics
                 }
             }
 
-            static bool trimEventTable();
+            bool trimEventTable();
 
             // set when calling "ensureDatabase"
             // using a "writablePath" that needs to be set into the C++ component before
-            char dbPath[513] = {'\0'};
+            std::string dbPath;
 
             // local pointer to database
             sqlite3* sqlDatabase = nullptr;
@@ -77,9 +77,6 @@ namespace gameanalytics
             bool dbReady = false;
             // bool to determine if tables are ensured ready
             bool tableReady = false;
-
-            static const int MaxDbSizeBytes;
-            static const int MaxDbSizeBytesBeforeTrim;
         };
     }
 }
