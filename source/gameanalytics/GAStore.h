@@ -23,20 +23,20 @@ namespace gameanalytics
             sqlite3* getDatabase();
             static bool isDestroyed();
 
-            static bool ensureDatabase(bool dropDatabase, const char* key = "");
+            static bool ensureDatabase(bool dropDatabase, std::string const& key = "");
 
-            static void setState(const char* key, const char* value);
+            static void setState(std::string const& key, std::string const& value);
 
             static bool executeQuerySync(std::string const& sql);
             static void executeQuerySync(std::string const& sql, json& out);
 
-            static void executeQuerySync(std::string const& sql, const char* parameters[], size_t size);
-            static void executeQuerySync(std::string const& sql, const char* parameters[], size_t size, json& out);
+            static void executeQuerySync(std::string const& sql, StringVector const& parameters);
+            static void executeQuerySync(std::string const& sql, StringVector const& parameters, json& out);
 
-            static void executeQuerySync(std::string const& sql, const char* parameters[], size_t size, bool useTransaction);
-            static void executeQuerySync(std::string const& sql, const char* parameters[], size_t size, bool useTransaction, json& out);
+            static void executeQuerySync(std::string const& sql, StringVector const& parameters, bool useTransaction);
+            static void executeQuerySync(std::string const& sql, StringVector const& parameters, bool useTransaction, json& out);
 
-            static long long getDbSizeBytes();
+            static int64_t getDbSizeBytes();
 
             static bool getTableReady();
             static bool isDbTooLargeForEvents();

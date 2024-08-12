@@ -66,152 +66,159 @@ namespace gameanalytics
         }
 
 
-        void GAStore::executeQuerySync(std::string const& sql, const char* parameters[], size_t size)
+        void GAStore::executeQuerySync(std::string const& sql, StringVector const& parameters)
         {
             json d;
-            executeQuerySync(sql, parameters, size, false, d);
+            executeQuerySync(sql, parameters, false, d);
         }
 
-        void GAStore::executeQuerySync(std::string const& sql, const char* parameters[], size_t size, json& out)
+        void GAStore::executeQuerySync(std::string const& sql, StringVector const& parameters, json& out)
         {
-            executeQuerySync(sql, parameters, size, false, out);
+            executeQuerySync(sql, parameters, false, out);
         }
 
-        void GAStore::executeQuerySync(std::string const& sql, const char* parameters[], size_t size, bool useTransaction)
+        void GAStore::executeQuerySync(std::string const& sql, StringVector const& parameters, bool useTransaction)
         {
             json d;
-            executeQuerySync(sql, parameters, size, useTransaction, d);
+            executeQuerySync(sql, parameters, useTransaction, d);
         }
 
-        void GAStore::executeQuerySync(std::string const& sql, const char* parameters[], size_t size, bool useTransaction, json& out)
+        void GAStore::executeQuerySync(std::string const& sql, StringVector const& parameters, bool useTransaction, json& out)
         {
-            GAStore* i = getInstance();
-            if(!i)
+            try
             {
-                return;
-            }
-            // Force transaction if it is an update, insert or delete.
-            std::string sqlUpper = utilities::toUpperCase(sql);
-            if (utilities::GAUtilities::stringMatch(sqlUpper, "^(UPDATE|INSERT|DELETE)"))
-            {
-                useTransaction = true;
-            }
-
-            // Get database connection from singelton getInstance
-            sqlite3 *sqlDatabasePtr = i->getDatabase();
-
-            if (useTransaction)
-            {
-                if (sqlite3_exec(sqlDatabasePtr, "BEGIN;", 0, 0, 0) != SQLITE_OK)
+                GAStore* i = getInstance();
+                if(!i)
                 {
-                    logging::GALogger::e("SQLITE3 BEGIN ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
                     return;
                 }
-            }
-
-            // Create statement
-            sqlite3_stmt *statement;
-
-            // Prepare statement
-            if (sqlite3_prepare_v2(sqlDatabasePtr, sql.c_str(), -1, &statement, nullptr) == SQLITE_OK)
-            {
-                // Bind parameters
-                if (size > 0)
+                // Force transaction if it is an update, insert or delete.
+                std::string sqlUpper = utilities::toUpperCase(sql);
+                if (utilities::GAUtilities::stringMatch(sqlUpper, "^(UPDATE|INSERT|DELETE)"))
                 {
-                    for (size_t index = 0; index < size; index++)
-                    {
-                        sqlite3_bind_text(statement, static_cast<int>(index + 1), parameters[index], -1, 0);
-                    }
+                    useTransaction = true;
                 }
 
-                // get columns count
-                int columnCount = sqlite3_column_count(statement);
+                // Get database connection from singelton getInstance
+                sqlite3 *sqlDatabasePtr = i->getDatabase();
 
-                // Loop through results
-                while (sqlite3_step(statement) == SQLITE_ROW)
-                {
-                    json row;
-                    for (int i = 0; i < columnCount; i++)
-                    {
-                        const char *column = reinterpret_cast<const char *>(sqlite3_column_name(statement, i));
-                        const char *value = reinterpret_cast<const char *>(sqlite3_column_text(statement, i));
-
-                        if (!column || !value)
-                        {
-                            continue;
-                        }
-
-                        switch (sqlite3_column_type(statement, i))
-                        {
-                            case SQLITE_INTEGER:
-                            {
-                                try
-                                {
-                                    int64_t valInt = std::stoll(value);
-                                    row[column] = valInt;
-                                }
-                                catch(std::exception& e)
-                                {
-                                    logging::GALogger::e(e.what());
-                                }
-
-                                break;
-                            }
-                            case SQLITE_FLOAT:
-                            {
-                                try
-                                {
-                                    double valFloat = std::stod(value);
-                                    row[column] = valFloat;
-                                }
-                                catch(std::exception& e)
-                                {
-                                    logging::GALogger::e(e.what());
-                                }
-                                
-                                break;
-                            }
-                            default:
-                            {
-                                row[column] = value;
-                            }
-                        }
-                    }
-                    out.push_back(std::move(row));
-                }
-            }
-            else
-            {
-                // TODO(nikolaj): Should we do a db validation to see if the db is corrupt here?
-                logging::GALogger::e("SQLITE3 PREPARE ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
-                return;
-            }
-
-            // Destroy statement
-            if (sqlite3_finalize(statement) == SQLITE_OK)
-            {
                 if (useTransaction)
                 {
-                    if (sqlite3_exec(sqlDatabasePtr, "COMMIT", 0, 0, 0) != SQLITE_OK)
+                    if (sqlite3_exec(sqlDatabasePtr, "BEGIN;", 0, 0, 0) != SQLITE_OK)
                     {
-                        logging::GALogger::e("SQLITE3 COMMIT ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
+                        logging::GALogger::e("SQLITE3 BEGIN ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
                         return;
                     }
                 }
-            }
-            else
-            {
-                logging::GALogger::d("SQLITE3 FINALIZE ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
 
-                if (useTransaction)
+                // Create statement
+                sqlite3_stmt *statement;
+
+                // Prepare statement
+                if (sqlite3_prepare_v2(sqlDatabasePtr, sql.c_str(), -1, &statement, nullptr) == SQLITE_OK)
                 {
-                    if (sqlite3_exec(sqlDatabasePtr, "ROLLBACK", 0, 0, 0) != SQLITE_OK)
+                    // Bind parameters
+                    if (!parameters.empty())
                     {
-                        logging::GALogger::e("SQLITE3 ROLLBACK ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
+                        for (size_t index = 0; index < parameters.size(); index++)
+                        {
+                            sqlite3_bind_text(statement, static_cast<int>(index + 1), parameters[index].c_str(), -1, 0);
+                        }
+                    }
+
+                    // get columns count
+                    int columnCount = sqlite3_column_count(statement);
+
+                    // Loop through results
+                    while (sqlite3_step(statement) == SQLITE_ROW)
+                    {
+                        json row;
+                        for (int i = 0; i < columnCount; i++)
+                        {
+                            const char *column = sqlite3_column_name(statement, i);
+                            const char *value  = reinterpret_cast<const char*>(sqlite3_column_text(statement, i));
+
+                            if (!column || !value)
+                            {
+                                continue;
+                            }
+
+                            switch (sqlite3_column_type(statement, i))
+                            {
+                                case SQLITE_INTEGER:
+                                {
+                                    try
+                                    {
+                                        int64_t valInt = std::stoll(value);
+                                        row[column] = valInt;
+                                    }
+                                    catch(std::exception& e)
+                                    {
+                                        logging::GALogger::e(e.what());
+                                    }
+
+                                    break;
+                                }
+                                case SQLITE_FLOAT:
+                                {
+                                    try
+                                    {
+                                        double valFloat = std::stod(value);
+                                        row[column] = valFloat;
+                                    }
+                                    catch(std::exception& e)
+                                    {
+                                        logging::GALogger::e(e.what());
+                                    }
+                                    
+                                    break;
+                                }
+                                default:
+                                {
+                                    row[column] = value;
+                                }
+                            }
+                        }
+                        out.push_back(std::move(row));
                     }
                 }
+                else
+                {
+                    // TODO(nikolaj): Should we do a db validation to see if the db is corrupt here?
+                    logging::GALogger::e("SQLITE3 PREPARE ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
+                    return;
+                }
 
-                return;
+                // Destroy statement
+                if (sqlite3_finalize(statement) == SQLITE_OK)
+                {
+                    if (useTransaction)
+                    {
+                        if (sqlite3_exec(sqlDatabasePtr, "COMMIT", 0, 0, 0) != SQLITE_OK)
+                        {
+                            logging::GALogger::e("SQLITE3 COMMIT ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
+                            return;
+                        }
+                    }
+                }
+                else
+                {
+                    logging::GALogger::d("SQLITE3 FINALIZE ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
+
+                    if (useTransaction)
+                    {
+                        if (sqlite3_exec(sqlDatabasePtr, "ROLLBACK", 0, 0, 0) != SQLITE_OK)
+                        {
+                            logging::GALogger::e("SQLITE3 ROLLBACK ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
+                        }
+                    }
+
+                    return;
+                }
+            }
+            catch(std::exception& e)
+            {
+                logging::GALogger::e(e.what());
             }
         }
 
@@ -220,7 +227,7 @@ namespace gameanalytics
             return sqlDatabase;
         }
 
-        bool GAStore::ensureDatabase(bool dropDatabase, const char* key)
+        bool GAStore::ensureDatabase(bool dropDatabase, std::string const& key)
         {
             GAStore* i = getInstance();
             if(!i)
@@ -336,17 +343,17 @@ namespace gameanalytics
             return true;
         }
 
-        void GAStore::setState(const char* key, const char* value)
+        void GAStore::setState(std::string const& key, std::string const& value)
         {
-            if (strlen(value) == 0)
+            if (value.empty())
             {
-                const char* parameterArray[1] = {key};
-                executeQuerySync("DELETE FROM ga_state WHERE key = ?;", parameterArray, 1);
+                StringVector parameterArray = {key};
+                executeQuerySync("DELETE FROM ga_state WHERE key = ?;", parameterArray);
             }
             else
             {
-                const char* parameterArray[2] = {key, value};
-                executeQuerySync("INSERT OR REPLACE INTO ga_state (key, value) VALUES(?, ?);", parameterArray, 2, true);
+                StringVector parameterArray = {key, value};
+                executeQuerySync("INSERT OR REPLACE INTO ga_state (key, value) VALUES(?, ?);", parameterArray, true);
             }
         }
 
@@ -371,43 +378,50 @@ namespace gameanalytics
             return getDbSizeBytes() > MaxDbSizeBytes;
         }
 
-
         bool GAStore::trimEventTable()
         {
             if(getDbSizeBytes() > MaxDbSizeBytesBeforeTrim)
             {
-                json resultSessionArray;
-                executeQuerySync("SELECT session_id, Max(client_ts) FROM ga_events GROUP BY session_id ORDER BY client_ts LIMIT 3", resultSessionArray);
-
-                if(!resultSessionArray.is_null() && resultSessionArray.size() > 0)
+                try
                 {
-                    std::string sessionDeleteString;
+                    json resultSessionArray;
+                    executeQuerySync("SELECT session_id, Max(client_ts) FROM ga_events GROUP BY session_id ORDER BY client_ts LIMIT 3", resultSessionArray);
 
-                    unsigned int i = 0;
-                    for (auto itr = resultSessionArray.begin(); itr != resultSessionArray.end(); ++itr)
+                    if(!resultSessionArray.is_null() && resultSessionArray.size() > 0)
                     {
-                        std::string const session_id = itr->get<std::string>();
+                        std::string sessionDeleteString;
 
-                        if(i < resultSessionArray.size() - 1)
+                        unsigned int i = 0;
+                        for (auto itr = resultSessionArray.begin(); itr != resultSessionArray.end(); ++itr)
                         {
-                            sessionDeleteString += session_id + ",";
+                            std::string const session_id = itr->get<std::string>();
+
+                            if(i < resultSessionArray.size() - 1)
+                            {
+                                sessionDeleteString += session_id + ",";
+                            }
+                            else
+                            {
+                                sessionDeleteString += session_id;
+                            }
+                            ++i;
                         }
-                        else
-                        {
-                            sessionDeleteString += session_id;
-                        }
-                        ++i;
+
+                        const std::string deleteOldSessionsSql = "DELETE FROM ga_events WHERE session_id IN (\"" + sessionDeleteString + "\");";
+                        logging::GALogger::w("Database too large when initializing. Deleting the oldest 3 sessions.");
+                        executeQuerySync(deleteOldSessionsSql);
+                        executeQuerySync("VACUUM");
+
+                        return true;
                     }
-
-                    const std::string deleteOldSessionsSql = "DELETE FROM ga_events WHERE session_id IN (\"" + sessionDeleteString + "\");";
-                    logging::GALogger::w("Database too large when initializing. Deleting the oldest 3 sessions.");
-                    executeQuerySync(deleteOldSessionsSql);
-                    executeQuerySync("VACUUM");
-
-                    return true;
+                    else
+                    {
+                        return false;
+                    }
                 }
-                else
+                catch(std::exception& e)
                 {
+                    logging::GALogger::e(e.what());
                     return false;
                 }
             }
