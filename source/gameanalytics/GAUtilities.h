@@ -18,6 +18,21 @@ namespace gameanalytics
 {
     namespace utilities
     {
+        template<typename T>
+        T getOptionalValue(json& node, std::string const& key, T const& defaultValue)
+        {
+            try
+            {
+                if(node.contains(key))
+                    return node.get<T>(key);
+            }
+            catch(json::exception& e)
+            {
+            }
+
+            return defaultValue;
+        }
+
         static inline void addIfNotEmpty(json& out, std::string const& key, std::string const& str)
         {
             if (!key.empty() && !str.empty())
@@ -36,6 +51,15 @@ namespace gameanalytics
             std::string s = str;
             std::transform(s.begin(), s.end(), s.begin(), 
                 [](char a) -> char {return std::tolower(a); });
+
+            return s;
+        }
+
+        static inline std::string toUpperCase(std::string const& str)
+        {
+            std::string s = str;
+            std::transform(s.begin(), s.end(), s.begin(), 
+                [](char a) -> char {return std::toupper(a); });
 
             return s;
         }

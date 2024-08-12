@@ -137,8 +137,7 @@ namespace gameanalytics
             return v;
         }
 
-#if !USE_UWP
-        static char nb_base64_chars[] =
+        constexpr char nb_base64_chars[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz"
         "0123456789+/";
@@ -211,7 +210,7 @@ namespace gameanalytics
             }
             *buf++ = '\0';
         }
-#endif
+
         // gzip compresses a string
         static std::vector<char> compress_string_gzip(const char* str, int compressionlevel = Z_BEST_COMPRESSION)
         {
