@@ -168,7 +168,6 @@ namespace gameanalytics
                 // print reason if bad request
                 if (requestResponseEnum == BadRequest)
                 {
-
                     logging::GALogger::d("Failed Init Call. Bad request. Response: %s", requestJsonDict.dump().c_str());
 
                     // return bad request result
