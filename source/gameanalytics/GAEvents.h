@@ -6,9 +6,6 @@
 #pragma once
 
 #include "GameAnalytics.h"
-#include "rapidjson/document.h"
-#include <mutex>
-#include <cstdlib>
 
 namespace gameanalytics
 {
@@ -22,14 +19,14 @@ namespace gameanalytics
             static void ensureEventQueueIsRunning();
             static void addSessionStartEvent();
             static void addSessionEndEvent();
-            static void addBusinessEvent(const char* currency, int amount, const char* itemType, const char* itemId, const char* cartType, const rapidjson::Value& fields, bool mergeFields);
-            static void addResourceEvent(EGAResourceFlowType flowType, const char* currency, double amount, const char* itemType, const char* itemId, const rapidjson::Value& fields, bool mergeFields);
-            static void addProgressionEvent(EGAProgressionStatus progressionStatus, const char* progression01, const char* progression02, const char* progression03, int score, bool sendScore, const rapidjson::Value& fields, bool mergeFields);
-            static void addDesignEvent(const char* eventId, double value, bool sendValue, const rapidjson::Value& fields, bool mergeFields);
-            static void addErrorEvent(EGAErrorSeverity severity, const char* message, const rapidjson::Value& fields, bool mergeFields);
-            static void addErrorEvent(EGAErrorSeverity severity, const char* message, const rapidjson::Value& fields, bool mergeFields, bool skipAddingFields);
-            static void progressionStatusString(EGAProgressionStatus progressionStatus, char* out);
-
+            static void addBusinessEvent(std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, const json& fields, bool mergeFields);
+            static void addResourceEvent(EGAResourceFlowType flowType, std::string const& currency, double amount, std::string const& itemType, std::string const& itemId, const json& fields, bool mergeFields);
+            static void addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, const json& fields, bool mergeFields);
+            static void addDesignEvent(std::string const& eventId, double value, bool sendValue, const json& fields, bool mergeFields);
+            static void addErrorEvent(EGAErrorSeverity severity, std::string const& message, const json& fields, bool mergeFields);
+            static void addErrorEvent(EGAErrorSeverity severity, std::string const& message, const json& fields, bool mergeFields, bool skipAddingFields);
+            
+            static std::string progressionStatusString(EGAProgressionStatus progressionStatus);
             static std::string errorSeverityString(EGAErrorSeverity errorSeverity);
             static std::string resourceFlowTypeString(EGAResourceFlowType flowType);
 
@@ -55,9 +52,9 @@ namespace gameanalytics
             void processEventQueue();
             void cleanupEvents();
             void fixMissingSessionEndEvents();
-            void addEventToStore(rapidjson::Document &eventData);
-            void addDimensionsToEvent(rapidjson::Document& eventData);
-            void addCustomFieldsToEvent(rapidjson::Document& eventData, rapidjson::Document& fields);
+            void addEventToStore(json &eventData);
+            void addDimensionsToEvent(json& eventData);
+            void addCustomFieldsToEvent(json& eventData, json& fields);
             void updateSessionTime();
 
             static bool _destroyed;
