@@ -1,25 +1,41 @@
 #include "GAWin32.h"
+
+#ifdef _WIN32
+
 #include "GAUtilities.h"
 
 #include "GAState.h"
 #include "GAEvents.h"
 #include <stacktrace/call_stack.hpp>
 
-#ifdef _WIN32
-
 namespace gameanalytics
 {
+
+// no official helper function exists for win11 (for the time being at least)
+bool IsWin11OrGreater()
+{
+    constexpr DWORD MAJOR_VERSION = 10;
+    constexpr DWORD MINOR_VERSION = 0;
+    constexpr DWORD BUILD_NUM     = 21996;
+
+    return IsWindowsVersionOrGreater(MAJOR_VERSION, MINOR_VERSION, BUILD_NUM);
+}
+
 std::string GAPlatformWin32::getOSVersion()
 {
     std::string osVersion = getBuildPlatform() + " ";
 
-    #if (_MSC_VER == 1900)
+    #if (_MSC_VER >= 1900)
+        if(IsWin11OrGreater())
+        {
+            return osVersion + "11";
+        }
         if (IsWindows10OrGreater())
         {
             return osVersion + "10";
         }
-        else
     #endif
+
         if (IsWindows8Point1OrGreater())
         {
             return osVersion + "6.3";
@@ -209,7 +225,11 @@ std::string GAPlatformWin32::getDeviceModel()
 
     auto getValue = [&hResult, &hasFailed](IWbemClassObject* classObject, LPCWSTR property) {
         BSTR propertyValueText = L"unknown";
-        VARIANT propertyValue;
+        VARIANT propertyValue = {};
+
+        if(!classObject || !property)
+            return propertyValueText;
+
         hResult = classObject->Get(property, 0, &propertyValue, 0, 0);
         if (!hasFailed()) {
             if ((propertyValue.vt == VT_NULL) || (propertyValue.vt == VT_EMPTY)) {
@@ -246,19 +266,27 @@ std::string GAPlatformWin32::getDeviceModel()
                     if (uReturn != 0) {
                         model = getValue(classObject, (LPCWSTR)L"Model");
                     }
-                    classObject->Release();
+
+                    if(classObject)
+                        classObject->Release();
                 }
-                classObjectEnumerator->Release();
+
+                if(classObjectEnumerator)
+                    classObjectEnumerator->Release();
             }
         }
     }
 
-    if (locator) {
+    if (locator) 
+    {
         locator->Release();
     }
-    if (services) {
+
+    if (services) 
+    {
         services->Release();
     }
+
     CoUninitialize();
 
     return _com_util::ConvertBSTRToString(model);

@@ -1,7 +1,7 @@
 #include "GAUwp.h"
 #include "GAUtilities.h"
 
-#ifdef USE_UWP
+#if IS_UWP
 
 std::string gameanalytics::GAPlatformUWP::getOSVersion()
 {

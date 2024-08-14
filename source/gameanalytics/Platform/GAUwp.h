@@ -1,7 +1,16 @@
 #pragma once
 
-#ifdef USE_UWP
+#if IS_UWP
 
+#ifndef WIN32_LEAN_AND_MEAN
+	#define WIN32_LEAN_AND_MEAN
+#endif
+
+#ifndef NO_MIN_MAX
+	#define NO_MIN_MAX
+#endif
+
+#include <winsock2.h>
 #include <Windows.h>
 #include <sstream>
 

@@ -1,3 +1,5 @@
+#if IS_MAC
+
 #import "GADeviceOSX.h"
 #import <Foundation/Foundation.h>
 #import <CoreServices/CoreServices.h>
@@ -32,3 +34,5 @@ const char* getOSXVersion()
         return [v UTF8String];
     }
 }
+
+#endif // IS_MAC
