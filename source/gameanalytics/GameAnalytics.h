@@ -97,10 +97,7 @@ namespace gameanalytics
          static void configureAvailableCustomDimensions03(const StringVector &customDimensions);
 
          static void configureAvailableResourceCurrencies(const StringVector &resourceCurrencies);
-         static void configureAvailableResourceCurrencies(std::string const& resourceCurrencies);
-
          static void configureAvailableResourceItemTypes(const StringVector &resourceItemTypes);
-         static void configureAvailableResourceItemTypes(std::string const& resourceItemTypes);
 
          static void configureBuild(std::string const& build);
          static void configureWritablePath(std::string const& writablePath);

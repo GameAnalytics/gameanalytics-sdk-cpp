@@ -27,17 +27,6 @@ namespace gameanalytics
     constexpr std::size_t maxErrMsgSize     = 8182u;
     constexpr std::size_t maxDimensionSize  = 64u;
 
-    template<std::size_t size>
-    std::string TrimString(std::string const& _str)
-    {
-        std::string str = _str;
-
-        if (str.size() > size)
-            str = _str.substr(0, size);
-
-        return str;
-    }
-
     // ----------------------- CONFIGURE ---------------------- //
 
     void GameAnalytics::configureAvailableCustomDimensions01(const StringVector& customDimensions)
@@ -112,20 +101,6 @@ namespace gameanalytics
         });
     }
 
-    void GameAnalytics::configureAvailableResourceCurrencies(std::string const& resourceCurrenciesJson)
-    {
-        rapidjson::Document json;
-        json.Parse(resourceCurrenciesJson.c_str());
-        StringVector list;
-
-        for (rapidjson::Value::ConstValueIterator itr = json.Begin(); itr != json.End(); ++itr)
-        {
-            list.push_back((*itr).GetString());
-        }
-
-        configureAvailableResourceCurrencies(list);
-    }
-
     void GameAnalytics::configureAvailableResourceItemTypes(const StringVector& resourceItemTypes)
     {
         if(_endThread)
@@ -142,20 +117,6 @@ namespace gameanalytics
             }
             state::GAState::setAvailableResourceItemTypes(resourceItemTypes);
         });
-    }
-
-    void GameAnalytics::configureAvailableResourceItemTypes(std::string const& resourceItemTypesJson)
-    {
-        rapidjson::Document json;
-        json.Parse(resourceItemTypesJson.c_str());
-        StringVector list;
-
-        for (rapidjson::Value::ConstValueIterator itr = json.Begin(); itr != json.End(); ++itr)
-        {
-            list.push_back((*itr).GetString());
-        }
-
-        configureAvailableResourceItemTypes(list);
     }
 
     void GameAnalytics::configureBuild(std::string const& build)
@@ -335,9 +296,9 @@ namespace gameanalytics
             {
                 return;
             }
-            if (!validators::GAValidator::validateEngineVersion(gameEngineVersion.data()))
+            if (!validators::GAValidator::validateEngineVersion(gameEngineVersion))
             {
-                logging::GALogger::i("Validation fail - configure engine: Engine version not supported. String: %s", gameEngineVersion.data());
+                logging::GALogger::i("Validation fail - configure engine: Engine version not supported. String: %s", gameEngineVersion.c_str());
                 return;
             }
             device::GADevice::setGameEngineVersion(gameEngineVersion.data());
@@ -378,10 +339,6 @@ namespace gameanalytics
         }
 
 
-#if USE_UWP
-        Windows::ApplicationModel::Core::CoreApplication::Suspending += ref new Windows::Foundation::EventHandler<Windows::ApplicationModel::SuspendingEventArgs^>(&GameAnalytics::OnAppSuspending);
-        Windows::ApplicationModel::Core::CoreApplication::Resuming += ref new Windows::Foundation::EventHandler<Platform::Object^>(&GameAnalytics::OnAppResuming);
-#endif
         threading::GAThreading::performTaskOnGAThread([gameKey, gameSecret]()
         {
             if (isSdkReady(true, false))
@@ -389,9 +346,8 @@ namespace gameanalytics
                 logging::GALogger::w("SDK already initialized. Can only be called once.");
                 return;
             }
-#if !USE_UWP && !USE_TIZEN
+
             errorreporter::GAUncaughtExceptionHandler::setUncaughtExceptionHandlers();
-#endif
 
             if (!validators::GAValidator::validateKeys(gameKey, gameSecret))
             {
@@ -462,9 +418,13 @@ namespace gameanalytics
                 json fieldsJson = json::parse(fields);
                 events::GAEvents::addBusinessEvent(currency, amount, itemType, itemId, cartType, fieldsJson, mergeFields);
             }
-            catch(std::exception& e)
+            catch(json::exception const& e)
             {
-                logging::GALogger::e(e.what());
+                logging::GALogger::e("Failed to parse json:", e.what());
+            }
+            catch(std::exception const& e)
+            {
+                logging::GALogger::e("Exception thrown:", e.what());
             }
         });
     }
@@ -523,12 +483,11 @@ namespace gameanalytics
             return;
         }
 
-        constexpr std::size_t maxFieldsSize = 4096;
-
-        std::string fields = fields_;
-
-        if(fields.size() > maxFieldsSize)
-            fields = fields.substr(0, maxFieldsSize);
+        if(fields_.size() > maxFieldsSize)
+        {
+            logging::GALogger::w("Custom fields length exceeded, maximum allowed is %d, fields' size was %d", maxFieldsSize, fields_.size());
+            return;
+        }
 
         threading::GAThreading::performTaskOnGAThread([progressionStatus, progression01, progression02, progression03, fields, mergeFields]()
         {
@@ -537,10 +496,20 @@ namespace gameanalytics
                 return;
             }
 
-            // Send to events
-            rapidjson::Document fieldsJson;
-            fieldsJson.Parse(fields.data());
-            events::GAEvents::addProgressionEvent(progressionStatus, progression01, progression02, progression03, 0, false, fieldsJson, mergeFields);
+            try
+            {
+                // Send to events
+                json fieldsJson = json::parse(_fields);
+                events::GAEvents::addProgressionEvent(progressionStatus, progression01, progression02, progression03, 0, false, fieldsJson, mergeFields);
+            }
+            catch(const json::exception& e)
+            {
+                logging::GALogger::e("Failed to parse custom fields: %s", e.what());
+            }
+            catch(std::exception const& e)
+            {
+                logging::GALogger::e("Exception thrown: %s", e.what());
+            }
         });
     }
 
@@ -571,16 +540,20 @@ namespace gameanalytics
             return;
         }
 
-        std::string fields = TrimString<maxFieldsSize>(fields_);
+        if(fields_.size() > maxFieldsSize)
+        {
+            logging::GALogger::w("Custom fields length exceeded, maximum allowed is %d, fields size was %d", maxFieldsSize, fields_.size());
+            return;
+        }
 
-        threading::GAThreading::performTaskOnGAThread([eventId, fields, mergeFields]()
+        threading::GAThreading::performTaskOnGAThread([eventId, fields_, mergeFields]()
         {
             if (!isSdkReady(true, true, "Could not add design event"))
             {
                 return;
             }
-            rapidjson::Document fieldsJson;
-            fieldsJson.Parse(fields.c_str());
+            
+            json fieldsJson = json::parse(fields_);
             events::GAEvents::addDesignEvent(eventId, 0, false, fieldsJson, mergeFields);
         });
     }
@@ -595,14 +568,18 @@ namespace gameanalytics
         addDesignEvent(eventId_, value, fields_, false);
     }
 
-    void GameAnalytics::addDesignEvent(std::string const& eventId, double value, std::string const& fields_, bool mergeFields)
+    void GameAnalytics::addDesignEvent(std::string const& eventId, double value, std::string const& fields, bool mergeFields)
     {
         if(_endThread)
         {
             return;
         }
 
-        auto fields = TrimString<maxFieldsSize>(fields_);
+        if(fields.size() > maxFieldsSize)
+        {
+            logging::GALogger::w("Custom fields length exceeded, maximum allowed is %d, fields' size was %d", maxFieldsSize, fields.size());
+            return;
+        }
 
         threading::GAThreading::performTaskOnGAThread([eventId, value, fields, mergeFields]()
         {
@@ -610,9 +587,16 @@ namespace gameanalytics
             {
                 return;
             }
-            rapidjson::Document fieldsJson;
-            fieldsJson.Parse(fields.data());
-            events::GAEvents::addDesignEvent(eventId, value, true, fieldsJson, mergeFields);
+            
+            try
+            {
+                json fieldsJson = json::parse(fields);
+                events::GAEvents::addDesignEvent(eventId, value, true, fieldsJson, mergeFields);
+            }
+            catch(const std::exception& e)
+            {
+                logging::GALogger::e("Failed to parse fields json: %s", e.what());
+            }
         });
     }
 
@@ -626,15 +610,20 @@ namespace gameanalytics
         addErrorEvent(severity, message_, fields_, false);
     }
 
-    void GameAnalytics::addErrorEvent(EGAErrorSeverity severity, std::string const& message_, std::string const& fields_, bool mergeFields)
+    void GameAnalytics::addErrorEvent(EGAErrorSeverity severity, std::string const& message_, std::string const& fields, bool mergeFields)
     {
         if(_endThread)
         {
             return;
         }
 
-        std::string message = TrimString<maxErrMsgSize>(message_);
-        std::string fields  = TrimString<maxFieldsSize>(fields_);
+        const std::string message = utilities::trimString(message_, maxErrMsgSize);
+        
+        if(fields.size() > maxFieldsSize)
+        {
+            logging::GALogger::w("Custom fields length exceeded, maximum allowed is %d, fields' size was %d", maxFieldsSize, fields.size());
+            return;
+        }
 
         threading::GAThreading::performTaskOnGAThread([severity, message, fields, mergeFields]()
         {
@@ -642,9 +631,16 @@ namespace gameanalytics
             {
                 return;
             }
-            rapidjson::Document fieldsJson;
-            fieldsJson.Parse(fields.c_str());
-            events::GAEvents::addErrorEvent(severity, message, fieldsJson, mergeFields);
+
+            try
+            {
+                json fieldsJson = json::parse(fields);
+                events::GAEvents::addErrorEvent(severity, message, fieldsJson, mergeFields);
+            }
+            catch(std::exception& e)
+            {
+                logging::GALogger::e("Failed to parse custom fields: %s", e.what());
+            }
         });
     }
 
@@ -749,7 +745,7 @@ namespace gameanalytics
             return;
         }
 
-        std::string dimension = TrimString<maxDimensionSize>(dimension_);
+        std::string dimension = utilities::trimString(dimension_, maxDimensionSize);
 
         threading::GAThreading::performTaskOnGAThread([dimension]()
         {
@@ -758,7 +754,7 @@ namespace gameanalytics
                 logging::GALogger::w("Could not set custom01 dimension value to '%s'. Value not found in available custom01 dimension values", dimension.c_str());
                 return;
             }
-            state::GAState::setCustomDimension01(dimension.data());
+            state::GAState::setCustomDimension01(dimension);
         });
     }
 
@@ -769,7 +765,7 @@ namespace gameanalytics
             return;
         }
 
-        std::string dimension = TrimString<maxDimensionSize>(dimension_);
+        std::string dimension = utilities::trimString(dimension_, maxDimensionSize);
         threading::GAThreading::performTaskOnGAThread([dimension]()
         {
             if (!validators::GAValidator::validateDimension02(dimension))
@@ -788,7 +784,7 @@ namespace gameanalytics
             return;
         }
 
-        std::string dimension = TrimString<maxDimensionSize>(dimension_);
+        std::string dimension = utilities::trimString(dimension_, maxDimensionSize);
         threading::GAThreading::performTaskOnGAThread([dimension]()
         {
             if (!validators::GAValidator::validateDimension03(dimension))
@@ -807,19 +803,19 @@ namespace gameanalytics
             return;
         }
 
-        std::string fields = TrimString<maxFieldsSize>(customFields_);
+        std::string fields = utilities::trimString(customFields_, maxFieldsSize);
         threading::GAThreading::performTaskOnGAThread([fields]()
         {
             state::GAState::setGlobalCustomEventFields(fields);
         });
     }
 
-    std::vector<char> GameAnalytics::getRemoteConfigsValueAsString(std::string const& key)
+    std::string GameAnalytics::getRemoteConfigsValueAsString(std::string const& key)
     {
         return getRemoteConfigsValueAsString(key, "");
     }
 
-    std::vector<char> GameAnalytics::getRemoteConfigsValueAsString(std::string const& key, std::string const& defaultValue)
+    std::string GameAnalytics::getRemoteConfigsValueAsString(std::string const& key, std::string const& defaultValue)
     {
         return state::GAState::getRemoteConfigsStringValue(key, defaultValue);
     }
@@ -839,17 +835,17 @@ namespace gameanalytics
         state::GAState::removeRemoteConfigsListener(listener);
     }
 
-    std::vector<char> GameAnalytics::getRemoteConfigsContentAsString()
+    std::string GameAnalytics::getRemoteConfigsContentAsString()
     {
         return state::GAState::getRemoteConfigsContentAsString();
     }
 
-    std::vector<char> GameAnalytics::getABTestingId()
+    std::string GameAnalytics::getABTestingId()
     {
         return state::GAState::getAbId();
     }
 
-    std::vector<char> GameAnalytics::getABTestingVariantId()
+    std::string GameAnalytics::getABTestingVariantId()
     {
         return state::GAState::getAbVariantId();
     }
@@ -941,12 +937,10 @@ namespace gameanalytics
                 state::GAState::endSessionAndStopQueue(true);
             });
 
-#if !USE_TIZEN
             while (!threading::GAThreading::isThreadFinished())
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
-#endif
         }
         catch (const std::exception&)
         {
@@ -973,7 +967,7 @@ namespace gameanalytics
     bool GameAnalytics::isSdkReady(bool needsInitialized, bool warn, std::string const& message)
     {
         constexpr std::size_t maxMsgLen = 64u;
-        std::string m = TrimString<maxMsgLen>(message);
+        std::string m = utilities::trimString(message, maxMsgLen);
 
         // Make sure database is ready
         if (!store::GAStore::getTableReady())
@@ -998,7 +992,7 @@ namespace gameanalytics
         {
             if (warn)
             {
-                logging::GALogger::w("%sSDK is disabled", m.c_str());
+                logging::GALogger::w("%s;SDK is disabled", m.c_str());
             }
             return false;
         }
@@ -1008,7 +1002,7 @@ namespace gameanalytics
         {
             if (warn)
             {
-                logging::GALogger::w("%sSession has not started yet", m.c_str());
+                logging::GALogger::w("%s;Session has not started yet", m.c_str());
             }
             return false;
         }
