@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include <vector>
-#include "rapidjson/document.h"
 #include "GameAnalytics.h"
 #include "GAHTTPApi.h"
 
@@ -107,7 +105,7 @@ namespace gameanalytics
             static bool validateDimension02(std::string const& dimension02);
             static bool validateDimension03(std::string const& dimension03);
 
-            static void validateAndCleanInitRequestResponse(const rapidjson::Value& initResponse, rapidjson::Document& out, bool configsCreated);
+            static void validateAndCleanInitRequestResponse(const json& initResponse, json& out, bool configsCreated);
 
             // array of strings
             static bool validateArrayOfStrings(
@@ -115,11 +113,11 @@ namespace gameanalytics
                 size_t maxCount,
                 size_t maxStringLength,
                 bool allowNoValues,
-                const char* arrayTag
+                std::string const& arrayTag
                 );
             static bool validateClientTs(int64_t clientTs);
 
-            static bool validateUserId(const char* uId);
+            static bool validateUserId(std::string const& uId);
         };
     }
 }
