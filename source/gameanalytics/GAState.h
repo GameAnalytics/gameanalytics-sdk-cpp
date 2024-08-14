@@ -39,7 +39,7 @@ namespace gameanalytics
                 {
                     if (_tries.count(s))
                     {
-                        return _tries[s];
+                        return _tries.at(s);
                     }
 
                     return 0;
@@ -126,6 +126,9 @@ namespace gameanalytics
                 static std::string getAbId();
                 static std::string getAbVariantId();
 
+                static json getValidatedCustomFields();
+                static json getValidatedCustomFields(const json& withEventFields);
+
         private:
 
             static std::unique_ptr<GAState> _instance;
@@ -154,7 +157,7 @@ namespace gameanalytics
             template<typename ...args_t>
             void LogAndAddErrorEvent(EGAErrorSeverity severity, std::string const& fmt, args_t&&... args)
             {
-                const std::string msg = print(fmt, std::forward<args_t>(args)...);
+                const std::string msg = utilities::printString(fmt, std::forward<args_t>(args)...);
                 logging::GALogger::w(msg.c_str());
                 addErrorEvent(severity, msg);
             }
@@ -177,11 +180,11 @@ namespace gameanalytics
 
             void addErrorEvent(EGAErrorSeverity severity, std::string const& message);
 
-
             std::string _userId;
             std::string _identifier;
 
             bool _initialized = false;
+            bool _adjustTimestamp = true;
 
             int64_t _sessionStart = 0;
             int64_t _sessionNum = 0;

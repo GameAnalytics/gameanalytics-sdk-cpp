@@ -909,7 +909,7 @@ namespace gameanalytics
                 }
 
                 // set offset in state (memory) from current config (config could be from cache etc.)
-                _clientServerTimeOffset = currentSdkConfig.contains("time_offset") ? currentSdkConfig["time_offset"].get<int64_t>() : 0;
+                _clientServerTimeOffset = utilities::getOptionalValue(currentSdkConfig, "time_offset", 0ll);
 
                 // populate configurations
                 populateConfigurations(currentSdkConfig);
@@ -946,7 +946,7 @@ namespace gameanalytics
             }
             catch (std::exception& e)
             {
-                logging::GALogger::e(e.what());
+                logging::GALogger::e("Exception thrown: %s", e.what());
             }
         }
 
@@ -1047,7 +1047,7 @@ namespace gameanalytics
                 return "";
             }
 
-            return i->_configurations.dump(4);
+            return i->_configurations.dump(JSON_PRINT_INDENT);
         }
 
         void GAState::populateConfigurations(json& sdkConfig)
@@ -1064,13 +1064,11 @@ namespace gameanalytics
                     {
                         if (!configuration.empty())
                         {
-                            std::string key = (configuration.contains("key") && configuration["key"].is_string()) ? configuration["key"].get<std::string>() : "";
+                            std::string key = utilities::getOptionalValue<std::string>(configuration, "key", "");
 
-                            int64_t start_ts = (configuration.contains("start_ts") && configuration["start_ts"].is_number_integer()) ?
-                                configuration["start_ts"].get<int64_t>() : -1;
+                            int64_t start_ts = utilities::getOptionalValue<int64_t>(configuration, "start_ts", -1ll);
 
-                            int64_t end_ts = (configuration.contains("end_ts") && configuration["start_ts"].is_number_integer()) ?
-                                configuration["end_ts"].get<int64_t>() : -1;
+                            int64_t end_ts  = utilities::getOptionalValue<int64_t>(configuration, "end_ts", -1ll);
 
                             int64_t client_ts_adjusted = getClientTsAdjusted();
 
@@ -1080,7 +1078,7 @@ namespace gameanalytics
                                 if (value.is_string() || value.is_number())
                                 {
                                     _configurations[key] = value;
-                                    logging::GALogger::d("configuration added: %s", configuration.dump(4).c_str());
+                                    logging::GALogger::d("configuration added: %s", configuration.dump(JSON_PRINT_INDENT).c_str());
                                 }
                             }
                         }
@@ -1099,7 +1097,7 @@ namespace gameanalytics
             }
             catch (std::exception& e)
             {
-                logging::GALogger::e(e.what());
+                logging::GALogger::e("Exception thrown: %s", e.what());
             }
         }
 
@@ -1214,8 +1212,8 @@ namespace gameanalytics
 
         int64_t GAState::calculateServerTimeOffset(int64_t serverTs)
         {
-            int64_t clientTs = utilities::GAUtilities::timeIntervalSince1970();
-            return serverTs - clientTs;
+            int64_t clientTs = utilities::getTimestamp();
+            return _adjustTimestamp ? (serverTs - clientTs) : clientTs;
         }
 
         void GAState::setManualSessionHandling(bool flag)
@@ -1273,6 +1271,28 @@ namespace gameanalytics
         std::string GAState::getAbVariantId()
         {
             return getInstance()->_abVariantId;
+        }
+
+        void GAState::getValidatedCustomFields()
+        {
+            json cleanedFields, d;
+            getGlobalCustomEventFields(d);
+            validateAndCleanCustomFields(d, cleanedFields);
+
+            return cleanedFields;
+        }
+
+        void GAState::getValidatedCustomFields(const json& withEventFields)
+        {
+            json cleanedFields, d;
+            getGlobalCustomEventFields(d);
+
+            if(!withEventFields.empty())
+                d.merge_patch(withEventFields);
+            
+            validateAndCleanCustomFields(d, cleanedFields);
+
+            return cleanedFields;
         }
     }
 }

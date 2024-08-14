@@ -10,14 +10,6 @@
 #include "GAUtilities.h"
 #include <fstream>
 #include <string.h>
-#if USE_UWP
-#elif USE_TIZEN
-#elif _WIN32
-#include <direct.h>
-#else
-#include <sys/types.h>
-#include <sys/stat.h>
-#endif
 
 namespace gameanalytics
 {
@@ -218,7 +210,7 @@ namespace gameanalytics
             }
             catch(std::exception& e)
             {
-                logging::GALogger::e(e.what());
+                logging::GALogger::e("Exception thrown: %s", e.what());
             }
         }
 

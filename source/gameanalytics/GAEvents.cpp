@@ -379,7 +379,7 @@ namespace gameanalytics
             }
             catch(std::exception& e)
             {
-                logging::GALogger::e(e.what());
+                logging::GALogger::e("Exception thrown: %s", e.what());
             }
         }
 
@@ -429,13 +429,13 @@ namespace gameanalytics
                 // Send to store
                 addEventToStore(eventData);
             }
-            catch(std::exception& e)
+            catch(std::exception const& e)
             {
-                logging::GALogger::e(e.what());
+                logging::GALogger::e("Exception thrown: %s", e.what());
             }
         }
 
-        void GAEvents::addErrorEvent(EGAErrorSeverity severity, const char* message, const rapidjson::Value& fields, bool mergeFields)
+        void GAEvents::addErrorEvent(EGAErrorSeverity severity, std::string const& message, const json& fields, bool mergeFields)
         {
             addErrorEvent(severity, message, fields, mergeFields, false);
         }
@@ -487,7 +487,7 @@ namespace gameanalytics
             }
             catch(std::exception& e)
             {
-                logging::GALogger::e(e.what());
+                logging::GALogger::e("Exception thrown: %s", e.what());
             }
         }
 
@@ -519,12 +519,12 @@ namespace gameanalytics
             // Request identifier
             std::string requestIdentifier = utilities::GAUtilities::generateUUID();
 
-            std::string andCategory = print(" AND category='%s' ", category,c_str());
+            std::string andCategory = utilities::printString(" AND category='%s' ", category,c_str());
 
-            std::string selectSql  = print("SELECT event FROM ga_events WHERE status = 'new' %s;", andCategory.c_str());
-            std::string updateSql  = print("UPDATE ga_events SET status = '%s' WHERE status = 'new' %s;", requestIdentifier.c_str(), andCategory.c_str());
-            std::string deleteSql  = print("DELETE FROM ga_events WHERE status = '%s'", requestIdentifier.c_str());
-            std::string putbackSql = print("UPDATE ga_events SET status = 'new' WHERE status = '%s';", requestIdentifier.c_str());
+            std::string selectSql  = utilities::printString("SELECT event FROM ga_events WHERE status = 'new' %s;", andCategory.c_str());
+            std::string updateSql  = utilities::printString("UPDATE ga_events SET status = '%s' WHERE status = 'new' %s;", requestIdentifier.c_str(), andCategory.c_str());
+            std::string deleteSql  = utilities::printString("DELETE FROM ga_events WHERE status = '%s'", requestIdentifier.c_str());
+            std::string putbackSql = utilities::printString("UPDATE ga_events SET status = 'new' WHERE status = '%s';", requestIdentifier.c_str());
 
             // Cleanup
             if (performCleanup)
@@ -549,7 +549,7 @@ namespace gameanalytics
             if (events.size() > GAEvents::MaxEventCount)
             {
                 // Make a limit request
-                selectSql = print("SELECT client_ts FROM ga_events WHERE status = 'new' %s ORDER BY client_ts ASC LIMIT 0,%d;", andCategory.c_str(), GAEvents::MaxEventCount);
+                selectSql = utilities::printString("SELECT client_ts FROM ga_events WHERE status = 'new' %s ORDER BY client_ts ASC LIMIT 0,%d;", andCategory.c_str(), GAEvents::MaxEventCount);
                 store::GAStore::executeQuerySync(selectSql, events);
                 if (events.is_null())
                 {
@@ -557,28 +557,28 @@ namespace gameanalytics
                 }
 
                 // Get last timestamp
-                const json& lastItem = events[events.Size() - 1];
+                const json& lastItem = events[events.size() - 1];
                 const std::string lastTimestamp = lastItem["client_ts"].get<std::string>();
 
                 // Select again
-                selectSql = print("SELECT event FROM ga_events WHERE status = 'new' %s AND client_ts<='%s';", andCategory.c_str(), lastTimestamp.c_str());
+                selectSql = utilities::printString("SELECT event FROM ga_events WHERE status = 'new' %s AND client_ts<='%s';", andCategory.c_str(), lastTimestamp.c_str());
                 store::GAStore::executeQuerySync(selectSql, events);
-                if (events.IsNull())
+                if (events.is_null())
                 {
                     return;
                 }
 
                 // Update sql
-                updateSql = print("UPDATE ga_events SET status='%s' WHERE status='new' %s AND client_ts<='%s';", requestIdentifier.c_str(), andCategory.c_str(), lastTimestamp.c_str()));
+                updateSql = utilities::printString("UPDATE ga_events SET status='%s' WHERE status='new' %s AND client_ts<='%s';", requestIdentifier.c_str(), andCategory.c_str(), lastTimestamp.c_str()));
             }
 
             // Log
-            logging::GALogger::i("Event queue: Sending %d events.", events.Size());
+            logging::GALogger::i("Event queue: Sending %d events.", events.size());
 
             // Set status of events to 'sending' (also check for error)
-            rapidjson::Document updateResult;
+            json updateResult;
             store::GAStore::executeQuerySync(updateSql, updateResult);
-            if (updateResult.IsNull())
+            if (updateResult.is_null())
             {
                 return;
             }
@@ -593,7 +593,6 @@ namespace gameanalytics
                     try
                     {
                         json d = json::parse(eventDict);
-
                         if(d.contains("client_ts"))
                         {
                             if (!validators::GAValidator::validateClientTs(d["client_ts"].get<int64_t>()))
@@ -606,7 +605,7 @@ namespace gameanalytics
                     }
                     catch(const json::exception& e)
                     {
-                        logging::GALogger::d("processEvents -- JSON error (offset %u): %s", (unsigned)ok.Offset(), GetParseError_En(ok.Code()));
+                        logging::GALogger::d("processEvents -- JSON error: %s", e.what());
                         logging::GALogger::d(eventDict.c_str());
                     }
                 }

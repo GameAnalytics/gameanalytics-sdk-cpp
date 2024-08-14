@@ -34,7 +34,7 @@ namespace gameanalytics
 
 	#if defined(__MACH__) || defined(__APPLE__)
 		#define IS_MAC 1
-		constexpr int MAX_PATH_LENGTH = 1017u;
+		constexpr int MAX_PATH_LENGTH = 1017;
 	#else
 		#define IS_MAC 0
 	#endif

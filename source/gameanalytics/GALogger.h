@@ -57,7 +57,7 @@ namespace gameanalytics
 
                     try
                     {
-                        const std::string msg = tag + print(fmt, std::forward<args_t>(args)...);
+                        const std::string msg = tag + utilities::printString(fmt, std::forward<args_t>(args)...);
                         ga->sendNotificationMessage(msg, logType);
                     }
                     catch (std::exception const& e)

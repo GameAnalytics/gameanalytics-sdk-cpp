@@ -1,16 +1,6 @@
 #pragma once
 
-#ifdef _WIN32
-
-#ifndef WIN32_LEAN_AND_MEAN
-	#define WIN32_LEAN_AND_MEAN
-#endif
-
-#ifndef NO_MIN_MAX
-	#define NO_MIN_MAX
-#endif
-
-#endif
+#include "GAConstants.h"
 
 #include <string>
 #include <vector>
@@ -28,12 +18,15 @@
 #include <mutex>
 #include <fstream>
 #include <csignal>
+#include <utility>
+#include <cstring>
+#include <cstdio>
+#include <array>
 
 // todo include path
-#include "../dependencies/nlohmann/json.hpp"
+#include "nlohmann/json.hpp"
 
 #if IS_MAC
-	#include "GADeviceOSX.h"
 	#include <sys/sysctl.h>
 #elif IS_LINUX
 	#include <sys/utsname.h>

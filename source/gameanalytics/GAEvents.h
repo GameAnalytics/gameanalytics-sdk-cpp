@@ -72,8 +72,8 @@ namespace gameanalytics
                 }
             }
 
-            bool isRunning;
-            bool keepRunning;
+            bool isRunning  {false};
+            bool keepRunning{false};
         };
     }
 }

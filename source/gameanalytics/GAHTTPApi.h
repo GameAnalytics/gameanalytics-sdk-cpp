@@ -5,14 +5,11 @@
 
 #pragma once
 
+
+
 #include <vector>
 #include <map>
-#include "rapidjson/document.h"
-#if USE_UWP
-#include <ppltasks.h>
-#else
 #include <curl/curl.h>
-#endif
 #include <mutex>
 #include <cstdlib>
 #include <tuple>
@@ -108,7 +105,7 @@ namespace gameanalytics
         struct ResponseData
         {
             std::unique_ptr<char[]> ptr;
-            size_t len = 0;
+            std::size_t len = 0;
 
             std::string toString() const;
         };
@@ -138,9 +135,9 @@ namespace gameanalytics
             concurrency::task<std::pair<EGAHTTPApiResponse, std::string>> sendEventsInArray(const rapidjson::Value& eventArray);
             void sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string reason, std::string gameKey, std::string secretKey);
 #else
-            EGAHTTPApiResponse requestInitReturningDict(rapidjson::Document& json_out, const char* configsHash);
-            void sendEventsInArray(EGAHTTPApiResponse& response_out, rapidjson::Value& json_out, const rapidjson::Value& eventArray);
-            void sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, const char* reason, const char* gameKey, const char* secretKey);
+            EGAHTTPApiResponse requestInitReturningDict(json& json_out, std::string const& configsHash);
+            void sendEventsInArray(EGAHTTPApiResponse& response_out, json& json_out, const json& eventArray);
+            void sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string const& reason, std::string const& gameKey, std::string const& secretKey);
 #endif
 
             
@@ -153,12 +150,12 @@ namespace gameanalytics
             GAHTTPApi& operator=(const GAHTTPApi&) = delete;
             std::vector<char> createPayloadData(std::string const& payload, bool gzip);
 
-#if USE_UWP
+#if USE_UWP && defined(USE_UWP_HTTPAPI)
             std::vector<char> createRequest(Windows::Web::Http::HttpRequestMessage^ message, const std::string& url, const std::vector<char>& payloadData, bool gzip);
             EGAHTTPApiResponse processRequestResponse(Windows::Web::Http::HttpResponseMessage^ response, const std::string& requestId);
             concurrency::task<Windows::Storage::Streams::InMemoryRandomAccessStream^> createStream(std::string data);
 #else
-            std::vector<char>  createRequest(CURL *curl, const char* url, const std::vector<char>& payloadData, bool gzip);
+            std::vector<char>  createRequest(CURL *curl, std::string const& url, const std::vector<char>& payloadData, bool gzip);
             EGAHTTPApiResponse processRequestResponse(long statusCode, const char* body, const char* requestId);
 #endif
             std::string protocol                = PROTOCOL;

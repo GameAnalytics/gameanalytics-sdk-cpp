@@ -3,27 +3,22 @@
 // Copyright 2018 GameAnalytics C++ SDK. All rights reserved.
 //
 
-//#include <climits>
 #include "GAUtilities.h"
 #include "GALogger.h"
 #include <string.h>
 #include <stdio.h>
 #include <sstream>
 #include <chrono>
-#if USE_LINUX
-#include <regex.h>
-#include <iterator>
-#else
 #include <regex>
-#endif
-#include <limits.h>
-#if USE_UWP
-#include <Objbase.h>
-#else
-#include <hmac_sha2.h>
-#include <guid.h>
-#endif
+#include <climits>
 #include <cctype>
+
+#if USE_UWP
+    #include <Objbase.h>
+#else
+    #include <hmac_sha2.h>
+    #include <guid.h>
+#endif
 
 #include "GAConstants.h"
 
@@ -35,12 +30,6 @@ namespace gameanalytics
 {
     namespace utilities
     {
-#ifdef _WIN32
-        char GAUtilities::pathSeparator[] = "\\";
-#else
-        char GAUtilities::pathSeparator[] = "/";
-#endif
-
         // Compress a STL string using zlib with given compression level and return the binary data.
         // Note: the zlib header is supressed
         static std::vector<char> deflate_string(const char* str, int compressionlevel = Z_BEST_COMPRESSION)
@@ -257,11 +246,6 @@ namespace gameanalytics
             return result;
         }
 
-        const char* GAUtilities::getPathSeparator()
-        {
-            return pathSeparator;
-        }
-
         std::string GAUtilities::generateUUID()
         {
             char out[UUID_STR_LENGTH] = "";
@@ -376,24 +360,6 @@ namespace gameanalytics
         bool GAUtilities::isStringNullOrEmpty(const char* s)
         {
             return !s || strlen(s) == 0;
-        }
-
-        // TODO(nikolaj): explain function
-        void GAUtilities::uppercaseString(char* s)
-        {
-            while ((*s = std::toupper(*s)))
-            {
-                ++s;
-            }
-        }
-
-        // TODO(nikolaj): explain function
-        void GAUtilities::lowercaseString(char* s)
-        {
-            while ((*s = std::tolower(*s)))
-            {
-                ++s;
-            }
         }
     }
 }

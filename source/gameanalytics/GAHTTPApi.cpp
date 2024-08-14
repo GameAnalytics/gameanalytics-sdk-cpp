@@ -3,23 +3,12 @@
 // Copyright 2018 GameAnalytics C++ SDK. All rights reserved.
 //
 
-#if !USE_UWP
+#include "GACommon.h"
 #include "GAHTTPApi.h"
 #include "GAState.h"
 #include "GALogger.h"
 #include "GAUtilities.h"
 #include "GAValidator.h"
-#include <future>
-#include <utility>
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/prettywriter.h"
-#include "rapidjson/error/en.h"
-#include <string.h>
-#include <stdio.h>
-#if USE_TIZEN
-#include <net_connection.h>
-#endif
-#include <array>
 
 namespace gameanalytics
 {
@@ -33,7 +22,7 @@ namespace gameanalytics
             {
                 std::unique_ptr<char[]> buffer = std::make_unique<char[]>(new_len);
 
-                if (!buffer)
+                if (!buffer) // maybe just return instead?
                     throw std::runtime_error("Failed to allocate buffer!");
 
                 std::memcpy(buffer->get(), s->ptr.get(), s->len);
@@ -89,7 +78,7 @@ namespace gameanalytics
             return _instance;
         }
 
-        EGAHTTPApiResponse GAHTTPApi::requestInitReturningDict(json& json_out, const char* configsHash)
+        EGAHTTPApiResponse GAHTTPApi::requestInitReturningDict(json& json_out, std::string const& configsHash)
         {
             std::string gameKey = state::GAState::getGameKey();
 
@@ -135,18 +124,18 @@ namespace gameanalytics
                     return NoResponse;
                 }
 
-                long response_code;
+                long response_code{};
                 curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
                 curl_easy_cleanup(curl);
 
                 // process the response
                 logging::GALogger::d("init request content: %s, json: %s", s.ptr, jsonString.c_str());
 
-                json requestJsonDict = json::parse(s.ptr);
+                json requestJsonDict = json::parse(s.toString());
                 if (!ok)
                 {
                     logging::GALogger::d("requestInitReturningDict -- JSON error (offset %u): %s", static_cast<unsigned int>(ok.Offset()), GetParseError_En(ok.Code()));
-                    logging::GALogger::d("%s", s.ptr);
+                    logging::GALogger::d("%s", s.toString().c_str());
                 }
 
                 EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.ptr, "Init");
@@ -187,12 +176,12 @@ namespace gameanalytics
             }
             catch (json::exception& e)
             {
-                logging::GALogger::e(e.what());
+                logging::GALogger::e("Failed to parse json: %s", e.what());
                 return InternalError;
             }
             catch (std::exception& e)
             {
-                logging::GALogger::e(e.what());
+                logging::GALogger::e("Exception thrown: %s", e.what());
                 return InternalError;
             }
         }
@@ -214,7 +203,6 @@ namespace gameanalytics
                 logging::GALogger::d("Sending 'events' URL: %s", url.c_str());
 
                 std::string const jsonString = eventArray.dump();
-
                 if (jsonString.empty())
                 {
                     logging::GALogger::d("sendEventsInArray JSON encoding failed of eventArray");
@@ -223,8 +211,8 @@ namespace gameanalytics
 
                 std::vector<char> payloadData = createPayloadData(jsonString, useGzip);
 
-                CURL* curl;
-                CURLcode res;
+                CURL* curl = nullptr;
+                CURLcode res{};
                 curl = curl_easy_init();
                 if (!curl)
                 {
@@ -346,7 +334,7 @@ namespace gameanalytics
 
             std::async(std::launch::async, [url, payloadJSONString, useGzip, errorType]() -> void
             {
-                int64_t now = utilities::GAUtilities::timeIntervalSince1970();
+                int64_t now = utilities::getTimestamp();
                 if(timestampMap.count(errorType) == 0)
                 {
                     timestampMap[errorType] = now;
@@ -370,7 +358,7 @@ namespace gameanalytics
 
                 std::vector<char> payloadData = GAHTTPApi::getInstance()->createPayloadData(payloadJSONString, useGzip);
 
-                CURL *curl;
+                CURL *curl = nullptr;
                 CURLcode res;
                 curl = curl_easy_init();
                 if(!curl)
@@ -462,7 +450,6 @@ namespace gameanalytics
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payloadData.size());
 
-
             return authorization;
         }
 
@@ -518,4 +505,3 @@ namespace gameanalytics
         }
 }
 }
-#endif

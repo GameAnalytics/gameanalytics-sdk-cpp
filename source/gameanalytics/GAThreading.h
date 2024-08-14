@@ -8,16 +8,12 @@
 
 #include <functional>
 #include <atomic>
-#if USE_TIZEN
-#include <Ecore.h>
-#else
 #include <vector>
 #include <chrono>
 #include <memory>
 #include <future>
 #include <mutex>
 #include <algorithm>
-#endif
 
 namespace gameanalytics
 {
@@ -116,7 +112,6 @@ namespace gameanalytics
             static bool getNextBlock(TimedBlock& timedBlock);
             static bool getScheduledBlock(TimedBlock& timedBlock);
             static void runBlocks();
-#endif
         };
     }
 }

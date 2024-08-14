@@ -18,6 +18,17 @@ namespace gameanalytics
 {
     namespace utilities
     {
+        template<typename ...args_t>
+        static std::string printString(std::string const& fmt, args_t&&... args)
+        {
+            constexpr int k_maxLogSize = 2048;
+            char buffer[k_maxLogSize] = "";
+
+            std::snprintf(buffer, k_maxLogSize, fmt.c_str(), std::forward<args_t>(args)...);
+
+            return buffer;
+        }
+
         template<typename T>
         T getOptionalValue(json& node, std::string const& key, T const& defaultValue)
         {
@@ -26,20 +37,43 @@ namespace gameanalytics
                 if(node.contains(key))
                     return node.get<T>(key);
             }
-            catch(json::exception& e)
+            catch(json::exception const& e)
             {
+                // in case of error just return the default value
+                (void)e;
             }
 
             return defaultValue;
         }
 
-        static inline void addIfNotEmpty(json& out, std::string const& key, std::string const& str)
+        static inline bool addIfNotEmpty(json& out, std::string const& key, std::string const& str)
         {
             if (!key.empty() && !str.empty())
+            {
                 out[key] = str;
+                return true;
+            }
+
+            return false;
         }
 
-        static inline int64_t getTimestamp()
+        static inline bool copyValueIfExistent(json& out, json& in, std::string const& key)
+        {
+            if(in.contains(key))
+            {
+                out[key] = in[key];
+                return true;
+            }
+
+            return false;
+        }
+
+        inline std::string trimString(std::string const& str, std::size_t size)
+        {
+            return str.substr(0, std::min(size, str.size()));
+        }
+
+        static inline std::int64_t getTimestamp()
         {
             return std::chrono::duration_cast<std::chrono::seconds>(
                 std::chrono::high_resolution_clock::now().time_since_epoch()
@@ -65,10 +99,8 @@ namespace gameanalytics
         }
 
 
-        class GAUtilities
+        struct GAUtilities
         {
-        public:
-            static const char* getPathSeparator();
             static std::string generateUUID();
             static void hmacWithKey(const char* key, const std::vector<char>& data, char* out);
             static bool stringMatch(std::string const& string, std::string const& pattern);
@@ -76,8 +108,6 @@ namespace gameanalytics
 
             // added for C++ port
             static bool isStringNullOrEmpty(const char* s);
-            static void uppercaseString(char* s);
-            static void lowercaseString(char* s);
             static bool stringVectorContainsString(const StringVector& vector, const std::string& search);
             static int64_t timeIntervalSince1970();
             static void printJoinStringArray(const StringVector& v, const char* format, const char* delimiter = ", ");
@@ -110,9 +140,6 @@ namespace gameanalytics
                     return L"";
                 }
             }
-
-        private:
-            static char pathSeparator[];
         };
     }
 }
