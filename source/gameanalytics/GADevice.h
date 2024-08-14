@@ -68,18 +68,18 @@ namespace gameanalytics
 
                 bool        _useDeviceInfo = true;
 
-                std::string _buildPlatform      = UNKNOWN_VALUE;
-                std::string _osVersion          = UNKNOWN_VALUE;
-                std::string _deviceModel        = UNKNOWN_VALUE;
-                std::string _deviceManufacturer = UNKNOWN_VALUE;
+                std::string _buildPlatform;
+                std::string _osVersion;
+                std::string _deviceModel;
+                std::string _deviceManufacturer;
 
                 std::string _writablepath;
                 bool        _writablepathStatus{false};
 
-                std::string _sdkGameEngineVersion   = UNKNOWN_VALUE;
-                std::string _gameEngineVersion      = UNKNOWN_VALUE;
-                std::string _connectionType         = UNKNOWN_VALUE;
-                std::string _sdkWrapperVersion      = UNKNOWN_VALUE;
+                std::string _sdkGameEngineVersion;
+                std::string _gameEngineVersion;
+                std::string _connectionType;
+                std::string _sdkWrapperVersion;
         };
     }
 }

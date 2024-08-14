@@ -5,6 +5,7 @@
 
 #include "GADevice.h"
 #include "GAUtilities.h"
+#include "Platform/GADevicePlatform.h"
 
 namespace gameanalytics
 {
