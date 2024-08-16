@@ -347,8 +347,8 @@ namespace gameanalytics
                 return;
             }
 
-            errorreporter::GAUncaughtExceptionHandler::setUncaughtExceptionHandlers();
-
+            GADevice::initPlatform();
+            
             if (!validators::GAValidator::validateKeys(gameKey, gameSecret))
             {
                 logging::GALogger::w("SDK failed initialize. Game key or secret key is invalid. Can only contain characters A-z 0-9, gameKey is 32 length, gameSecret is 40 length. Failed keys - gameKey: %s, secretKey: %s", gameKey.c_str(), gameSecret.c_str());

@@ -275,7 +275,7 @@ namespace gameanalytics
         }
 
         // TODO(nikolaj): explain function
-        void GAUtilities::hmacWithKey(const char* key, const std::vector<char>& data, char* out)
+        void GAUtilities::hmacWithKey(const char* key, const std::vector<char>& data, std::vector<uint8_t>& out)
         {
 #if USE_UWP
             using namespace Platform;
@@ -307,10 +307,9 @@ namespace gameanalytics
                 SHA256_DIGEST_SIZE
             );
             int output_size = base64_needed_encoded_length(SHA256_DIGEST_SIZE);
-            std::unique_ptr<unsigned char[]> ret = std::make_unique<unsigned char[]>(output_size);
-            GAUtilities::base64_encode(mac, SHA256_DIGEST_SIZE, ret.get());
-
-            snprintf(out, output_size, "%s", ret);
+            out.resize(output_size);
+            
+            GAUtilities::base64_encode(mac, SHA256_DIGEST_SIZE, out.data());
 #endif
         }
 

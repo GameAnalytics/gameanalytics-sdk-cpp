@@ -19,6 +19,13 @@ namespace gameanalytics
 			virtual std::string getDeviceId();
 
 			virtual void setupUncaughtExceptionHandler();
+			
+			void onInit();
+
+			private:
+
+                std::terminate_handler previousTerminateHandler;
+				static void terminateHandler();
 
 	};
 }

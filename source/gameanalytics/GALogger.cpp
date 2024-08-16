@@ -15,8 +15,6 @@ namespace gameanalytics
 {
     namespace logging
     {
-        std::unique_ptr<GALogger> GALogger::_instance = nullptr;
-
         GALogger::GALogger()
         {
             infoLogEnabled = false;
@@ -38,52 +36,32 @@ namespace gameanalytics
         {
         }
 
-        GALogger* GALogger::getInstance()
+        GALogger& GALogger::getInstance()
         {
-            if (!_instance)
-            {
-                _instance = std::make_unique<GALogger>();
-            }
-
-            return _instance.get();
+            static GALogger instance;
+            return instance;
         }
 
         void GALogger::setCustomLogHandler(LogHandler handler)
         {
-            GALogger *i = GALogger::getInstance();
-            if (!i)
-            {
-                return;
-            }
-            i->customLogHandler = std::make_unique<LogHandler>(handler);
+            getInstance().customLogHandler = std::make_unique<LogHandler>(handler);
         }
 
         void GALogger::setInfoLog(bool enabled)
         {
-            GALogger* i = GALogger::getInstance();
-            if(!i)
-            {
-                return;
-            }
-            i->infoLogEnabled = enabled;
+            getInstance().infoLogEnabled = enabled;
         }
 
         void GALogger::setVerboseInfoLog(bool enabled)
         {
-            GALogger* i = GALogger::getInstance();
-            if(!i)
-            {
-                return;
-            }
-            i->infoLogVerboseEnabled = enabled;
+            getInstance().infoLogVerboseEnabled = enabled;
         }
 
         void GALogger::file_output_callback(const zf_log_message *msg, void *arg)
         {
             try
             {
-                GALogger* i = GALogger::getInstance();
-                if (!i || !msg)
+                if (!msg)
                 {
                     return;
                 }
@@ -91,8 +69,8 @@ namespace gameanalytics
                 (void)arg;
                 *msg->p = '\n';
 
-                i->logFile.write(msg->buf, msg->p - msg->buf + 1);
-                i->logFile.flush();
+                getInstance().logFile.write(msg->buf, msg->p - msg->buf + 1);
+                getInstance().logFile.flush();
             }
             catch (std::exception& e)
             {

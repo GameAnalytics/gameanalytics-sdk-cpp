@@ -45,21 +45,9 @@ namespace gameanalytics
             GAStore();
             GAStore(const GAStore&) = delete;
             GAStore& operator=(const GAStore&) = delete;
+            ~GAStore();
 
-            static bool _destroyed;
-            static GAStore* _instance;
-            static std::once_flag _initInstanceFlag;
-            static void cleanUp();
-            static GAStore* getInstance();
-
-            static void initInstance()
-            {
-                if(!_destroyed && !_instance)
-                {
-                    _instance = new GAStore();
-                    std::atexit(&cleanUp);
-                }
-            }
+            static GAStore& getInstance();
 
             bool trimEventTable();
 

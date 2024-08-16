@@ -1,6 +1,6 @@
 #include "GAWin32.h"
 
-#ifdef _WIN32
+#if IS_WIN32
 
 #include "GAUtilities.h"
 

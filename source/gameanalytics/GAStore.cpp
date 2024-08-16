@@ -18,31 +18,19 @@ namespace gameanalytics
         constexpr int MaxDbSizeBytes = 6291456;
         constexpr int MaxDbSizeBytesBeforeTrim = 5242880;
 
-        bool GAStore::_destroyed = false;
-        GAStore* GAStore::_instance = 0;
-        std::once_flag GAStore::_initInstanceFlag;
-
         GAStore::GAStore()
         {
         }
 
-        void GAStore::cleanUp()
+        GAStore::~GAStore()
         {
-            delete _instance;
-            _instance = 0;
-            _destroyed = true;
             threading::GAThreading::endThread();
         }
 
-        GAStore* GAStore::getInstance()
+        GAStore& GAStore::getInstance()
         {
-            std::call_once(_initInstanceFlag, &GAStore::initInstance);
-            return _instance;
-        }
-
-        bool GAStore::isDestroyed()
-        {
-            return _destroyed;
+            static GAStore instance;
+            return instance;
         }
 
         bool GAStore::executeQuerySync(std::string const& sql)
@@ -79,11 +67,6 @@ namespace gameanalytics
         {
             try
             {
-                GAStore* i = getInstance();
-                if(!i)
-                {
-                    return;
-                }
                 // Force transaction if it is an update, insert or delete.
                 std::string sqlUpper = utilities::toUpperCase(sql);
                 if (utilities::GAUtilities::stringMatch(sqlUpper, "^(UPDATE|INSERT|DELETE)"))
@@ -92,7 +75,7 @@ namespace gameanalytics
                 }
 
                 // Get database connection from singelton getInstance
-                sqlite3 *sqlDatabasePtr = i->getDatabase();
+                sqlite3 *sqlDatabasePtr = getInstance().getDatabase();
 
                 if (useTransaction)
                 {
@@ -104,7 +87,7 @@ namespace gameanalytics
                 }
 
                 // Create statement
-                sqlite3_stmt *statement;
+                sqlite3_stmt *statement = nullptr;
 
                 // Prepare statement
                 if (sqlite3_prepare_v2(sqlDatabasePtr, sql.c_str(), -1, &statement, nullptr) == SQLITE_OK)
@@ -146,7 +129,7 @@ namespace gameanalytics
                                     }
                                     catch(std::exception& e)
                                     {
-                                        logging::GALogger::e(e.what());
+                                        logging::GALogger::w("Failed to parse int: %s", e.what());
                                     }
 
                                     break;
@@ -160,7 +143,7 @@ namespace gameanalytics
                                     }
                                     catch(std::exception& e)
                                     {
-                                        logging::GALogger::e(e.what());
+                                        logging::GALogger::w("Failed to parse float: %s", e.what());
                                     }
                                     
                                     break;
@@ -221,29 +204,24 @@ namespace gameanalytics
 
         bool GAStore::ensureDatabase(bool dropDatabase, std::string const& key)
         {
-            GAStore* i = getInstance();
-            if(!i)
-            {
-                return false;
-            }
             // lazy creation of db path
-            if(i->dbPath.empty())
+            if(getInstance().dbPath.empty())
             {
                 // device::GADevice::getWritablePath()
-                i->dbPath = device::GADevice::getWritablePath() + "/ga.sqlite3";
+                getInstance().dbPath = device::GADevice::getWritablePath() + "/ga.sqlite3";
             }
 
             // Open database
-            if (sqlite3_open(i->dbPath.c_str(), &i->sqlDatabase) != SQLITE_OK)
+            if (sqlite3_open(getInstance().dbPath.c_str(), &getInstance().sqlDatabase) != SQLITE_OK)
             {
-                i->dbReady = false;
-                logging::GALogger::w("Could not open database: %s", i->dbPath.c_str());
+                getInstance().dbReady = false;
+                logging::GALogger::w("Could not open database: %s", getInstance().dbPath.c_str());
                 return false;
             }
             else
             {
-                i->dbReady = true;
-                logging::GALogger::i("Database opened: %s", i->dbPath.c_str());
+                getInstance().dbReady = true;
+                logging::GALogger::i("Database opened: %s", getInstance().dbPath.c_str());
             }
 
             if (dropDatabase)
@@ -327,8 +305,8 @@ namespace gameanalytics
                 }
             }
 
-            i->trimEventTable();
-            i->tableReady = true;
+            getInstance().trimEventTable();
+            getInstance().tableReady = true;
 
             logging::GALogger::d("Database tables ensured present");
 
@@ -351,18 +329,13 @@ namespace gameanalytics
 
         int64_t GAStore::getDbSizeBytes()
         {
-            std::ifstream in(getInstance()->dbPath, std::ifstream::ate | std::ifstream::binary);
+            std::ifstream in(getInstance().dbPath, std::ifstream::ate | std::ifstream::binary);
             return in.tellg();
         }
 
         bool GAStore::getTableReady()
         {
-            GAStore* i = GAStore::getInstance();
-            if(!i)
-            {
-                return false;
-            }
-            return i->tableReady;
+            return getInstance().tableReady;
         }
 
         bool GAStore::isDbTooLargeForEvents()
@@ -399,7 +372,7 @@ namespace gameanalytics
                             ++i;
                         }
 
-                        const std::string deleteOldSessionsSql = "DELETE FROM ga_events WHERE session_id IN (\"" + sessionDeleteString + "\");";
+                        const std::string deleteOldSessionsSql = utilities::printString("DELETE FROM ga_events WHERE session_id IN (\"%s\");", sessionDeleteString.c_str());
                         logging::GALogger::w("Database too large when initializing. Deleting the oldest 3 sessions.");
                         executeQuerySync(deleteOldSessionsSql);
                         executeQuerySync("VACUUM");
@@ -413,7 +386,7 @@ namespace gameanalytics
                 }
                 catch(std::exception& e)
                 {
-                    logging::GALogger::e(e.what());
+                    logging::GALogger::e("Exception thrown: %s", e.what());
                     return false;
                 }
             }

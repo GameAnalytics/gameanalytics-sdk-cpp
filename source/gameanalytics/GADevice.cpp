@@ -11,142 +11,146 @@ namespace gameanalytics
 {
     namespace device
     {
-        std::unique_ptr<GADevice> GADevice::_instance = nullptr;
-
-        std::unique_ptr<GADevice>& GADevice::GetInstance()
+    
+        GADevice& GADevice::getInstance()
         {
-            if (!_instance)
-            {
-                _instance = std::make_unique<GADevice>();
-            }
-
-            return _instance;
+            static GADevice instance;
+            return instance;
         }
 
-        GADevice::GADevice()
+        GADevice::GADevice():
+            _platform(MakePlatform())
         {
+        }
+
+        void GADevice::initPlatform()
+        {
+            if(getInstance()._platform)
+            {
+                getInstance()._platform->onInit();
+            }
         }
 
         void GADevice::disableDeviceInfo()
         {
-            GetInstance()->_useDeviceInfo = false;
+            getInstance()._useDeviceInfo = false;
         }
 
         void GADevice::setSdkGameEngineVersion(std::string const& sdkGameEngineVersion)
         {
-            GetInstance()->_sdkGameEngineVersion;
+            getInstance()._sdkGameEngineVersion;
         }
 
         std::string GADevice::getGameEngineVersion()
         {
-            return GetInstance()->_gameEngineVersion;
+            return getInstance()._gameEngineVersion;
         }
 
         void GADevice::setGameEngineVersion(std::string const& gameEngineVersion)
         {
-            GetInstance()->_gameEngineVersion = gameEngineVersion;
+            getInstance()._gameEngineVersion = gameEngineVersion;
         }
 
         void GADevice::setConnectionType(std::string const& connectionType)
         {
-            GetInstance()->_connectionType = connectionType;
+            getInstance()._connectionType = connectionType;
         }
 
         std::string GADevice::getConnectionType()
         {
-            return GetInstance()->_connectionType;
+            return getInstance()._connectionType;
         }
 
         std::string GADevice::getRelevantSdkVersion()
         {
-            if (!GetInstance()->_sdkGameEngineVersion.empty())
+            if (!getInstance()._sdkGameEngineVersion.empty())
             {
-                return _instance->_sdkGameEngineVersion;
+                return getInstance()._sdkGameEngineVersion;
             }
 
-            return GetInstance()->_sdkWrapperVersion;
+            return getInstance()._sdkWrapperVersion;
         }
 
         std::string GADevice::getBuildPlatform()
         {
-            if(GetInstance()->_buildPlatform.empty())
+            if(getInstance()._buildPlatform.empty())
             {
-                _instance->initRuntimePlatform();
+                getInstance().initRuntimePlatform();
             }
 
-            return GetInstance()->_buildPlatform;
+            return getInstance()._buildPlatform;
         }
 
         void GADevice::setBuildPlatform(std::string const& platform)
         {
-            GetInstance()->_buildPlatform = platform;
+            getInstance()._buildPlatform = platform;
         }
 
         std::string GADevice::getOSVersion()
         {
-            if(GetInstance()->_osVersion.empty())
+            if(getInstance()._osVersion.empty())
             {
-                _instance->initOSVersion();
+                getInstance().initOSVersion();
             }
 
-            return GetInstance()->_osVersion;
+            return getInstance()._osVersion;
         }
 
         void GADevice::setDeviceModel(std::string const& deviceModel)
         {
             if (deviceModel.empty())
             {
-                GetInstance()->_deviceModel = UNKNOWN_VALUE;
+                getInstance()._deviceModel = UNKNOWN_VALUE;
             }
             else
             {
-                GetInstance()->_deviceModel = deviceModel;
+                getInstance()._deviceModel = deviceModel;
             }
         }
 
         std::string GADevice::getDeviceModel()
         {
-            if(GetInstance()->_deviceModel.empty())
+            if(getInstance()._deviceModel.empty())
             {
-                _instance->initDeviceModel();
+                getInstance().initDeviceModel();
             }
 
-            return GetInstance()->_deviceModel;
+            return getInstance()._deviceModel;
         }
 
         void GADevice::setDeviceManufacturer(std::string const& deviceManufacturer)
         {
-            GetInstance()->_deviceManufacturer = deviceManufacturer;
+            getInstance()._deviceManufacturer = deviceManufacturer;
         }
 
         std::string GADevice::getDeviceManufacturer()
         {
-            if(GetInstance()->_deviceManufacturer.empty())
+            if(getInstance()._deviceManufacturer.empty())
             {
-                _instance->initDeviceManufacturer();
+                getInstance().initDeviceManufacturer();
             }
 
-            return GetInstance()->_deviceManufacturer;
+            return getInstance()._deviceManufacturer;
         }
 
         void GADevice::setWritablePath(std::string const& writablepath)
         {
-            GetInstance()->_writablepath = writablepath;
+            getInstance()._writablepath = writablepath;
         }
 
         std::string GADevice::getWritablePath()
         {
-            if(GetInstance()->_writablepath.empty())
+            if(getInstance()._writablepath.empty())
             {
-                GetInstance()->initPersistentPath();
+                getInstance().initPersistentPath();
             }
 
-            return GetInstance()->_writablepath;
+            return getInstance()._writablepath;
         }
 
         bool GADevice::getWritablePathStatus()
         {
-            return !_instance->_writablepath.empty();
+            return !getInstance()._writablepath.empty();
         }
 
         void GADevice::initDeviceId()
@@ -183,12 +187,12 @@ namespace gameanalytics
 
         std::string GADevice::getDeviceId()
         {
-            return GetInstance()->_deviceId;
+            return getInstance()._deviceId;
         }
 
         std::string GADevice::getAdvertisingId()
         {
-            return GetInstance()->_advertisingId;
+            return getInstance()._advertisingId;
         }
 
         void GADevice::initRuntimePlatform()

@@ -281,7 +281,7 @@ namespace gameanalytics
                     out.category = http::EGASdkErrorCategory::EventValidation;
                     out.area = http::EGASdkErrorArea::ProgressionEvent;
                     out.action = http::EGASdkErrorAction::InvalidEventPartLength;
-                    out.parameter = http::EGASdkErrorParameter::Progression01 + progressionLvl;
+                    out.parameter = (int)http::EGASdkErrorParameter::Progression01 + progressionLvl;
                     out.reason = progression;
                     return false;
             }
@@ -292,7 +292,7 @@ namespace gameanalytics
                     out.category = http::EGASdkErrorCategory::EventValidation;
                     out.area = http::EGASdkErrorArea::ProgressionEvent;
                     out.action = http::EGASdkErrorAction::InvalidEventPartCharacters;
-                    out.parameter = http::EGASdkErrorParameter::Progression01 + progressionLvl;
+                    out.parameter = (int)http::EGASdkErrorParameter::Progression01 + progressionLvl;
                     out.reason = progression;
                     return false;
             }
@@ -739,7 +739,7 @@ namespace gameanalytics
         void GAValidator::validateAndCleanInitRequestResponse(const json& initResponse, json& out, bool configsCreated)
         {
             // make sure we have a valid dict
-            if (initResponse.IsNull())
+            if (initResponse.is_null())
             {
                 logging::GALogger::w("validateInitRequestResponse failed - no response dictionary.");
                 return;
@@ -769,7 +769,7 @@ namespace gameanalytics
                 {
                     utilities::copyValueIfExistent(out, initResponse, "ab_id");
                 }
-                if (initResponse.HasMember("ab_variant_id") && initResponse["ab_variant_id"].is_string())
+                if (initResponse.contains("ab_variant_id") && initResponse["ab_variant_id"].is_string())
                 {
                     utilities::copyValueIfExistent(out, initResponse, "ab_variant_id");
                 }

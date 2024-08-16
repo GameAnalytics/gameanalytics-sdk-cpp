@@ -15,14 +15,15 @@ namespace gameanalytics
     {
         class GADevice
         {
-            static std::unique_ptr<GADevice> _instance; 
-            static std::unique_ptr<GADevice>& GetInstance();
+            static GADevice& getInstance();
 
             GADevice();
             GADevice(GADevice const&)            = delete;
             GADevice& operator=(GADevice const&) = delete;
 
             public:
+
+                static void         initPlatform();
 
                 static void         disableDeviceInfo();
                 static void         setSdkGameEngineVersion(std::string const& sdkGameEngineVersion);

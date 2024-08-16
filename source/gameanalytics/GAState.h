@@ -12,7 +12,10 @@
 #include <mutex>
 #include <cstdlib>
 #include <unordered_map>
+
 #include "GACommon.h"
+#include "GAUtilities.h"
+#include "GALogger.h"
 
 namespace gameanalytics
 {
@@ -68,6 +71,8 @@ namespace gameanalytics
         {
             public:
 
+                static GAState& getInstance();
+
                 static bool isDestroyed();
                 static void setUserId(std::string const& id);
                 static bool isInitialized();
@@ -117,7 +122,6 @@ namespace gameanalytics
                 static void setEnabledEventSubmission(bool flag);
                 static bool isEventSubmissionEnabled();
                 static bool sessionIsStarted();
-                static void validateAndCleanCustomFields(const json& fields, json& out);
                 static std::string getRemoteConfigsStringValue(std::string const& key, std::string const& defaultValue);
                 static bool isRemoteConfigsReady();
                 static void addRemoteConfigsListener(const std::shared_ptr<IRemoteConfigsListener>& listener);
@@ -130,22 +134,6 @@ namespace gameanalytics
                 static json getValidatedCustomFields(const json& withEventFields);
 
         private:
-
-            static std::unique_ptr<GAState> _instance;
-            static std::unique_ptr<GAState>& getInstance()
-            {
-                if (_instance)
-                {
-                    _instance = std::make_unique<GAState>();
-                    if (!_instance)
-                    {
-                        constexpr const char* msg = "Critical error. Failed to create GAState!";
-                        std::cerr << msg << '\n';
-                    }
-                }
-
-                return _instance;
-            }
 
             GAState();
             ~GAState();
@@ -173,6 +161,8 @@ namespace gameanalytics
 
             int64_t  calculateServerTimeOffset(int64_t serverTs);
             void     populateConfigurations(json& sdkConfig);
+
+            void validateAndCleanCustomFields(const json& fields, json& out);
 
             void setConfigsHash(std::string const& configsHash);
             void setAbId(std::string const& abId);
@@ -232,8 +222,6 @@ namespace gameanalytics
             bool _remoteConfigsIsReady;
             std::vector<std::shared_ptr<IRemoteConfigsListener>> _remoteConfigsListeners;
             std::mutex _mtx;
-
-            static const int MaxCount;
         };
     }
 }

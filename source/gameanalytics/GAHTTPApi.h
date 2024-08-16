@@ -128,7 +128,7 @@ namespace gameanalytics
             static constexpr const char* sdkErrorActionString(EGASdkErrorAction value);
             static constexpr const char* sdkErrorParameterString(EGASdkErrorParameter value);
 
-            static GAHTTPApi* getInstance();
+            static GAHTTPApi& getInstance();
 
 #if USE_UWP
             concurrency::task<std::pair<EGAHTTPApiResponse, std::string>> requestInitReturningDict(const char* configsHash);
@@ -136,7 +136,7 @@ namespace gameanalytics
             void sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string reason, std::string gameKey, std::string secretKey);
 #else
             EGAHTTPApiResponse requestInitReturningDict(json& json_out, std::string const& configsHash);
-            void sendEventsInArray(EGAHTTPApiResponse& response_out, json& json_out, const json& eventArray);
+            EGAHTTPApiResponse sendEventsInArray(json& json_out, const json& eventArray);
             void sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string const& reason, std::string const& gameKey, std::string const& secretKey);
 #endif
 
@@ -155,7 +155,7 @@ namespace gameanalytics
             EGAHTTPApiResponse processRequestResponse(Windows::Web::Http::HttpResponseMessage^ response, const std::string& requestId);
             concurrency::task<Windows::Storage::Streams::InMemoryRandomAccessStream^> createStream(std::string data);
 #else
-            std::vector<char>  createRequest(CURL *curl, std::string const& url, const std::vector<char>& payloadData, bool gzip);
+            std::string createRequest(CURL *curl, std::string const& url, const std::vector<char>& payloadData, bool gzip);
             EGAHTTPApiResponse processRequestResponse(long statusCode, const char* body, const char* requestId);
 #endif
             std::string protocol                = PROTOCOL;
@@ -170,29 +170,17 @@ namespace gameanalytics
             std::string remoteConfigsBaseUrl;
 
             bool useGzip;
-            const int MaxCount;
+            
+            static constexpr int MaxCount = 10;
             std::map<ErrorType, int> countMap;
             std::map<ErrorType, int64_t> timestampMap;
 
-            static bool _destroyed;
-            static GAHTTPApi* _instance;
-            static std::once_flag _initInstanceFlag;
-            static void cleanUp();
-
-            static void initInstance()
-            {
-                if(!_destroyed && !_instance)
-                {
-                    _instance = new GAHTTPApi();
-                    std::atexit(&cleanUp);
-                }
-            }
-#if USE_UWP
+#if USE_UWP && defined(USE_UWP_HTTP)
             Windows::Web::Http::HttpClient^ httpClient;
 #endif
         };
 
-#if USE_UWP
+#if USE_UWP && defined(USE_UWP_HTTP)
         ref class GANetworkStatus sealed
         {
         internal:

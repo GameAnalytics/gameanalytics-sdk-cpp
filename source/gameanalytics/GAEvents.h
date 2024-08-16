@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "GACommon.h"
 #include "GameAnalytics.h"
 
 namespace gameanalytics
@@ -13,6 +14,8 @@ namespace gameanalytics
     {
         class GAEvents
         {
+            static GAEvents& getInstance();
+
          public:
 
             static void stopEventQueue();
@@ -52,25 +55,10 @@ namespace gameanalytics
             void processEventQueue();
             void cleanupEvents();
             void fixMissingSessionEndEvents();
-            void addEventToStore(json &eventData);
+            void addEventToStore(json& eventData);
             void addDimensionsToEvent(json& eventData);
             void addCustomFieldsToEvent(json& eventData, json& fields);
             void updateSessionTime();
-
-            static bool _destroyed;
-            static GAEvents* _instance;
-            static std::once_flag _initInstanceFlag;
-            static void cleanUp();
-            static GAEvents* getInstance();
-
-            static void initInstance()
-            {
-                if(!_destroyed && !_instance)
-                {
-                    _instance = new GAEvents();
-                    std::atexit(&cleanUp);
-                }
-            }
 
             bool isRunning  {false};
             bool keepRunning{false};

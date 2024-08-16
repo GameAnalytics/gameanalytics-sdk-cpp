@@ -10,7 +10,7 @@
 
 #include "Platform/GAPlatform.h"
 
-#ifdef _WIN32
+#if IS_WIN32
 
 	#include <direct.h>
 	#include <windows.h>

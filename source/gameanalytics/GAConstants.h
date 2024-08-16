@@ -4,7 +4,7 @@
 
 namespace gameanalytics
 {
-	#ifdef _WIN32
+	#if defined(_WIN32) || defined(_WIN64)
 		#define IS_WIN32 1
 
 		#define _WIN32_DCOM

@@ -21,6 +21,8 @@ namespace gameanalytics
 			std::string getPersistentPath()		override;
 			std::string getDeviceModel()		override;
 
+			void setupUncaughtExceptionHandler() override;
+
 		private:
 
 			static void signalHandler(int sig, siginfo_t* info, void* context);

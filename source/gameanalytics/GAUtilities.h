@@ -7,19 +7,17 @@
 
 #include <vector>
 #include "GACommon.h"
-#include "GameAnalytics.h"
 #include <string>
 #include <locale>
 #include <codecvt>
 #include <exception>
-#include "GALogger.h"
 
 namespace gameanalytics
 {
     namespace utilities
     {
         template<typename ...args_t>
-        static std::string printString(std::string const& fmt, args_t&&... args)
+        std::string printString(std::string const& fmt, args_t&&... args)
         {
             constexpr int k_maxLogSize = 2048;
             char buffer[k_maxLogSize] = "";
@@ -30,7 +28,7 @@ namespace gameanalytics
         }
 
         template<typename T>
-        T getOptionalValue(json& node, std::string const& key, T const& defaultValue)
+        T getOptionalValue(json& node, std::string const& key, T const& defaultValue = {})
         {
             try
             {
@@ -57,7 +55,7 @@ namespace gameanalytics
             return false;
         }
 
-        static inline bool copyValueIfExistent(json& out, json& in, std::string const& key)
+        static inline bool copyValueIfExistent(json& out, const json& in, std::string const& key)
         {
             if(in.contains(key))
             {
@@ -102,7 +100,7 @@ namespace gameanalytics
         struct GAUtilities
         {
             static std::string generateUUID();
-            static void hmacWithKey(const char* key, const std::vector<char>& data, char* out);
+            static void hmacWithKey(const char* key, const std::vector<char>& data, std::vector<uint8_t>& out);
             static bool stringMatch(std::string const& string, std::string const& pattern);
             static std::vector<char> gzipCompress(const char* data);
 
@@ -123,7 +121,7 @@ namespace gameanalytics
                 }
                 catch(const std::exception& e)
                 {
-                    logging::GALogger::d("Error with ws2s: %S", wstr.c_str());
+                    //logging::GALogger::d("Error with ws2s: %S", wstr.c_str());
                     return "";
                 }
             }
@@ -136,7 +134,7 @@ namespace gameanalytics
                 }
                 catch(const std::exception& e)
                 {
-                    logging::GALogger::d("Error with s2ws: %s", str.c_str());
+                    //logging::GALogger::d("Error with s2ws: %s", str.c_str());
                     return L"";
                 }
             }

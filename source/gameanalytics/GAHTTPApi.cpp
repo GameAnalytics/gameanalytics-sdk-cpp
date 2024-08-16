@@ -25,7 +25,7 @@ namespace gameanalytics
                 if (!buffer) // maybe just return instead?
                     throw std::runtime_error("Failed to allocate buffer!");
 
-                std::memcpy(buffer->get(), s->ptr.get(), s->len);
+                std::memcpy(buffer.get(), s->ptr.get(), s->len);
                 s->ptr = std::move(buffer);
             }
             else
@@ -39,10 +39,6 @@ namespace gameanalytics
 
             return size*nmemb;
         }
-
-        bool GAHTTPApi::_destroyed = false;
-        GAHTTPApi* GAHTTPApi::_instance = 0;
-        std::once_flag GAHTTPApi::_initInstanceFlag;
 
         // Constructor - setup the basic information for HTTP
         GAHTTPApi::GAHTTPApi()
@@ -65,17 +61,10 @@ namespace gameanalytics
             curl_global_cleanup();
         }
 
-        void GAHTTPApi::cleanUp()
+        GAHTTPApi& GAHTTPApi::getInstance()
         {
-            delete _instance;
-            _instance = 0;
-            _destroyed = true;
-        }
-
-        GAHTTPApi* GAHTTPApi::getInstance()
-        {
-            std::call_once(_initInstanceFlag, &GAHTTPApi::initInstance);
-            return _instance;
+            static GAHTTPApi instance;
+            return instance;
         }
 
         EGAHTTPApiResponse GAHTTPApi::requestInitReturningDict(json& json_out, std::string const& configsHash)
@@ -100,7 +89,7 @@ namespace gameanalytics
 
                 std::vector<char> payloadData = createPayloadData(jsonString, useGzip);
 
-                CURL* curl;
+                CURL* curl = nullptr;
                 CURLcode res;
                 curl = curl_easy_init();
                 if (!curl)
@@ -132,13 +121,8 @@ namespace gameanalytics
                 logging::GALogger::d("init request content: %s, json: %s", s.ptr, jsonString.c_str());
 
                 json requestJsonDict = json::parse(s.toString());
-                if (!ok)
-                {
-                    logging::GALogger::d("requestInitReturningDict -- JSON error (offset %u): %s", static_cast<unsigned int>(ok.Offset()), GetParseError_En(ok.Code()));
-                    logging::GALogger::d("%s", s.toString().c_str());
-                }
 
-                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.ptr, "Init");
+                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.ptr.get(), "Init");
 
                 // if not 200 result
                 if (requestResponseEnum != Ok && requestResponseEnum != Created && requestResponseEnum != BadRequest)
@@ -260,11 +244,7 @@ namespace gameanalytics
                 // print reason if bad request
                 if (requestResponseEnum == BadRequest)
                 {
-                    rapidjson::StringBuffer buffer;
-                    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-                    requestJsonDict.Accept(writer);
-
-                    logging::GALogger::d("Failed Events Call. Bad request. Response: %s", buffer.GetString());
+                    logging::GALogger::d("Failed Events Call. Bad request. Response: %s", requestJsonDict.dump(JSON_PRINT_INDENT));
 
                     return requestResponseEnum;
                 }
@@ -312,7 +292,7 @@ namespace gameanalytics
             jsonObject["error_area"]     = sdkErrorAreaString(area);
             jsonObject["error_action"]   = sdkErrorActionString(action);
             
-            utilities::addIfNotEmpty(jsonObject, "error_parameter", parameter);
+            utilities::addIfNotEmpty(jsonObject, "error_parameter", sdkErrorParameterString(parameter));
             utilities::addIfNotEmpty(jsonObject, "reason", reason);
 
             json eventArray;
@@ -332,7 +312,7 @@ namespace gameanalytics
 
             bool useGzip = this->useGzip;
 
-            std::async(std::launch::async, [url, payloadJSONString, useGzip, errorType]() -> void
+            std::async(std::launch::async, [=]() -> void
             {
                 int64_t now = utilities::getTimestamp();
                 if(timestampMap.count(errorType) == 0)
@@ -343,9 +323,11 @@ namespace gameanalytics
                 {
                     countMap[errorType] = 0;
                 }
+                
+                constexpr int64_t FREQUENCY = 3600; // 1h
 
                 int64_t diff = now - timestampMap[errorType];
-                if(diff >= 3600)
+                if(diff >= FREQUENCY)
                 {
                     countMap[errorType] = 0;
                     timestampMap[errorType] = now;
@@ -356,7 +338,7 @@ namespace gameanalytics
                     return;
                 }
 
-                std::vector<char> payloadData = GAHTTPApi::getInstance()->createPayloadData(payloadJSONString, useGzip);
+                std::vector<char> payloadData = getInstance().createPayloadData(payloadJSONString, useGzip);
 
                 CURL *curl = nullptr;
                 CURLcode res;
@@ -373,7 +355,7 @@ namespace gameanalytics
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
 
-                GAHTTPApi::getInstance()->createRequest(curl, url.data(), payloadData, useGzip);
+                getInstance().createRequest(curl, url.data(), payloadData, useGzip);
 
                 res = curl_easy_perform(curl);
                 if(res != CURLE_OK)
@@ -423,7 +405,7 @@ namespace gameanalytics
             return payloadData;
         }
 
-        std::string GAHTTPApi::createRequest(CURL *curl, const char* url, const std::vector<char>& payloadData, bool gzip)
+        std::string GAHTTPApi::createRequest(CURL *curl, std::string const& url, const std::vector<char>& payloadData, bool gzip)
         {
             curl_easy_setopt(curl, CURLOPT_URL, url);
             curl_easy_setopt(curl, CURLOPT_POST, 1L);
@@ -437,8 +419,9 @@ namespace gameanalytics
             // create authorization hash
             std::string const key = state::GAState::getGameSecret();
 
-            std::string authorization = utilities::GAUtilities::hmacWithKey(key, payloadData, authorization);
-            std::string auth = "Authorization: " + authorization;
+            std::vector<uint8_t> authorization;
+            utilities::GAUtilities::hmacWithKey(key.c_str(), payloadData, authorization);
+            std::string auth = "Authorization: " + std::string((char*)authorization.data(), authorization.size());
 
             header = curl_slist_append(header, auth.c_str());
 

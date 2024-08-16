@@ -6,31 +6,39 @@
 #pragma once
 
 #include "GACommon.h"
-#include "GameAnalytics.h"
+#include "GAUtilities.h"
 
 #define ZF_LOG_SRCLOC ZF_LOG_SRCLOC_NONE
 #include "zf_log.h"
 
 namespace gameanalytics
 {
+    enum EGALoggerMessageType
+    {
+        LogError    = 0,
+        LogWarning  = 1,
+        LogInfo     = 2,
+        LogDebug    = 3,
+        LogVerbose  = 4
+    };
+
+    using LogHandler = std::function<void(std::string const&, EGALoggerMessageType)>;
+
     namespace logging
     {
         class GALogger
         {
-            using LogHandler = GameAnalytics::LogHandler;
-
             template<typename ...args_t>
             static void sendMessage(EGALoggerMessageType logType, std::string const& fmt, args_t&&... args)
             {
-                GALogger* ga = GALogger::getInstance();
-                if (ga)
-                {
-                    if (logType == LogVerbose && !ga->infoLogVerboseEnabled)
+                    if (logType == LogVerbose && !getInstance().infoLogVerboseEnabled)
                     {
                         return;
                     }
 
-                    std::string tag = ga->tag + " :";
+                    std::string tag = getInstance().tag;
+                    tag += " :";
+                    
                     switch (logType)
                     {
                         case LogError:
@@ -58,13 +66,13 @@ namespace gameanalytics
                     try
                     {
                         const std::string msg = tag + utilities::printString(fmt, std::forward<args_t>(args)...);
-                        ga->sendNotificationMessage(msg, logType);
+                        
+                        getInstance().sendNotificationMessage(msg, logType);
                     }
                     catch (std::exception const& e)
                     {
                         std::cerr << "Error/GameAnalytics:" << e.what() << "\n";
                     }
-                }
             }
 
             public:
@@ -108,8 +116,7 @@ namespace gameanalytics
          private:
 
             static constexpr const char* tag = "GameAnalytics";
-            static std::unique_ptr<GALogger> _instance;
-            static GALogger* getInstance();
+            static GALogger& getInstance();
 
             GALogger();
             ~GALogger();

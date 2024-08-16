@@ -37,15 +37,57 @@
 namespace gameanalytics
 {
 	using nlohmann::json;
+    using StringVector = std::vector<std::string>;
 
-	template<typename ...args_t>
-	static std::string print(std::string const& fmt, args_t&&... args)
-	{
-		constexpr int k_maxLogSize = 2048;
-		char buffer[k_maxLogSize] = "";
+    /*!
+     @enum
+     @discussion
+     This enum is used to specify flow in resource events
+     @constant GAResourceFlowTypeSource
+     Used when adding to a resource currency
+     @constant GAResourceFlowTypeSink
+     Used when subtracting from a resource currency
+     */
+    enum EGAResourceFlowType
+    {
+        Source = 1,
+        Sink = 2
+    };
 
-		std::snprintf(buffer, k_maxLogSize, fmt.c_str(), std::forward<args_t>(args)...);
+    /*!
+     @enum
+     @discussion
+     his enum is used to specify status for progression event
+     @constant GAProgressionStatusStart
+     User started progression
+     @constant GAProgressionStatusComplete
+     User succesfully ended a progression
+     @constant GAProgressionStatusFail
+     User failed a progression
+     */
+    enum EGAProgressionStatus
+    {
+        Start = 1,
+        Complete = 2,
+        Fail = 3
+    };
 
-		return buffer;
-	}
+    /*!
+     @enum
+     @discussion
+     his enum is used to specify severity of an error event
+     @constant GAErrorSeverityDebug
+     @constant GAErrorSeverityInfo
+     @constant GAErrorSeverityWarning
+     @constant GAErrorSeverityError
+     @constant GAErrorSeverityCritical
+     */
+    enum EGAErrorSeverity
+    {
+        Debug       = 1,
+        Info        = 2,
+        Warning     = 3,
+        Error       = 4,
+        Critical    = 5
+    };
 }
