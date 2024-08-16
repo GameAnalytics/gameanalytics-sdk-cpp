@@ -84,6 +84,8 @@
 
 #include "StackWalker.h"
 
+#if defined(_MSC_VER)
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <tchar.h>
@@ -1467,3 +1469,5 @@ void StackWalker::OnOutput(LPCSTR buffer)
 {
   OutputDebugStringA(buffer);
 }
+
+#endif // #if defined(_MSC_VER)
