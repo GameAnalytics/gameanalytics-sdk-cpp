@@ -1,7 +1,13 @@
+#include "GAMacOS.h"
+
 #if IS_MAC
 
-#include "GAMacOS.h"
+#include <execinfo.h>
 #include "GADeviceOSX.h"
+#include "GAState.h"
+#include "GAEvents.h"
+
+static struct sigaction prevSigAction;
 
 std::string gameanalytics::GAPlatformMacOS::getOSVersion()
 {
@@ -19,9 +25,14 @@ std::string gameanalytics::GAPlatformMacOS::getBuildPlatform()
     return "mac_osx";
 }
 
+std::string gameanalytics::GAPlatformMacOS::getConnectionType()
+{
+    return ::getConnectionType();
+}
+
 std::string gameanalytics::GAPlatformMacOS::getPersistentPath()
 {
-    std::string path = std::getenv("HOME") + "/GameAnalytics";
+    std::string path = std::string(std::getenv("HOME")) + "/GameAnalytics";
 
     mode_t nMode = 0733;
     int result = mkdir(path.c_str(), nMode);
@@ -43,11 +54,11 @@ std::string gameanalytics::GAPlatformMacOS::getDeviceModel()
     const size_t buffSize = len + 1;
 
     std::unique_ptr<char[]> buffer = std::make_unique<char[]>(buffSize);
-    memset(buffer, 0, buffSize);
+    std::memset(buffer.get(), 0, buffSize);
 
-    sysctlbyname("hw.model", buffer.data(), &len, NULL, 0);
+    sysctlbyname("hw.model", buffer.get(), &len, NULL, 0);
 
-    std::string model = buffer.data();
+    std::string model = buffer.get();
     return model;
 }
 

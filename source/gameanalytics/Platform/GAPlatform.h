@@ -19,12 +19,14 @@ namespace gameanalytics
 			virtual std::string getDeviceId();
 
 			virtual void setupUncaughtExceptionHandler();
+
+			virtual std::string getConnectionType() = 0;
 			
 			void onInit();
 
 			private:
 
-                std::terminate_handler previousTerminateHandler;
+                static std::terminate_handler previousTerminateHandler;
 				static void terminateHandler();
 
 	};

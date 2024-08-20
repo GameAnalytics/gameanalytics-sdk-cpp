@@ -45,6 +45,8 @@ namespace gameanalytics
 
 			void setupUncaughtExceptionHandler() override;
 
+			std::string getConnectionType() override;
+
 		private:
 
 			static void signalHandler(int sig);

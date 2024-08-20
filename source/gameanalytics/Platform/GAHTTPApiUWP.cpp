@@ -1,3 +1,5 @@
+#include "GACommon.h"
+
 #if USE_UWP && defined(USE_UWP_HTTPAPI)
 #include "GAHTTPApi.h"
 #include "GAState.h"

@@ -29,6 +29,8 @@ namespace gameanalytics
 
 			std::string getAdvertisingId()	override;
 			std::string getDeviceId()		override;
+
+			virtual std::string getConnectionType() override;
 	};
 }
 

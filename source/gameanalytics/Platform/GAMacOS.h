@@ -4,6 +4,7 @@
 
 #if IS_MAC
 
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
@@ -23,10 +24,11 @@ namespace gameanalytics
 
 			void setupUncaughtExceptionHandler() override;
 
+			std::string getConnectionType() override;
+
 		private:
 
 			static void signalHandler(int sig, siginfo_t* info, void* context);
-			static struct sigaction prevSigAction;
 	};
 }
 

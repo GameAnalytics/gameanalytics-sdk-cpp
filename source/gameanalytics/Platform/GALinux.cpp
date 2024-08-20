@@ -1,6 +1,6 @@
-#if IS_LINUX
-
 #include "Platform/GALinux.h"
+
+#if IS_LINUX
 
 std::string gameanalytics::GAPlatformLinux::getOSVersion()
 {
@@ -34,7 +34,8 @@ std::string gameanalytics::GAPlatformLinux::getBuildPlatform()
 
 std::string gameanalytics::GAPlatformLinux::getPersistentPath()
 {
-    std::string path = std::getenv("HOME") + "/GameAnalytics";
+    std::string path = std::getenv("HOME");
+    path += "/GameAnalytics";
 
     mode_t nMode = 0733;
     int result = mkdir(path.c_str(), nMode);

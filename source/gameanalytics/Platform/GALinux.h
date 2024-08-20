@@ -4,6 +4,7 @@
 
 #if IS_LINUX
 
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
@@ -23,6 +24,8 @@ namespace gameanalytics
 			std::string getDeviceModel()		override;
 
 			void setupUncaughtExceptionHandler() override;
+
+			virtual std::string getConnectionType() override;
 
 		private:
 
