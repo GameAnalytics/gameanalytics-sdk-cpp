@@ -33,7 +33,7 @@ namespace gameanalytics
             try
             {
                 if(node.contains(key))
-                    return node.get<T>(key);
+                    return node[key].get<T>();
             }
             catch(json::exception const& e)
             {
@@ -96,20 +96,19 @@ namespace gameanalytics
             return s;
         }
 
+        std::string printArray(const StringVector& v, std::string const& delimiter = ", ");
 
         struct GAUtilities
         {
             static std::string generateUUID();
-            static void hmacWithKey(const char* key, const std::vector<char>& data, std::vector<uint8_t>& out);
+            static void hmacWithKey(const char* key, const std::vector<uint8_t>& data, std::vector<uint8_t>& out);
             static bool stringMatch(std::string const& string, std::string const& pattern);
-            static std::vector<char> gzipCompress(const char* data);
+            static std::vector<uint8_t> gzipCompress(const char* data);
 
             // added for C++ port
             static bool isStringNullOrEmpty(const char* s);
             static bool stringVectorContainsString(const StringVector& vector, const std::string& search);
             static int64_t timeIntervalSince1970();
-            static void printJoinStringArray(const StringVector& v, const char* format, const char* delimiter = ", ");
-
             static int base64_needed_encoded_length(int length_of_data);
             static void base64_encode(const unsigned char * src, int src_len, unsigned char *buf_);
 

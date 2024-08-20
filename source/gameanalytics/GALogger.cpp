@@ -118,12 +118,14 @@ namespace gameanalytics
             {
                 initializeLog();
             }
-
+            
             if (logFile.is_open())
             {
                 logFile << message << '\n';
             }
 
+
+            //std::lock_guard<std::mutex> guard(_mutex);
             switch(type)
             {
                 case LogError:

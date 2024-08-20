@@ -65,7 +65,7 @@ namespace gameanalytics
 
                     try
                     {
-                        const std::string msg = tag + utilities::printString(fmt, std::forward<args_t>(args)...);
+                        const std::string msg = tag + ' ' + utilities::printString(fmt, std::forward<args_t>(args)...);
                         
                         getInstance().sendNotificationMessage(msg, logType);
                     }
@@ -135,6 +135,7 @@ namespace gameanalytics
 
             static void file_output_callback(const zf_log_message *msg, void *arg);
             
+            std::mutex      _mutex;
             bool            logInitialized;
             std::fstream    logFile;
             int             currentLogCount;

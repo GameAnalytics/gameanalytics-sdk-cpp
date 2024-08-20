@@ -148,14 +148,14 @@ namespace gameanalytics
             ~GAHTTPApi();
             GAHTTPApi(const GAHTTPApi&) = delete;
             GAHTTPApi& operator=(const GAHTTPApi&) = delete;
-            std::vector<char> createPayloadData(std::string const& payload, bool gzip);
+            std::vector<uint8_t> createPayloadData(std::string const& payload, bool gzip);
 
 #if USE_UWP && defined(USE_UWP_HTTPAPI)
             std::vector<char> createRequest(Windows::Web::Http::HttpRequestMessage^ message, const std::string& url, const std::vector<char>& payloadData, bool gzip);
             EGAHTTPApiResponse processRequestResponse(Windows::Web::Http::HttpResponseMessage^ response, const std::string& requestId);
             concurrency::task<Windows::Storage::Streams::InMemoryRandomAccessStream^> createStream(std::string data);
 #else
-            std::string createRequest(CURL *curl, std::string const& url, const std::vector<char>& payloadData, bool gzip);
+            std::vector<uint8_t> createRequest(CURL *curl, std::string const& url, const std::vector<uint8_t>& payloadData, bool gzip);
             EGAHTTPApiResponse processRequestResponse(long statusCode, const char* body, const char* requestId);
 #endif
             std::string protocol                = PROTOCOL;

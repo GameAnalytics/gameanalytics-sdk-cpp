@@ -86,6 +86,8 @@ namespace gameanalytics
                     }
                 }
 
+                out = json::array();
+
                 // Create statement
                 sqlite3_stmt *statement = nullptr;
 
@@ -161,6 +163,7 @@ namespace gameanalytics
                 {
                     // TODO(nikolaj): Should we do a db validation to see if the db is corrupt here?
                     logging::GALogger::e("SQLITE3 PREPARE ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
+                    out = {};
                     return;
                 }
 
@@ -172,6 +175,7 @@ namespace gameanalytics
                         if (sqlite3_exec(sqlDatabasePtr, "COMMIT", 0, 0, 0) != SQLITE_OK)
                         {
                             logging::GALogger::e("SQLITE3 COMMIT ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
+                            out = {};
                             return;
                         }
                     }
@@ -186,6 +190,8 @@ namespace gameanalytics
                         {
                             logging::GALogger::e("SQLITE3 ROLLBACK ERROR: %s", sqlite3_errmsg(sqlDatabasePtr));
                         }
+
+                        out = {};
                     }
 
                     return;
@@ -194,6 +200,7 @@ namespace gameanalytics
             catch(std::exception& e)
             {
                 logging::GALogger::e("Exception thrown: %s", e.what());
+                out = {};
             }
         }
 

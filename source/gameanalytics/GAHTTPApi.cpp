@@ -87,7 +87,7 @@ namespace gameanalytics
                     return; JsonEncodeFailed;
                 }
 
-                std::vector<char> payloadData = createPayloadData(jsonString, useGzip);
+                std::vector<uint8_t> payloadData = createPayloadData(jsonString, useGzip);
 
                 CURL* curl = nullptr;
                 CURLcode res;
@@ -104,7 +104,7 @@ namespace gameanalytics
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
 
-                std::vector<char> authorization = createRequest(curl, url, payloadData, useGzip);
+                std::vector<uint8_t> authorization = createRequest(curl, url, payloadData, useGzip);
 
                 res = curl_easy_perform(curl);
                 if (res != CURLE_OK)
@@ -118,7 +118,7 @@ namespace gameanalytics
                 curl_easy_cleanup(curl);
 
                 // process the response
-                logging::GALogger::d("init request content: %s, json: %s", s.ptr, jsonString.c_str());
+                logging::GALogger::d("init request content: %s, json: %s", s.toString().c_str(), jsonString.c_str());
 
                 json requestJsonDict = json::parse(s.toString());
 
@@ -127,7 +127,7 @@ namespace gameanalytics
                 // if not 200 result
                 if (requestResponseEnum != Ok && requestResponseEnum != Created && requestResponseEnum != BadRequest)
                 {
-                    logging::GALogger::d("Failed Init Call. URL: %s, JSONString: %s, Authorization: %s", url, jsonString.c_str(), authorization.data());
+                    logging::GALogger::d("Failed Init Call. URL: %s, JSONString: %s, Authorization: %s", url.c_str(), jsonString.c_str(), authorization.data());
 
                     return requestResponseEnum;
                 }
@@ -193,7 +193,7 @@ namespace gameanalytics
                     return JsonEncodeFailed;
                 }
 
-                std::vector<char> payloadData = createPayloadData(jsonString, useGzip);
+                std::vector<uint8_t> payloadData = createPayloadData(jsonString, useGzip);
 
                 CURL* curl = nullptr;
                 CURLcode res{};
@@ -210,7 +210,7 @@ namespace gameanalytics
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
 
-                std::vector<char> authorization = createRequest(curl, url, payloadData, useGzip);
+                std::vector<uint8_t> authorization = createRequest(curl, url, payloadData, useGzip);
 
                 res = curl_easy_perform(curl);
                 if (res != CURLE_OK)
@@ -244,7 +244,8 @@ namespace gameanalytics
                 // print reason if bad request
                 if (requestResponseEnum == BadRequest)
                 {
-                    logging::GALogger::d("Failed Events Call. Bad request. Response: %s", requestJsonDict.dump(JSON_PRINT_INDENT));
+                    logging::GALogger::d("Failed Events Call. Bad request. Response: %s", 
+                        requestJsonDict.dump(JSON_PRINT_INDENT).c_str());
 
                     return requestResponseEnum;
                 }
@@ -256,17 +257,17 @@ namespace gameanalytics
             }
             catch (json::exception& e)
             {
-                logging::GALogger::e(e.what());
+                logging::GALogger::e("Json exception: %s", e.what());
                 return JsonDecodeFailed;
             }
             catch (std::exception& e)
             {
-                logging::GALogger::e(e.what());
+                logging::GALogger::e("Exception thrown: %s", e.what());
                 return InternalError;
             }
         }
 
-        void GAHTTPApi::sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string const& reason, std::string const& gameKey, const std::string const& secretKey)
+        void GAHTTPApi::sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string const& reason, std::string const& gameKey, const std::string& secretKey)
         {
             if(!state::GAState::isEventSubmissionEnabled())
             {
@@ -338,7 +339,7 @@ namespace gameanalytics
                     return;
                 }
 
-                std::vector<char> payloadData = getInstance().createPayloadData(payloadJSONString, useGzip);
+                std::vector<uint8_t> payloadData = getInstance().createPayloadData(payloadJSONString, useGzip);
 
                 CURL *curl = nullptr;
                 CURLcode res;
@@ -383,14 +384,14 @@ namespace gameanalytics
 #endif
         }
 
-        std::vector<char> GAHTTPApi::createPayloadData(std::string const& payload, bool gzip)
+        std::vector<uint8_t> GAHTTPApi::createPayloadData(std::string const& payload, bool gzip)
         {
             if (payload.empty())
             {
                 return {};
             }
 
-            std::vector<char> payloadData;
+            std::vector<uint8_t> payloadData;
 
             if (gzip)
             {
@@ -399,15 +400,15 @@ namespace gameanalytics
             }
             else
             {
-                payloadData = std::vector<char>(payload.begin(), payload.end());
+                payloadData = std::vector<uint8_t>(payload.begin(), payload.end());
             }
 
             return payloadData;
         }
 
-        std::string GAHTTPApi::createRequest(CURL *curl, std::string const& url, const std::vector<char>& payloadData, bool gzip)
+        std::vector<uint8_t> GAHTTPApi::createRequest(CURL *curl, std::string const& url, const std::vector<uint8_t>& payloadData, bool gzip)
         {
-            curl_easy_setopt(curl, CURLOPT_URL, url);
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
             curl_easy_setopt(curl, CURLOPT_POST, 1L);
             struct curl_slist *header = NULL;
 
@@ -421,7 +422,7 @@ namespace gameanalytics
 
             std::vector<uint8_t> authorization;
             utilities::GAUtilities::hmacWithKey(key.c_str(), payloadData, authorization);
-            std::string auth = "Authorization: " + std::string((char*)authorization.data(), authorization.size());
+            std::string auth = "Authorization: " + std::string(reinterpret_cast<char*>(authorization.data()), authorization.size());
 
             header = curl_slist_append(header, auth.c_str());
 

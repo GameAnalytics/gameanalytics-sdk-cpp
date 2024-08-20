@@ -11,7 +11,6 @@ namespace gameanalytics
 {
     namespace device
     {
-    
         GADevice& GADevice::getInstance()
         {
             static GADevice instance;
@@ -19,7 +18,8 @@ namespace gameanalytics
         }
 
         GADevice::GADevice():
-            _platform(MakePlatform())
+            _platform(MakePlatform()),
+            _sdkWrapperVersion(GA_VERSION_STR)
         {
         }
 
@@ -38,7 +38,7 @@ namespace gameanalytics
 
         void GADevice::setSdkGameEngineVersion(std::string const& sdkGameEngineVersion)
         {
-            getInstance()._sdkGameEngineVersion;
+            getInstance()._sdkGameEngineVersion = sdkGameEngineVersion;
         }
 
         std::string GADevice::getGameEngineVersion()
@@ -58,7 +58,10 @@ namespace gameanalytics
 
         std::string GADevice::getConnectionType()
         {
-            return getInstance()._connectionType;
+            if(getInstance()._platform)
+                return getInstance()._platform->getConnectionType();
+
+            return "";
         }
 
         std::string GADevice::getRelevantSdkVersion()

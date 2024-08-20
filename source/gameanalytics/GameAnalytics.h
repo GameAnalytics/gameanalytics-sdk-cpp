@@ -58,33 +58,17 @@ namespace gameanalytics
          static void initialize(std::string const& gameKey, std::string const& gameSecret);
 
          // add events
-         static void addBusinessEvent(std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType);
-         static void addBusinessEvent(std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields);
-         static void addBusinessEvent(std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields, bool mergeFields);
+         static void addBusinessEvent(std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields = "", bool mergeFields = false);
 
-         static void addResourceEvent(EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId);
-         static void addResourceEvent(EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& customFields);
-         static void addResourceEvent(EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& customFields, bool mergeFields);
+         static void addResourceEvent(EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& customFields = "", bool mergeFields = false);
 
-         static void addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03);
-         static void addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, std::string const& customFields);
-         static void addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, std::string const& customFields, bool mergeFields);
+         static void addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02 = "", std::string const& progression03 = "", std::string const& customFields = "", bool mergeFields = false);
+         static void addProgressionEvent(EGAProgressionStatus progressionStatus, int score, std::string const& progression01, std::string const& progression02 = "", std::string const& progression03 = "", std::string const& customFields = "", bool mergeFields = false);
 
-         static void addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score);
-         static void addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, std::string const& customFields);
-         static void addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, std::string const& customFields, bool mergeFields);
+         static void addDesignEvent(std::string const& eventId, std::string const& customFields = "", bool mergeFields = false);
+         static void addDesignEvent(std::string const& eventId, double value, std::string const& customFields = "", bool mergeFields = false);
 
-         static void addDesignEvent(std::string const& eventId);
-         static void addDesignEvent(std::string const& eventId, std::string const& customFields);
-         static void addDesignEvent(std::string const& eventId, std::string const& customFields, bool mergeFields);
-
-         static void addDesignEvent(std::string const& eventId, double value);
-         static void addDesignEvent(std::string const& eventId, double value, std::string const& customFields);
-         static void addDesignEvent(std::string const& eventId, double value, std::string const& customFields, bool mergeFields);
-
-         static void addErrorEvent(EGAErrorSeverity severity, std::string const& message);
-         static void addErrorEvent(EGAErrorSeverity severity, std::string const& message, std::string const& customFields);
-         static void addErrorEvent(EGAErrorSeverity severity, std::string const& message, std::string const& customFields, bool mergeFields);
+         static void addErrorEvent(EGAErrorSeverity severity, std::string const& message, std::string const& customFields = "", bool mergeFields = false);
 
          // set calls can be changed at any time (pre- and post-initialize)
          // some calls only work after a configure is called (setCustomDimension)

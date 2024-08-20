@@ -44,8 +44,9 @@ namespace gameanalytics
             static constexpr const char* CategoryProgression            = "progression";
             static constexpr const char* CategoryResource               = "resource";
             static constexpr const char* CategoryError                  = "error";
-            static constexpr double      ProcessEventsIntervalInSeconds = 8.0;
             static constexpr int         MaxEventCount                  = 500;
+
+            static constexpr std::chrono::milliseconds PROCESS_EVENTS_INTERVAL{8000};
 
             GAEvents();
             ~GAEvents();

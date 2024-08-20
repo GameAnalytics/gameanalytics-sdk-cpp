@@ -347,7 +347,7 @@ namespace gameanalytics
                 return;
             }
 
-            GADevice::initPlatform();
+            device::GADevice::initPlatform();
             
             if (!validators::GAValidator::validateKeys(gameKey, gameSecret))
             {
@@ -368,28 +368,6 @@ namespace gameanalytics
 
     // ----------------------- ADD EVENTS ---------------------- //
 
-
-    void GameAnalytics::addBusinessEvent(
-        std::string const& currency,
-        int amount,
-        std::string const& itemType,
-        std::string const& itemId,
-        std::string const& cartType)
-    {
-        addBusinessEvent(currency, amount, itemType, itemId, cartType, "");
-    }
-
-    void GameAnalytics::addBusinessEvent(
-        std::string const& currency_,
-        int amount,
-        std::string const& itemType_,
-        std::string const& itemId_,
-        std::string const& cartType_,
-        std::string const& fields_)
-    {
-        addBusinessEvent(currency_, amount, itemType_, itemId_, cartType_, fields_, false);
-    }
-
     void GameAnalytics::addBusinessEvent(
         std::string const& currency,
         int amount,
@@ -404,7 +382,7 @@ namespace gameanalytics
             return;
         }
 
-        threading::GAThreading::performTaskOnGAThread([currency, amount, itemType, itemId, cartType, fields, mergeFields]()
+        threading::GAThreading::performTaskOnGAThread([=]()
         {
             if (!isSdkReady(true, true, "Could not add business event"))
             {
@@ -415,29 +393,22 @@ namespace gameanalytics
 
             try
             {
-                json fieldsJson = json::parse(fields);
+                json fieldsJson;
+                
+                if(!fields.empty())
+                    fieldsJson = json::parse(fields);
+
                 events::GAEvents::addBusinessEvent(currency, amount, itemType, itemId, cartType, fieldsJson, mergeFields);
             }
             catch(json::exception const& e)
             {
-                logging::GALogger::e("Failed to parse json:", e.what());
+                logging::GALogger::e("addBusinessEvent - Failed to parse json:", e.what());
             }
             catch(std::exception const& e)
             {
-                logging::GALogger::e("Exception thrown:", e.what());
+                logging::GALogger::e("addBusinessEvent - Exception thrown:", e.what());
             }
         });
-    }
-
-
-    void GameAnalytics::addResourceEvent(EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId)
-    {
-        addResourceEvent(flowType, currency, amount, itemType, itemId, "");
-    }
-
-    void GameAnalytics::addResourceEvent(EGAResourceFlowType flowType, std::string const& currency_, float amount, std::string const& itemType_, std::string const& itemId_, std::string const& fields_)
-    {
-        addResourceEvent(flowType, currency_, amount, itemType_, itemId_, fields_, false);
     }
 
     void GameAnalytics::addResourceEvent(EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& fields, bool mergeFields)
@@ -456,7 +427,11 @@ namespace gameanalytics
 
             try
             {
-                json fieldsJson = json::parse(fields);
+                json fieldsJson;
+                
+                if(!fields.empty())
+                    fieldsJson = json::parse(fields);
+
                 events::GAEvents::addResourceEvent(flowType, currency, amount, itemType, itemId, fieldsJson, mergeFields);
             }
             catch (std::exception& e)
@@ -466,109 +441,7 @@ namespace gameanalytics
         });
     }
 
-    void GameAnalytics::addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03)
-    {
-        addProgressionEvent(progressionStatus, progression01, progression02, progression03, "");
-    }
-
-    void GameAnalytics::addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01_, std::string const& progression02_, std::string const& progression03_, std::string const& fields_)
-    {
-        addProgressionEvent(progressionStatus, progression01_, progression02_, progression03_, fields_, false);
-    }
-
-    void GameAnalytics::addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, std::string const& fields_, bool mergeFields)
-    {
-        if(_endThread)
-        {
-            return;
-        }
-
-        if(fields_.size() > maxFieldsSize)
-        {
-            logging::GALogger::w("Custom fields length exceeded, maximum allowed is %d, fields' size was %d", maxFieldsSize, fields_.size());
-            return;
-        }
-
-        threading::GAThreading::performTaskOnGAThread([progressionStatus, progression01, progression02, progression03, fields, mergeFields]()
-        {
-            if (!isSdkReady(true, true, "Could not add progression event"))
-            {
-                return;
-            }
-
-            try
-            {
-                // Send to events
-                json fieldsJson = json::parse(_fields);
-                events::GAEvents::addProgressionEvent(progressionStatus, progression01, progression02, progression03, 0, false, fieldsJson, mergeFields);
-            }
-            catch(const json::exception& e)
-            {
-                logging::GALogger::e("Failed to parse custom fields: %s", e.what());
-            }
-            catch(std::exception const& e)
-            {
-                logging::GALogger::e("Exception thrown: %s", e.what());
-            }
-        });
-    }
-
-    void GameAnalytics::addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score)
-    {
-        addProgressionEvent(progressionStatus, progression01, progression02, progression03, score, "");
-    }
-
-    void GameAnalytics::addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01_, std::string const& progression02_, std::string const& progression03_, int score, std::string const& fields_)
-    {
-        addProgressionEvent(progressionStatus, progression01_, progression02_, progression03_, score, fields_, false);
-    }
-
-    void GameAnalytics::addDesignEvent(std::string const& eventId)
-    {
-        addDesignEvent(eventId, "");
-    }
-
-    void GameAnalytics::addDesignEvent(std::string const& eventId_, std::string const& fields_)
-    {
-        addDesignEvent(eventId_, fields_, false);
-    }
-
-    void GameAnalytics::addDesignEvent(std::string const& eventId, std::string const& fields_, bool mergeFields)
-    {
-        if(_endThread)
-        {
-            return;
-        }
-
-        if(fields_.size() > maxFieldsSize)
-        {
-            logging::GALogger::w("Custom fields length exceeded, maximum allowed is %d, fields size was %d", maxFieldsSize, fields_.size());
-            return;
-        }
-
-        threading::GAThreading::performTaskOnGAThread([eventId, fields_, mergeFields]()
-        {
-            if (!isSdkReady(true, true, "Could not add design event"))
-            {
-                return;
-            }
-            
-            json fieldsJson = json::parse(fields_);
-            events::GAEvents::addDesignEvent(eventId, 0, false, fieldsJson, mergeFields);
-        });
-    }
-
-    void GameAnalytics::addDesignEvent(std::string const& eventId, double value)
-    {
-        addDesignEvent(eventId, value, "");
-    }
-
-    void GameAnalytics::addDesignEvent(std::string const& eventId_, double value, std::string const& fields_)
-    {
-        addDesignEvent(eventId_, value, fields_, false);
-    }
-
-    void GameAnalytics::addDesignEvent(std::string const& eventId, double value, std::string const& fields, bool mergeFields)
+    void GameAnalytics::addProgressionEvent(EGAProgressionStatus progressionStatus, int score, std::string const& progression01, std::string const& progression02, std::string const& progression03, std::string const& fields, bool mergeFields)
     {
         if(_endThread)
         {
@@ -581,7 +454,53 @@ namespace gameanalytics
             return;
         }
 
-        threading::GAThreading::performTaskOnGAThread([eventId, value, fields, mergeFields]()
+        threading::GAThreading::performTaskOnGAThread([=]()
+        {
+            if (!isSdkReady(true, true, "Could not add progression event"))
+            {
+                return;
+            }
+
+            try
+            {
+                // Send to events
+                json fieldsJson;
+                
+                if(!fields.empty())
+                    fieldsJson = json::parse(fields);
+                
+                events::GAEvents::addProgressionEvent(progressionStatus, progression01, progression02, progression03, score, false, fieldsJson, mergeFields);
+            }
+            catch(const json::exception& e)
+            {
+                logging::GALogger::e("Failed to parse custom fields: %s", e.what());
+            }
+            catch(std::exception const& e)
+            {
+                logging::GALogger::e("Exception thrown: %s", e.what());
+            }
+        });
+    }
+
+    void GameAnalytics::addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, std::string const& fields, bool mergeFields)
+    {
+        return addProgressionEvent(progressionStatus, 0, progression01, progression02, progression03, fields, mergeFields);
+    }
+
+    void GameAnalytics::addDesignEvent(std::string const& eventId, double value, std::string const& fields_, bool mergeFields)
+    {
+        if(_endThread)
+        {
+            return;
+        }
+
+        if(fields_.size() > maxFieldsSize)
+        {
+            logging::GALogger::w("Custom fields length exceeded, maximum allowed is %d, fields size was %d", maxFieldsSize, fields_.size());
+            return;
+        }
+
+        threading::GAThreading::performTaskOnGAThread([=]()
         {
             if (!isSdkReady(true, true, "Could not add design event"))
             {
@@ -590,24 +509,22 @@ namespace gameanalytics
             
             try
             {
-                json fieldsJson = json::parse(fields);
-                events::GAEvents::addDesignEvent(eventId, value, true, fieldsJson, mergeFields);
+                json fieldsJson;
+                if(!fields_.empty()) 
+                    fieldsJson = json::parse(fields_);
+                
+                events::GAEvents::addDesignEvent(eventId, value, false, fieldsJson, mergeFields);
             }
-            catch(const std::exception& e)
+            catch(json::exception const& e)
             {
-                logging::GALogger::e("Failed to parse fields json: %s", e.what());
+                logging::GALogger::e("addDesignEvent - Failed to parse fields: %s", e.what());
             }
         });
     }
 
-    void GameAnalytics::addErrorEvent(EGAErrorSeverity severity, std::string const& message)
+    void GameAnalytics::addDesignEvent(std::string const& eventId, std::string const& fields, bool mergeFields)
     {
-        addErrorEvent(severity, message, "");
-    }
-
-    void GameAnalytics::addErrorEvent(EGAErrorSeverity severity, std::string const& message_, std::string const& fields_)
-    {
-        addErrorEvent(severity, message_, fields_, false);
+        return addDesignEvent(eventId, 0.0, fields, mergeFields);
     }
 
     void GameAnalytics::addErrorEvent(EGAErrorSeverity severity, std::string const& message_, std::string const& fields, bool mergeFields)
@@ -634,7 +551,10 @@ namespace gameanalytics
 
             try
             {
-                json fieldsJson = json::parse(fields);
+                json fieldsJson;
+                if(!fields.empty())
+                    fieldsJson = json::parse(fields);
+
                 events::GAEvents::addErrorEvent(severity, message, fieldsJson, mergeFields);
             }
             catch(std::exception& e)
@@ -949,7 +869,7 @@ namespace gameanalytics
 
     bool GameAnalytics::isThreadEnding()
     {
-        return _endThread || threading::GAThreading::isThreadEnding();
+        return _endThread || threading::GAThreading::isThreadFinished();
     }
 
     // --------------PRIVATE HELPERS -------------- //

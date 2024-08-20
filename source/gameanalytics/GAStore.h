@@ -21,7 +21,6 @@ namespace gameanalytics
          public:
 
             sqlite3* getDatabase();
-            static bool isDestroyed();
 
             static bool ensureDatabase(bool dropDatabase, std::string const& key = "");
 

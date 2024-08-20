@@ -261,7 +261,7 @@ namespace gameanalytics
 
         bool checkProgressionStringsOrder(std::string const& progression01, std::string const& progression02, std::string const& progression03)
         {
-            if(!progression03.empty() && progression01.empty() || progression02.empty())
+            if(!progression03.empty() && (progression01.empty() || progression02.empty()))
                 return false;
 
             if(!progression02.empty() && progression01.empty())
@@ -281,7 +281,7 @@ namespace gameanalytics
                     out.category = http::EGASdkErrorCategory::EventValidation;
                     out.area = http::EGASdkErrorArea::ProgressionEvent;
                     out.action = http::EGASdkErrorAction::InvalidEventPartLength;
-                    out.parameter = (int)http::EGASdkErrorParameter::Progression01 + progressionLvl;
+                    out.parameter = http::EGASdkErrorParameter((int)http::EGASdkErrorParameter::Progression01 + progressionLvl);
                     out.reason = progression;
                     return false;
             }
@@ -292,7 +292,7 @@ namespace gameanalytics
                     out.category = http::EGASdkErrorCategory::EventValidation;
                     out.area = http::EGASdkErrorArea::ProgressionEvent;
                     out.action = http::EGASdkErrorAction::InvalidEventPartCharacters;
-                    out.parameter = (int)http::EGASdkErrorParameter::Progression01 + progressionLvl;
+                    out.parameter = http::EGASdkErrorParameter((int)http::EGASdkErrorParameter::Progression01 + progressionLvl);
                     out.reason = progression;
                     return false;
             }
@@ -374,7 +374,7 @@ namespace gameanalytics
 
         void GAValidator::validateErrorEvent(EGAErrorSeverity severity, std::string const& message, ValidationResult& out)
         {
-            const std::string errorSeverityString = events::GAEvents::errorSeverityString(severity, errorSeverityString);
+            const std::string errorSeverityString = events::GAEvents::errorSeverityString(severity);
             if (errorSeverityString.empty())
             {
                 logging::GALogger::w("Validation fail - error event - severity: Severity was unsupported value.");
@@ -388,7 +388,7 @@ namespace gameanalytics
 
             if (!GAValidator::validateLongString(message, true))
             {
-                logging::GALogger::w("Validation fail - error event - message: Message cannot be above 8192 characters. message=%s", message);
+                logging::GALogger::w("Validation fail - error event - message: Message cannot be above 8192 characters. message=%s", message.c_str());
                 out.category = http::EGASdkErrorCategory::EventValidation;
                 out.area = http::EGASdkErrorArea::ErrorEvent;
                 out.action = http::EGASdkErrorAction::InvalidLongString;
@@ -403,25 +403,25 @@ namespace gameanalytics
         {
             if(!validateKeys(gameKey, gameSecret))
             {
-                 logging::GALogger::w("validateSdkErrorEvent failed. Game key or secret key is invalid. Can only contain characters A-z 0-9, gameKey is 32 length, gameSecret is 40 length. Failed keys - gameKey: %s, secretKey: %s", gameKey, gameSecret);
+                 logging::GALogger::w("validateSdkErrorEvent failed. Game key or secret key is invalid. Can only contain characters A-z 0-9, gameKey is 32 length, gameSecret is 40 length. Failed keys - gameKey: %s, secretKey: %s", gameKey.c_str(), gameSecret.c_str());
                 return false;
             }
 
-            const std::string categoryString = http::GAHTTPApi::sdkErrorCategoryString(category, categoryString);
+            const std::string categoryString = http::GAHTTPApi::sdkErrorCategoryString(category);
             if (categoryString.empty())
             {
                 logging::GALogger::w("Validation fail - sdk error event - category: Category was unsupported value.");
                 return false;
             }
 
-            const std::string areaString = http::GAHTTPApi::sdkErrorAreaString(area, areaString);
+            const std::string areaString = http::GAHTTPApi::sdkErrorAreaString(area);
             if (areaString.empty())
             {
                 logging::GALogger::w("Validation fail - sdk error event - area: Area was unsupported value.");
                 return false;
             }
 
-            std::string const actionString = http::GAHTTPApi::sdkErrorActionString(action, actionString);
+            std::string const actionString = http::GAHTTPApi::sdkErrorActionString(action);
             if (actionString.empty())
             {
                 logging::GALogger::w("Validation fail - sdk error event - action: Action was unsupported value.");
@@ -608,7 +608,7 @@ namespace gameanalytics
             {
                 if (!utilities::GAUtilities::stringMatch(resourceCurrency, "^[A-Za-z]+$"))
                 {
-                    logging::GALogger::w("resource currencies validation failed: a resource currency can only be A-Z, a-z. String was: %s", resourceCurrency.array);
+                    logging::GALogger::w("resource currencies validation failed: a resource currency can only be A-Z, a-z. String was: %s", resourceCurrency.c_str());
                     return false;
                 }
             }

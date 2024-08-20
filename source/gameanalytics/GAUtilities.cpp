@@ -30,6 +30,26 @@ namespace gameanalytics
 {
     namespace utilities
     {
+        std::string printArray(StringVector const& v, std::string const& delim)
+        {
+            if(v.empty())
+                return "";
+
+            if(v.size() == 1)
+                return v.front();
+
+            std::string s;
+            for(size_t i = 0; i < (v.size() - 1); ++i)
+            {
+                s += v[i];
+                s += delim;
+            }
+
+            s += v.back();
+
+            return s;
+        }
+
         // Compress a STL string using zlib with given compression level and return the binary data.
         // Note: the zlib header is supressed
         static std::vector<char> deflate_string(const char* str, int compressionlevel = Z_BEST_COMPRESSION)
@@ -201,12 +221,12 @@ namespace gameanalytics
         }
 
         // gzip compresses a string
-        static std::vector<char> compress_string_gzip(const char* str, int compressionlevel = Z_BEST_COMPRESSION)
+        static std::vector<uint8> compress_string_gzip(const char* str, int compressionlevel = Z_BEST_COMPRESSION)
         {
             // https://tools.ietf.org/html/rfc1952
             std::vector<char> deflated = deflate_string(str, compressionlevel);
 
-            static const char gzip_header[10] =
+            constexpr char gzip_header[10] =
             { '\037', '\213', Z_DEFLATED, 0,
                 0, 0, 0, 0, /* mtime */
                 0, 0x03 /* Unix OS_CODE */
@@ -219,7 +239,9 @@ namespace gameanalytics
             size_t totalSize = sizeof(gzip_header);
             totalSize += deflated.size();
             totalSize += 8;
-            char* resultArray = new char[totalSize];
+
+            std::unique_ptr<char[]> resultArray = std::make_unique<char[]>(totalSize);
+            
             size_t current = 0;
             for(size_t i = 0; i < sizeof(gzip_header); ++i)
             {
@@ -231,17 +253,16 @@ namespace gameanalytics
                 resultArray[i + current] = deflated[i];
             }
             current += deflated.size();
-            strncpy(resultArray + current, (const char*)&crc, 4);
+            strncpy(resultArray.get() + current, (const char*)&crc, 4);
             current += 4;
-            strncpy(resultArray + current, (const char*)&size, 4);
+            strncpy(resultArray.get() + current, (const char*)&size, 4);
 
-            std::vector<char> result;
+            std::vector<uint8_t> result;
 
             for(size_t i = 0; i < totalSize; ++i)
             {
                 result.push_back(resultArray[i]);
             }
-            delete[] resultArray;
 
             return result;
         }
@@ -275,7 +296,7 @@ namespace gameanalytics
         }
 
         // TODO(nikolaj): explain function
-        void GAUtilities::hmacWithKey(const char* key, const std::vector<char>& data, std::vector<uint8_t>& out)
+        void GAUtilities::hmacWithKey(const char* key, const std::vector<uint8_t>& data, std::vector<uint8_t>& out)
         {
 #if USE_UWP
             using namespace Platform;
@@ -323,7 +344,7 @@ namespace gameanalytics
             }
             catch (const std::regex_error& e)
             {
-                logging::GALogger::e("failed to parse regular expression '%s', code: %d, what: %s", pattern, e.code(), e.what());
+                logging::GALogger::e("failed to parse regular expression '%s', code: %d, what: %s", pattern.c_str(), e.code(), e.what());
 
                 #if _DEBUG
                     throw;
@@ -333,7 +354,7 @@ namespace gameanalytics
             }
         }
 
-        std::vector<char> GAUtilities::gzipCompress(const char* data)
+        std::vector<uint8_t> GAUtilities::gzipCompress(const char* data)
         {
             return compress_string_gzip(data);
         }

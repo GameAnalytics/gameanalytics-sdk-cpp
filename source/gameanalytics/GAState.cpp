@@ -70,32 +70,32 @@ namespace gameanalytics
 
         int GAState::getSessionNum()
         {
-            getInstance()._sessionNum;
+            return getInstance()._sessionNum;
         }
 
         int GAState::getTransactionNum()
         {
-            getInstance()._transactionNum;
+            return getInstance()._transactionNum;
         }
 
         std::string GAState::getSessionId()
         {
-            getInstance()._sessionId;
+            return getInstance()._sessionId;
         }
 
         std::string GAState::getCurrentCustomDimension01()
         {
-            getInstance()._currentCustomDimension01;
+            return getInstance()._currentCustomDimension01;
         }
 
         std::string GAState::getCurrentCustomDimension02()
         {
-            getInstance()._currentCustomDimension02;
+            return getInstance()._currentCustomDimension02;
         }
 
         std::string GAState::getCurrentCustomDimension03()
         {
-            getInstance()._currentCustomDimension03;
+            return getInstance()._currentCustomDimension03;
         }
 
         void GAState::getGlobalCustomEventFields(json& out)
@@ -115,7 +115,7 @@ namespace gameanalytics
             // validate current dimension values
             getInstance().validateAndFixCurrentDimensions();
 
-            utilities::GAUtilities::printJoinStringArray(availableCustomDimensions, "Set available custom01 dimension values: (%s)");
+            logging::GALogger::i("Set available custom01 dimension values: (%s)", utilities::printArray(availableCustomDimensions).c_str());
         }
 
         void GAState::setAvailableCustomDimensions02(const StringVector& availableCustomDimensions)
@@ -130,7 +130,7 @@ namespace gameanalytics
             // validate current dimension values
             getInstance().validateAndFixCurrentDimensions();
 
-            utilities::GAUtilities::printJoinStringArray(availableCustomDimensions, "Set available custom02 dimension values: (%s)");
+            logging::GALogger::i("Set available custom02 dimension values: (%s)", utilities::printArray(availableCustomDimensions).c_str());
         }
 
         void GAState::setAvailableCustomDimensions03(const StringVector& availableCustomDimensions)
@@ -145,7 +145,7 @@ namespace gameanalytics
             // validate current dimension values
             getInstance().validateAndFixCurrentDimensions();
 
-            utilities::GAUtilities::printJoinStringArray(availableCustomDimensions, "Set available custom03 dimension values: (%s)");
+            logging::GALogger::i("Set available custom03 dimension values: (%s)", utilities::printArray(availableCustomDimensions).c_str());
         }
 
         void GAState::setAvailableResourceCurrencies(const StringVector& availableResourceCurrencies)
@@ -156,7 +156,7 @@ namespace gameanalytics
             }
             getInstance()._availableResourceCurrencies = availableResourceCurrencies;
 
-            utilities::GAUtilities::printJoinStringArray(availableResourceCurrencies, "Set available resource currencies: (%s)");
+            logging::GALogger::i("Set available resource currencies: (%s)", utilities::printArray(availableResourceCurrencies).c_str());
         }
 
         void GAState::setAvailableResourceItemTypes(const StringVector& availableResourceItemTypes)
@@ -167,7 +167,7 @@ namespace gameanalytics
             }
             getInstance()._availableResourceItemTypes = availableResourceItemTypes;
 
-            utilities::GAUtilities::printJoinStringArray(availableResourceItemTypes, "Set available resource item types: (%s)");
+            logging::GALogger::i("Set available resource item types: (%s)", utilities::printArray(availableResourceItemTypes).c_str());
         }
 
         void GAState::setBuild(std::string const& build)
@@ -390,7 +390,10 @@ namespace gameanalytics
                 out["user_id"] = getInstance().getIdentifier();
 
                 // remote configs configurations
-                out["configurations"] = getInstance()._configurations;
+                if(getInstance()._configurations.is_object() && !getInstance()._configurations.empty())
+                {
+                    out["configurations"] = getInstance()._configurations;
+                }
 
                 out["sdk_version"] = device::GADevice::getRelevantSdkVersion();
                 out["client_ts"] = utilities::getTimestamp();
@@ -471,20 +474,27 @@ namespace gameanalytics
             }
             catch (std::exception& e)
             {
-                logging::GALogger::e(e.what());
+                logging::GALogger::e("Exception thrown: %s", e.what());
             }
         }
 
         void GAState::cacheIdentifier()
         {
-            if(_userId.empty())
+            if(!_userId.empty())
             {
-                _userId = device::GADevice::getAdvertisingId();
+                _identifier = _userId;
             }
-
-            if (_userId.empty())
+            else if(!device::GADevice::getAdvertisingId().empty())
             {
-                _userId = device::GADevice::getDeviceId();
+                _identifier = device::GADevice::getAdvertisingId();
+            }
+            else if (!device::GADevice::getDeviceId().empty())
+            {
+                _identifier = device::GADevice::getDeviceId();
+            }
+            else
+            {
+                _identifier = _defaultUserId;
             }
 
             logging::GALogger::d("identifier, {clean:%s}", _identifier.c_str());
@@ -514,16 +524,6 @@ namespace gameanalytics
                 std::stoll(dict[key].get<std::string>()) : defaultVal;
         }
 
-        std::string getOptionalString(json& dict, std::string const& key)
-        {
-            if (dict.contains(key) && dict[key].is_string())
-            {
-                return dict[key].get<std::string>();
-            }
-
-            return "";
-        }
-
         void GAState::ensurePersistedStates()
         {
             try
@@ -540,13 +540,13 @@ namespace gameanalytics
                     {
                         if (it->contains("key") && it->contains("value"))
                         {
-                            state_dict[it.key()] = it.value();
+                            state_dict[(*it)["key"].get<std::string>()] = (*it)["value"];
                         }
                     }
                 }
 
                 // insert into GAState instance
-                std::string defaultId = state_dict.contains("default_user_id") ? state_dict["default_user_id"].get<std::string>() : "";
+                std::string defaultId = utilities::getOptionalValue<std::string>(state_dict, "default_user_id");
                 if (defaultId.empty())
                 {
                     const std::string id = utilities::GAUtilities::generateUUID();
@@ -614,7 +614,9 @@ namespace gameanalytics
                         if (node.contains("progression") && node.contains("tries"))
                         {
                             std::string name = node["progression"].get<std::string>();
-                            _progressionTries.addOrUpdate(name, utilities::getNumberFromCache(node["tries"]));
+
+                            int tries = utilities::getOptionalValue<int>(node, "tries", 0);
+                            _progressionTries.addOrUpdate(name, tries);
                         }
                     }
                 }
@@ -639,14 +641,10 @@ namespace gameanalytics
                 GAState::validateAndFixCurrentDimensions();
 
                 // call the init call
-                http::GAHTTPApi* httpApi = http::GAHTTPApi::getInstance();
-                if (!httpApi)
-                {
-                    return;
-                }
+                http::GAHTTPApi& httpApi = http::GAHTTPApi::getInstance();
 
                 json initResponseDict;
-                http::EGAHTTPApiResponse initResponse = httpApi->requestInitReturningDict(initResponseDict, _configsHash);
+                http::EGAHTTPApiResponse initResponse = httpApi.requestInitReturningDict(initResponseDict, _configsHash);
 
                 // init is ok
                 if ((initResponse == http::Ok || initResponse == http::Created) && !initResponseDict.empty())
@@ -685,9 +683,9 @@ namespace gameanalytics
                         }
                     }
 
-                    _configsHash = getOptionalString(initResponseDict, "configs_hash");
-                    _abId        = getOptionalString(initResponseDict, "ab_id");
-                    _abVariantId = getOptionalString(initResponseDict, "ab_variant_id");
+                    _configsHash = utilities::getOptionalValue<std::string>(initResponseDict, "configs_hash");
+                    _abId        = utilities::getOptionalValue<std::string>(initResponseDict, "ab_id");
+                    _abVariantId = utilities::getOptionalValue<std::string>(initResponseDict, "ab_variant_id");
 
                     // insert new config in sql lite cross session storage
                     store::GAStore::setState("sdk_config_cached", initResponseDict.dump());
@@ -752,7 +750,7 @@ namespace gameanalytics
                     {
                         _enabled = false;
                     }
-                    else if (_initAuthorized)
+                    else if (!_initAuthorized)
                     {
                         _enabled = false;
                     }
@@ -1065,7 +1063,7 @@ namespace gameanalytics
 
         bool GAState::isEventSubmissionEnabled()
         {
-            getInstance()._enableEventSubmission;
+            return getInstance()._enableEventSubmission;
         }
 
         void GAState::setConfigsHash(std::string const& configsHash)
@@ -1085,7 +1083,7 @@ namespace gameanalytics
 
         std::string GAState::getAbId()
         {
-            getInstance()._abId;
+            return getInstance()._abId;
         }
 
         std::string GAState::getAbVariantId()
