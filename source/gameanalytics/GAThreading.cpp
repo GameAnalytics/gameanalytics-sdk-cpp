@@ -15,161 +15,117 @@ namespace gameanalytics
 {
     namespace threading
     {
-        // static members
-        std::atomic<bool> GAThreading::_endThread(false);
-        std::atomic_llong GAThreading::_threadDeadline(GAThreading::getTimeInNs());
-        std::unique_ptr<GAThreading::State> GAThreading::state(new GAThreading::State());
+        using namespace std::chrono_literals;
 
-        void GAThreading::scheduleTimer(double interval, const Block& callback)
+        constexpr std::chrono::milliseconds THREAD_TASK_FREQUENCY = 100ms;
+
+        GAThreading& GAThreading::getInstance()
         {
-            if(_endThread)
-            {
-                return;
-            }
-            std::lock_guard<std::mutex> lock(state->mutex);
+            static GAThreading instance;
+            return instance;
+        }
 
-            if(state->hasScheduledBlockRun)
-            {
-                state->scheduledBlock = { callback, std::chrono::steady_clock::now() + std::chrono::milliseconds(static_cast<int>(1000 * interval)) };
-                state->hasScheduledBlockRun = false;
-                GAThreading::_threadDeadline = GAThreading::getTimeInNs(interval + 2.0);
-                if(state->isThreadFinished())
-                {
-                    state->setThread(GAThreading::thread_routine, GAThreading::_endThread, GAThreading::_threadDeadline);
+        GAThreading::GAThreading()
+        {
+            _thread = std::thread(
+                [this]()
+                { 
+                    work();
                 }
+            );
+        }
+
+        GAThreading::~GAThreading()
+        {
+            _thread.join();
+        }
+
+        void GAThreading::queueBlock(Block&& b)
+        {
+            std::unique_lock<std::mutex> guard(_mutex);
+            _blocks.push(std::forward<Block>(b));
+        }
+
+        GAThreading::Block GAThreading::getNextBlock()
+        {
+            std::unique_lock<std::mutex> guard(_mutex);
+            Block b = _blocks.front();
+            _blocks.pop();
+            return b;
+        }
+
+        void GAThreading::updateTasks()
+        {
+            std::unique_lock<std::mutex> guard(_taskMutex);
+            for(auto& task : _tasks)
+            {   
+                task.tick();
             }
         }
 
-        void GAThreading::performTaskOnGAThread(const Block& taskBlock)
+        void GAThreading::work()
         {
-            if(_endThread)
+            using namespace std::chrono_literals;
+
+            while(!_endThread)
             {
-                return;
+                while(!_blocks.empty())
+                {
+                    Block b = getNextBlock();
+                    std::invoke(b);
+                }
+
+                updateTasks();
+
+                std::this_thread::sleep_for(THREAD_TASK_FREQUENCY);
             }
-            std::lock_guard<std::mutex> lock(state->mutex);
-            state->blocks.push_back({ taskBlock, std::chrono::steady_clock::now()} );
-            std::push_heap(state->blocks.begin(), state->blocks.end());
-            GAThreading::_threadDeadline = GAThreading::getTimeInNs(10.0);
-            if(state->isThreadFinished())
-            {
-                state->setThread(GAThreading::thread_routine, GAThreading::_endThread, GAThreading::_threadDeadline);
-            }
+        }
+
+        void GAThreading::performTaskOnGAThread(Block b)
+        {
+            getInstance().queueBlock(std::move(b));
         }
 
         void GAThreading::endThread()
         {
-            _endThread = true;
+            getInstance()._endThread = true;
         }
 
         bool GAThreading::isThreadFinished()
         {
-            return state->isThreadFinished();
+            return getInstance()._endThread;
         }
 
-        bool GAThreading::isThreadEnding()
+        GAThreading::ScheduledTask::ScheduledTask(std::chrono::milliseconds freq, Block&& task):
+            task(std::forward<Block>(task)),
+            frequency(freq)
         {
-            return _endThread;
+            _lastCall = std::chrono::high_resolution_clock::now();
         }
 
-        bool GAThreading::getNextBlock(TimedBlock& timedBlock)
+        void GAThreading::scheduleTask(std::chrono::milliseconds freq, Block&& task)
         {
-            std::lock_guard<std::mutex> lock(state->mutex);
+            std::unique_lock<std::mutex> guard(_taskMutex);
+            _tasks.push_back(ScheduledTask(freq, std::forward<Block>(task)));
+        }
 
-            if((!state->blocks.empty() && state->blocks.front().deadline <= std::chrono::steady_clock::now()))
+        void GAThreading::scheduleTimer(std::chrono::milliseconds freq, Block task)
+        {
+            return getInstance().scheduleTask(freq, std::move(task));
+        }
+
+        bool GAThreading::ScheduledTask::tick()
+        {
+            auto now = std::chrono::high_resolution_clock::now();
+            if(now - _lastCall > frequency)
             {
-                timedBlock = state->blocks.front();
-                std::pop_heap(state->blocks.begin(), state->blocks.end());
-                state->blocks.pop_back();
+                _lastCall = now;
+                std::invoke(task);
                 return true;
             }
 
             return false;
         }
 
-        bool GAThreading::getScheduledBlock(TimedBlock& timedBlock)
-        {
-            std::lock_guard<std::mutex> lock(state->mutex);
-
-            if(!state->hasScheduledBlockRun && state->scheduledBlock.deadline <= std::chrono::steady_clock::now())
-            {
-                state->hasScheduledBlockRun = true;
-                timedBlock = state->scheduledBlock;
-                return true;
-            }
-
-            return false;
-        }
-
-        long long GAThreading::getTimeInNs()
-        {
-            return GAThreading::getTimeInNs(0);
-        }
-
-        long long GAThreading::getTimeInNs(double delay)
-        {
-            return std::chrono::duration_cast<std::chrono::nanoseconds>((std::chrono::steady_clock::now() + std::chrono::milliseconds(static_cast<int>(1000 * delay))).time_since_epoch()).count();
-        }
-
-        void GAThreading::runBlocks()
-        {
-            if(!state)
-            {
-                return;
-            }
-
-            TimedBlock timedBlock;
-
-            while (getNextBlock(timedBlock))
-            {
-                assert(timedBlock.block);
-                assert(timedBlock.deadline <= std::chrono::steady_clock::now());
-                timedBlock.block();
-                // clear the block, so that the assert works
-                timedBlock.block = {};
-            }
-
-            if(getScheduledBlock(timedBlock))
-            {
-                assert(timedBlock.block);
-                assert(timedBlock.deadline <= std::chrono::steady_clock::now());
-                timedBlock.block();
-                // clear the block, so that the assert works
-                timedBlock.block = {};
-            }
-        }
-
-        void GAThreading::thread_routine(std::atomic<bool>& endThread, std::atomic_llong& threadDeadline)
-        {
-            logging::GALogger::d("thread_routine start");
-
-            try
-            {
-                while (!endThread && threadDeadline >= GAThreading::getTimeInNs())
-                {
-                    if(!state)
-                    {
-                        break;
-                    }
-                    runBlocks();
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
-                }
-
-                // run any last blocks added
-                runBlocks();
-
-                if(!endThread)
-                {
-                    logging::GALogger::d("thread_routine stopped");
-                }
-            }
-            catch(const std::exception& e)
-            {
-                if(!endThread)
-                {
-                    logging::GALogger::e("Error on GA thread");
-                    logging::GALogger::e(e.what());
-                }
-            }
-        }
     }
 }
