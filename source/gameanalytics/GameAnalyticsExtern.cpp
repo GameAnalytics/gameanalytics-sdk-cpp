@@ -1,8 +1,48 @@
-#if USE_TIZEN || GA_SHARED_LIB
+#if GA_SHARED_LIB
 
 #include "GameAnalytics.h"
 #include "GAUtilities.h"
 #include <vector>
+
+void ga_string_alloc(GAString* s, int size)
+{
+    if(s)
+    {
+        s->str = (const char*)std::malloc(size);
+        if(s->str)
+        {
+            s->size = size;
+        }
+    }
+}
+
+void ga_string_free(GAString* s)
+{
+    if(s)
+    {
+        if(s->str && s->size)
+        {
+            std::free(s->str);
+            s->str = NULL;
+            s->size = 0;
+        }
+    }
+}
+
+GAString ga_string_fromString(std::string const& s)
+{
+    GAString gaStr = {};
+    const unsigned int len = s.length() + 1;
+    ga_string_alloc(&gaStr, len);
+
+    if(gaStr->str && gaStr->size)
+    {
+        std::memcpy(gaStr, s.data(), s.length());
+        gaStr[len - 1] = '\0';
+    }
+
+    return gaStr;
+}
 
 void configureAvailableResourceCurrencies(const char *resourceCurrenciesJson)
 {
@@ -53,6 +93,11 @@ void configureUserId(const char *uId)
     gameanalytics::GameAnalytics::configureUserId(uId);
 }
 
+void configureExternalUserId(const char* extId)
+{
+    gameanalytics::GameAnalytics::configureExternalUserId(extId);
+}
+
 // initialize - starting SDK (need configuration before starting)
 void initialize(const char *gameKey, const char *gameSecret)
 {
@@ -65,33 +110,10 @@ void addBusinessEvent(const char *currency, double amount, const char *itemType,
     gameanalytics::GameAnalytics::addBusinessEvent(currency, (int)amount, itemType, itemId, cartType, fields, mergeFields != 0.0);
 }
 
-void addBusinessEventJson(const char *jsonArgs)
-{
-    rapidjson::Document json;
-    json.Parse(jsonArgs);
-
-    if(json.IsArray() && json.Size() == 5)
-    {
-        gameanalytics::GameAnalytics::addBusinessEvent(json[0].GetString(), (int)(json[1].GetDouble()), json[2].GetString(), json[3].GetString(), json[4].GetString(), json[5].GetString());
-    }
-}
-
 void addResourceEvent(double flowType, const char *currency, double amount, const char *itemType, const char *itemId, const char *fields, double mergeFields)
 {
     int flowTypeInt = (int)flowType;
     gameanalytics::GameAnalytics::addResourceEvent((gameanalytics::EGAResourceFlowType)flowTypeInt, currency, (float)amount, itemType, itemId, fields, mergeFields != 0.0);
-}
-
-void addResourceEventJson(const char *jsonArgs)
-{
-    rapidjson::Document json;
-    json.Parse(jsonArgs);
-
-    if(json.IsArray() && json.Size() == 5)
-    {
-        int flowTypeInt = (int)(json[0].GetDouble());
-        gameanalytics::GameAnalytics::addResourceEvent((gameanalytics::EGAResourceFlowType)flowTypeInt, json[1].GetString(), (float)(json[2].GetDouble()), json[3].GetString(), json[4].GetString(), json[5].GetString());
-    }
 }
 
 void addProgressionEvent(double progressionStatus, const char *progression01, const char *progression02, const char *progression03, const char *fields, double mergeFields)
@@ -100,34 +122,10 @@ void addProgressionEvent(double progressionStatus, const char *progression01, co
     gameanalytics::GameAnalytics::addProgressionEvent((gameanalytics::EGAProgressionStatus)progressionStatusInt, progression01, progression02, progression03, fields, mergeFields != 0.0);
 }
 
-void addProgressionEventJson(const char *jsonArgs)
-{
-    rapidjson::Document json;
-    json.Parse(jsonArgs);
-
-    if(json.IsArray() && json.Size() == 4)
-    {
-        int progressionStatusInt = (int)(json[0].GetDouble());
-        gameanalytics::GameAnalytics::addProgressionEvent((gameanalytics::EGAProgressionStatus)progressionStatusInt, json[1].GetString(), json[2].GetString(), json[3].GetString(), json[4].GetString());
-    }
-}
-
 void addProgressionEventWithScore(double progressionStatus, const char *progression01, const char *progression02, const char *progression03, double score, const char *fields, double mergeFields)
 {
     int progressionStatusInt = (int)progressionStatus;
     gameanalytics::GameAnalytics::addProgressionEvent((gameanalytics::EGAProgressionStatus)progressionStatusInt, progression01, progression02, progression03, (int)score, fields, mergeFields != 0.0);
-}
-
-void addProgressionEventWithScoreJson(const char *jsonArgs)
-{
-    rapidjson::Document json;
-    json.Parse(jsonArgs);
-
-    if(json.IsArray() && json.Size() == 5)
-    {
-        int progressionStatusInt = (int)(json[0].GetDouble());
-        gameanalytics::GameAnalytics::addProgressionEvent((gameanalytics::EGAProgressionStatus)progressionStatusInt, json[1].GetString(), json[2].GetString(), json[3].GetString(), (int)(json[4].GetDouble()), json[5].GetString());
-    }
 }
 
 void addDesignEvent(const char *eventId, const char *fields, double mergeFields)
@@ -221,20 +219,16 @@ void onQuit()
     gameanalytics::GameAnalytics::onQuit();
 }
 
-const char* getRemoteConfigsValueAsString(const char *key)
+GAString getRemoteConfigsValueAsString(const char *key)
 {
     std::string returnValue = gameanalytics::GameAnalytics::getRemoteConfigsValueAsString(key);
-    char* result = new char[returnValue.size()];
-    snprintf(result, returnValue.size(), "%s", returnValue.data());
-    return result;
+    return ga_string_fromString(returnValue);
 }
 
-const char* getRemoteConfigsValueAsStringWithDefaultValue(const char *key, const char *defaultValue)
+GAString getRemoteConfigsValueAsStringWithDefaultValue(const char *key, const char *defaultValue)
 {
     std::string returnValue = gameanalytics::GameAnalytics::getRemoteConfigsValueAsString(key, defaultValue);
-    char* result = new char[returnValue.size()];
-    snprintf(result, returnValue.size(), "%s", returnValue.data());
-    return result;
+    return ga_string_fromString(returnValue);
 }
 
 double isRemoteConfigsReady()
@@ -242,182 +236,22 @@ double isRemoteConfigsReady()
     return gameanalytics::GameAnalytics::isRemoteConfigsReady() ? 1 : 0;
 }
 
-const char* getRemoteConfigsContentAsString()
+GAString getRemoteConfigsContentAsString()
 {
     std::string returnValue = gameanalytics::GameAnalytics::getRemoteConfigsContentAsString();
-    char* result = new char[returnValue.size()];
-    snprintf(result, returnValue.size(), "%s", returnValue.data());
-    return result;
+    return ga_string_fromString(returnValue);
 }
 
-const char* getABTestingId()
+GAString getABTestingId()
 {
     std::string returnValue = gameanalytics::GameAnalytics::getABTestingId();
-    char* result = new char[returnValue.size()];
-    snprintf(result, returnValue.size(), "%s", returnValue.data());
-    return result;
+    return ga_string_fromString(returnValue);
 }
 
-const char* getABTestingVariantId()
+GAString getABTestingVariantId()
 {
     std::string returnValue = gameanalytics::GameAnalytics::getABTestingVariantId();
-    char* result = new char[returnValue.size()];
-    snprintf(result, returnValue.size(), "%s", returnValue.data());
-    return result;
+    return ga_string_fromString(returnValue);
 }
-
-#if USE_UWP
-void configureAvailableCustomDimensions01UWP(const wchar_t *customDimensionsJson)
-{
-    gameanalytics::GameAnalytics::configureAvailableCustomDimensions01(gameanalytics::utilities::GAUtilities::ws2s(customDimensionsJson).c_str());
-}
-
-void configureAvailableCustomDimensions02UWP(const wchar_t *customDimensionsJson)
-{
-    gameanalytics::GameAnalytics::configureAvailableCustomDimensions02(gameanalytics::utilities::GAUtilities::ws2s(customDimensionsJson).c_str());
-}
-
-void configureAvailableCustomDimensions03UWP(const wchar_t *customDimensionsJson)
-{
-    gameanalytics::GameAnalytics::configureAvailableCustomDimensions03(gameanalytics::utilities::GAUtilities::ws2s(customDimensionsJson).c_str());
-}
-
-void configureAvailableResourceCurrenciesUWP(const wchar_t *resourceCurrenciesJson)
-{
-    gameanalytics::GameAnalytics::configureAvailableResourceCurrencies(gameanalytics::utilities::GAUtilities::ws2s(resourceCurrenciesJson).c_str());
-}
-
-void configureAvailableResourceItemTypesUWP(const wchar_t *resourceItemTypesJson)
-{
-    gameanalytics::GameAnalytics::configureAvailableResourceItemTypes(gameanalytics::utilities::GAUtilities::ws2s(resourceItemTypesJson).c_str());
-}
-
-void configureBuildUWP(const wchar_t *build)
-{
-    gameanalytics::GameAnalytics::configureBuild(build);
-}
-
-void configureWritablePathUWP(const wchar_t *writablePath)
-{
-    gameanalytics::GameAnalytics::configureWritablePath(writablePath);
-}
-
-void configureDeviceModelUWP(const wchar_t *deviceModel)
-{
-    gameanalytics::GameAnalytics::configureDeviceModel(deviceModel);
-}
-
-void configureDeviceManufacturerUWP(const wchar_t *deviceManufacturer)
-{
-    gameanalytics::GameAnalytics::configureDeviceManufacturer(deviceManufacturer);
-}
-
-void configureSdkGameEngineVersionUWP(const wchar_t *sdkGameEngineVersion)
-{
-    gameanalytics::GameAnalytics::configureSdkGameEngineVersion(sdkGameEngineVersion);
-}
-
-void configureGameEngineVersionUWP(const wchar_t *engineVersion)
-{
-    gameanalytics::GameAnalytics::configureGameEngineVersion(engineVersion);
-}
-
-void configureUserIdUWP(const wchar_t *uId)
-{
-    gameanalytics::GameAnalytics::configureUserId(uId);
-}
-
-void initializeUWP(const wchar_t *gameKey, const wchar_t *gameSecret)
-{
-    gameanalytics::GameAnalytics::initialize(gameKey, gameSecret);
-}
-
-void setCustomDimension01UWP(const wchar_t *dimension01)
-{
-    gameanalytics::GameAnalytics::setCustomDimension01(dimension01);
-}
-
-void setCustomDimension02UWP(const wchar_t *dimension02)
-{
-    gameanalytics::GameAnalytics::setCustomDimension02(dimension02);
-}
-
-void setCustomDimension03UWP(const wchar_t *dimension03)
-{
-    gameanalytics::GameAnalytics::setCustomDimension03(dimension03);
-}
-
-void setGlobalCustomEventFieldsUWP(const wchar_t *customFields)
-{
-    gameanalytics::GameAnalytics::setGlobalCustomEventFields(customFields);
-}
-
-void addBusinessEventUWP(const wchar_t *currency, double amount, const wchar_t *itemType, const wchar_t *itemId, const wchar_t *cartType, const wchar_t *fields, double mergeFields)
-{
-    gameanalytics::GameAnalytics::addBusinessEvent(currency, (int)amount, itemType, itemId, cartType, fields, mergeFields != 0.0);
-}
-
-void addResourceEventUWP(double flowType, const wchar_t *currency, double amount, const wchar_t *itemType, const wchar_t *itemId, const wchar_t *fields, double mergeFields)
-{
-    int flowTypeInt = (int)flowType;
-    gameanalytics::GameAnalytics::addResourceEvent((gameanalytics::EGAResourceFlowType)flowTypeInt, currency, (float)amount, itemType, itemId, fields, mergeFields != 0.0);
-}
-
-void addProgressionEventUWP(double progressionStatus, const wchar_t *progression01, const wchar_t *progression02, const wchar_t *progression03, const wchar_t *fields, double mergeFields)
-{
-    int progressionStatusInt = (int)progressionStatus;
-    gameanalytics::GameAnalytics::addProgressionEvent((gameanalytics::EGAProgressionStatus)progressionStatusInt, progression01, progression02, progression03, fields, mergeFields != 0.0);
-}
-
-void addProgressionEventWithScoreUWP(double progressionStatus, const wchar_t *progression01, const wchar_t *progression02, const wchar_t *progression03, double score, const wchar_t *fields, double mergeFields)
-{
-    int progressionStatusInt = (int)progressionStatus;
-    gameanalytics::GameAnalytics::addProgressionEvent((gameanalytics::EGAProgressionStatus)progressionStatusInt, progression01, progression02, progression03, (int)score, fields, mergeFields != 0.0);
-}
-
-void addDesignEventUWP(const wchar_t *eventId, const wchar_t *fields, double mergeFields)
-{
-    gameanalytics::GameAnalytics::addDesignEvent(eventId, fields, mergeFields != 0.0);
-}
-
-void addDesignEventWithValueUWP(const wchar_t *eventId, double value, const wchar_t *fields, double mergeFields)
-{
-    gameanalytics::GameAnalytics::addDesignEvent(eventId, value, fields, mergeFields != 0.0);
-}
-
-void addErrorEventUWP(double severity, const wchar_t *message, const wchar_t *fields, double mergeFields)
-{
-    int severityInt = (int)severity;
-    gameanalytics::GameAnalytics::addErrorEvent((gameanalytics::EGAErrorSeverity)severityInt, message, fields, mergeFields != 0.0);
-}
-
-void getRemoteConfigsValueAsStringWithDefaultValueUWP(const wchar_t *key, const wchar_t *defaultValue, wchar_t *out)
-{
-    std::string returnValue = gameanalytics::GameAnalytics::getRemoteConfigsValueAsString(gameanalytics::utilities::GAUtilities::ws2s(key).c_str(), gameanalytics::utilities::GAUtilities::ws2s(defaultValue).c_str()).data();
-    std::wstring result = gameanalytics::utilities::GAUtilities::s2ws(returnValue);
-    wcscpy_s(out, result.length() + 1, result.c_str());
-}
-
-void getRemoteConfigsContentAsStringUWP(wchar_t *out)
-{
-    std::string returnValue = gameanalytics::GameAnalytics::getRemoteConfigsContentAsString().data();
-    std::wstring result = gameanalytics::utilities::GAUtilities::s2ws(returnValue);
-    wcscpy_s(out, result.length() + 1, result.c_str());
-}
-
-void getABTestingIdUWP(wchar_t *out)
-{
-    std::string returnValue = gameanalytics::GameAnalytics::getABTestingId().data();
-    std::wstring result = gameanalytics::utilities::GAUtilities::s2ws(returnValue);
-    wcscpy_s(out, result.length() + 1, result.c_str());
-}
-
-void getABTestingVariantIdUWP(wchar_t *out)
-{
-    std::string returnValue = gameanalytics::GameAnalytics::getABTestingVariantId().data();
-    std::wstring result = gameanalytics::utilities::GAUtilities::s2ws(returnValue);
-    wcscpy_s(out, result.length() + 1, result.c_str());
-}
-#endif
 
 #endif
