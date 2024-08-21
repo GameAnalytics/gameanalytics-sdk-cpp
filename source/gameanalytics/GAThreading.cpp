@@ -24,6 +24,11 @@ namespace gameanalytics
             static GAThreading instance;
             return instance;
         }
+    
+        void GAThreading::cleanup()
+        {
+            getInstance().flush();
+        }
 
         GAThreading::GAThreading()
         {
@@ -33,11 +38,44 @@ namespace gameanalytics
                     work();
                 }
             );
+            
+            std::atexit(&cleanup);
         }
 
         GAThreading::~GAThreading()
         {
-            _thread.join();
+            flush();
+        }
+    
+        void GAThreading::flush()
+        {
+            if(!_hasJoined)
+            {
+                _endThread = true;
+                _hasJoined = true;
+                _thread.join();
+                
+                // if there are any other tasks queued, flush them
+                runBlocks();
+                updateTasks(true);
+            }
+        }
+
+        void GAThreading::runBlocks()
+        {
+            while(!_blocks.empty())
+            {
+                Block b = getNextBlock();
+
+                try
+                {
+                    std::invoke(b);
+                }
+                catch(const std::exception& e)
+                {
+                    logging::GALogger::e("Failed to run block on ga thread: %s", e.what());
+                }                
+            }
         }
 
         void GAThreading::queueBlock(Block&& b)
@@ -54,27 +92,20 @@ namespace gameanalytics
             return b;
         }
 
-        void GAThreading::updateTasks()
+        void GAThreading::updateTasks(bool force)
         {
             std::unique_lock<std::mutex> guard(_taskMutex);
             for(auto& task : _tasks)
             {   
-                task.tick();
+                task.tick(force);
             }
         }
 
         void GAThreading::work()
         {
-            using namespace std::chrono_literals;
-
             while(!_endThread)
             {
-                while(!_blocks.empty())
-                {
-                    Block b = getNextBlock();
-                    std::invoke(b);
-                }
-
+                runBlocks();
                 updateTasks();
 
                 std::this_thread::sleep_for(THREAD_TASK_FREQUENCY);
@@ -114,13 +145,23 @@ namespace gameanalytics
             return getInstance().scheduleTask(freq, std::move(task));
         }
 
-        bool GAThreading::ScheduledTask::tick()
+        bool GAThreading::ScheduledTask::tick(bool force)
         {
             auto now = std::chrono::high_resolution_clock::now();
-            if(now - _lastCall > frequency)
+            if(((now - _lastCall) >= frequency) || force)
             {
                 _lastCall = now;
-                std::invoke(task);
+                
+                try
+                {
+                    std::invoke(task);
+                }
+                catch(const std::exception& e)
+                {
+                    logging::GALogger::e("Failed to run scheduled task on ga thread: %s", e.what());
+                    return false;
+                }
+
                 return true;
             }
 

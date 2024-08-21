@@ -42,13 +42,14 @@ namespace gameanalytics
                 std::chrono::milliseconds frequency;
 
                 ScheduledTask(std::chrono::milliseconds frequency, Block&& task);
-                bool tick();
+                bool tick(bool force = false);
 
                 private:
                     std::chrono::high_resolution_clock::time_point _lastCall;
             };
 
             static GAThreading& getInstance();
+            static void cleanup();
 
             GAThreading();
             ~GAThreading();
@@ -56,9 +57,12 @@ namespace gameanalytics
             void work();
             void queueBlock(Block&& block);
             void scheduleTask(std::chrono::milliseconds freq, Block&& task);
+            
+            void flush();
 
             Block getNextBlock();
-            void  updateTasks();
+            void  runBlocks();
+            void  updateTasks(bool force = false);
             
             std::vector<ScheduledTask> _tasks;
             std::queue<Block> _blocks;
@@ -66,6 +70,7 @@ namespace gameanalytics
             std::mutex        _mutex;
             std::mutex        _taskMutex;
             std::atomic<bool> _endThread = false;
+            std::atomic<bool> _hasJoined = false;
         };
     }
 }
