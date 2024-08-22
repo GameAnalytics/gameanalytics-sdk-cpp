@@ -78,13 +78,13 @@ namespace gameanalytics
 
         void GAThreading::queueBlock(Block&& b)
         {
-            std::unique_lock<std::mutex> guard(_mutex);
+            std::unique_lock<std::mutex> guard(_blockMutex);
             _blocks.push(std::forward<Block>(b));
         }
 
         GAThreading::Block GAThreading::getNextBlock()
         {
-            std::unique_lock<std::mutex> guard(_mutex);
+            std::unique_lock<std::mutex> guard(_blockMutex);
             Block b = _blocks.front();
             _blocks.pop();
             return b;

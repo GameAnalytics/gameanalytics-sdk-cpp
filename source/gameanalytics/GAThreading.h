@@ -72,7 +72,7 @@ namespace gameanalytics
             std::vector<ScheduledTask> _tasks;
             std::queue<Block> _blocks;
             std::thread       _thread;
-            std::mutex        _mutex;
+            std::mutex        _blockMutex;
             std::mutex        _taskMutex;
             std::atomic<bool> _endThread = false;
             std::atomic<bool> _hasJoined = false;

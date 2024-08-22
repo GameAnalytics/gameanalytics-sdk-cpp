@@ -102,7 +102,7 @@ namespace gameanalytics
         }
 
         std::string printArray(const StringVector& v, std::string const& delimiter = ", ");
-        int64_t getNumberFromCache(json& node, std::string const& key, int64_t defValue);
+        int64_t getNumberFromCache(json& node, std::string const& key, int64_t defValue = 0ll);
 
         struct GAUtilities
         {

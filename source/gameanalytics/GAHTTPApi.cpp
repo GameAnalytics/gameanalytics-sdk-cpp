@@ -43,10 +43,6 @@ namespace gameanalytics
         // Constructor - setup the basic information for HTTP
         GAHTTPApi::GAHTTPApi()
         {
-            static int i = 0;
-            std::cerr << "ctor called: " << i << '\n';
-            ++i;
-            
             curl_global_init(CURL_GLOBAL_DEFAULT);
 
             baseUrl              = protocol + "://" + hostName + "/" + version;
@@ -181,7 +177,7 @@ namespace gameanalytics
                 return JsonEncodeFailed;
             }
 
-            std::string gameKey = state::GAState::getGameKey();
+            const std::string gameKey = state::GAState::getGameKey();
 
             try
             {
@@ -290,7 +286,6 @@ namespace gameanalytics
 
             json jsonObject;
             state::GAState::getSdkErrorEventAnnotations(jsonObject);
-
 
             jsonObject["error_category"] = sdkErrorCategoryString(category);
             jsonObject["error_area"]     = sdkErrorAreaString(area);

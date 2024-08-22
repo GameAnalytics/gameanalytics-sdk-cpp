@@ -443,10 +443,10 @@ namespace gameanalytics
                 constexpr int MAX_FUNCTION_LEN = 256;
                 if(!function.empty())
                 {
-                    eventData["function"] = utilities::trimString(function, MAX_FUNCTION_LEN);
+                    eventData["function_name"] = utilities::trimString(function, MAX_FUNCTION_LEN);
 
                     if(line >= 0)
-                        eventData["line"] = line;
+                        eventData["line_number"] = line;
                 }
 
                 json cleanedFields;
@@ -476,10 +476,7 @@ namespace gameanalytics
         {
             processEvents("", true);
 
-            if (getInstance().keepRunning)
-            {
-            }
-            else
+            if (!getInstance().keepRunning)
             {
                 getInstance().isRunning = false;
             }

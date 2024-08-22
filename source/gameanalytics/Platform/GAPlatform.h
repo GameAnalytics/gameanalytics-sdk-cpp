@@ -21,6 +21,14 @@ namespace gameanalytics
 			virtual void setupUncaughtExceptionHandler();
 
 			virtual std::string getConnectionType() = 0;
+
+			virtual std::string getCpuModel() 			const {return "";};
+			virtual std::string getGpuModel() 			const {return "";}
+			virtual int 		getNumCpuCores() 		const {return 0;}
+			virtual int64_t 	getTotalDeviceMemory() 	const {return 0;}
+
+			virtual int64_t getAppMemoryUsage() const {return 0;}
+			virtual int64_t getSysMemoryUsage() const {return 0;}
 			
 			void onInit();
 

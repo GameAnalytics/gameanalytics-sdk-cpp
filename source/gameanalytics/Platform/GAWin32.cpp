@@ -31,7 +31,7 @@ std::string GAPlatformWin32::getOSVersion()
         {
             return osVersion + "11";
         }
-        if (IsWindows10OrGreater())
+        else if (IsWindows10OrGreater())
         {
             return osVersion + "10";
         }
@@ -85,7 +85,7 @@ std::string GAPlatformWin32::getConnectionType()
 
 std::string GAPlatformWin32::getDeviceManufacturer()
 {
-#if !GA_SHARED_LIB
+#if !GA_SHARED_LIB && defined(GA_USE_WBEM_SERVICES)
     __try
     {
         IWbemLocator*  locator  = nullptr;
@@ -215,7 +215,7 @@ std::string GAPlatformWin32::getDeviceModel()
 
         constexpr DWORD maxBufSize = 128;
 
-        DWORD size = {};
+        DWORD size = 0;
         TCHAR buffer[maxBufSize] = _T("");
         RegGetValue(HKEY_LOCAL_MACHINE, subkey, value, RRF_RT_REG_SZ, NULL, buffer, &size);
 
@@ -238,108 +238,9 @@ std::string GAPlatformWin32::getDeviceModel()
     __except(EXCEPTION_EXECUTE_HANDLER)
     {
         logging::GALogger::e("Failed to get device's model");
-        return UNKNOWN_VALUE;
     }
 
-#ifdef GA_USE_WBEM_SERVICES
-
-    __try
-    {
-        IWbemLocator* locator = nullptr;
-        IWbemServices* services = nullptr;
-        auto hResult = CoInitializeEx(0, COINIT_MULTITHREADED);
-        if (FAILED(hResult))
-        {
-            snprintf(GADevice::_deviceModel, sizeof(GADevice::_deviceModel), "unknown");
-        }
-        hResult = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&locator);
-
-        auto hasFailed = [&hResult]() {
-            if (FAILED(hResult))
-            {
-                return true;
-            }
-            return false;
-            };
-
-        auto getValue = [&hResult, &hasFailed](IWbemClassObject* classObject, LPCWSTR property) {
-            BSTR propertyValueText = L"unknown";
-            VARIANT propertyValue = {};
-
-            if(!classObject || !property)
-                return propertyValueText;
-
-            hResult = classObject->Get(property, 0, &propertyValue, 0, 0);
-            if (!hasFailed()) {
-                if ((propertyValue.vt == VT_NULL) || (propertyValue.vt == VT_EMPTY)) {
-                }
-                else if (propertyValue.vt & VT_ARRAY) {
-                    propertyValueText = L"unknown"; //Array types not supported
-                }
-                else {
-                    propertyValueText = propertyValue.bstrVal;
-                }
-            }
-            VariantClear(&propertyValue);
-            return propertyValueText;
-            };
-
-        BSTR model = L"unknown";
-        if (!hasFailed()) {
-            // Connect to the root\cimv2 namespace with the current user and obtain pointer pSvc to make IWbemServices calls.
-            hResult = locator->ConnectServer(L"ROOT\\CIMV2", nullptr, nullptr, 0, NULL, 0, 0, &services);
-
-            if (!hasFailed()) {
-                // Set the IWbemServices proxy so that impersonation of the user (client) occurs.
-                hResult = CoSetProxyBlanket(services, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, nullptr, RPC_C_AUTHN_LEVEL_CALL,
-                    RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_NONE);
-
-                if (!hasFailed()) {
-                    IEnumWbemClassObject* classObjectEnumerator = nullptr;
-                    hResult = services->ExecQuery(L"WQL", L"SELECT * FROM Win32_ComputerSystem", WBEM_FLAG_FORWARD_ONLY |
-                        WBEM_FLAG_RETURN_IMMEDIATELY, nullptr, &classObjectEnumerator);
-                    if (!hasFailed()) 
-                    {
-                        IWbemClassObject* classObject;
-                        ULONG uReturn = 0;
-                        hResult = classObjectEnumerator->Next(WBEM_INFINITE, 1, &classObject, &uReturn);
-                        if (uReturn != 0) {
-                            model = getValue(classObject, (LPCWSTR)L"Model");
-                        }
-
-                        if(classObject)
-                            classObject->Release();
-                    }
-
-                    if(classObjectEnumerator)
-                        classObjectEnumerator->Release();
-                }
-            }
-        }
-
-        if (locator) 
-        {
-            locator->Release();
-        }
-
-        if (services) 
-        {
-            services->Release();
-        }
-
-        CoUninitialize();
-
-        return _com_util::ConvertBSTRToString(model);
-    }
-    __except(EXCEPTION_EXECUTE_HANDLER)
-    {
-        logging::GALogger::e("Failed to get device's manufacturer");
-        return UNKNOWN_VALUE;
-    }
-    
-#else
-    return "";
-#endif // GA_USE_WBEM_SERVICES
+    return UNKNOWN_VALUE;
 }
 
 void GAPlatformWin32::setupUncaughtExceptionHandler()

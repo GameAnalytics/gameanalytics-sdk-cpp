@@ -1,44 +1,38 @@
 #pragma once
 
-#include <cinttypes>
+#if defined(_WIN32) || defined(_WIN64)
+	#define IS_WIN32 1
 
-namespace gameanalytics
-{
-	#if defined(_WIN32) || defined(_WIN64)
-		#define IS_WIN32 1
+	#define _WIN32_DCOM
 
-		#define _WIN32_DCOM
-
-		#ifndef WIN32_LEAN_AND_MEAN
-			#define WIN32_LEAN_AND_MEAN
-		#endif
+	#ifndef WIN32_LEAN_AND_MEAN
+		#define WIN32_LEAN_AND_MEAN
+	#endif
 
 		#ifndef NO_MIN_MAX
 			#define NO_MIN_MAX
 		#endif
 
-		#if !defined(MAX_PATH_LENGTH)
-			constexpr int MAX_PATH_LENGTH = 261;
-		#endif
+#else
+	#define IS_WIN32 0
+#endif
 
-	#else
-		#define IS_WIN32 0
-	#endif
+#if defined(__linux__) || defined(__unix__) || defined(__unix) || defined(unix)
+	#define IS_LINUX 1
+#else
+	#define IS_LINUX 0
+#endif
 
-	#if defined(__linux__) || defined(__unix__) || defined(__unix) || defined(unix)
-		#define IS_LINUX 1
-		constexpr int MAX_PATH_LENGTH = 4096;
-	#else
-		#define IS_LINUX 0
-	#endif
+#if defined(__MACH__) || defined(__APPLE__)
+	#define IS_MAC 1
+#else
+	#define IS_MAC 0
+#endif
 
-	#if defined(__MACH__) || defined(__APPLE__)
-		#define IS_MAC 1
-		constexpr int MAX_PATH_LENGTH = 1017;
-	#else
-		#define IS_MAC 0
-	#endif
+#include <cinttypes>
 
+namespace gameanalytics
+{
 	constexpr const char* GA_VERSION_STR = "cpp 4.0.0";
 
 	constexpr uint32_t MAX_CUSTOM_FIELDS_COUNT				 = 50u;

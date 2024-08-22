@@ -22,6 +22,14 @@ namespace gameanalytics
 			std::string getPersistentPath()		override;
 			std::string getDeviceModel()		override;
 
+			virtual std::string getCpuModel() 			const override;
+			virtual std::string getGpuModel() 			const override;
+			virtual int 		getNumCpuCores() 		const override;
+			virtual int64_t 	getTotalDeviceMemory() 	const override;
+
+			virtual int64_t getAppMemoryUsage() const override;
+			virtual int64_t getSysMemoryUsage() const override;
+
 			void setupUncaughtExceptionHandler() override;
 
 			std::string getConnectionType() override;
