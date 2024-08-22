@@ -5,8 +5,11 @@
 #include <cstdarg>
 #include <exception>
 #include "GACommon.h"
-#include "zf_log.h"
 #include "GAUtilities.h"
+#include "GAState.h"
+
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#include "zf_log.h"
 
 constexpr const char* LOG_FILE_NAME = "ga_log.txt";
 constexpr int         MAX_LOG_COUNT = 5000;
@@ -38,8 +41,7 @@ namespace gameanalytics
 
         GALogger& GALogger::getInstance()
         {
-            static GALogger instance;
-            return instance;
+            return state::GAState::getInstance()._gaLogger;
         }
 
         void GALogger::setCustomLogHandler(LogHandler handler)
@@ -86,9 +88,9 @@ namespace gameanalytics
                 return;
             }
 
-            std::string logFilePath = writablepath + "/" + LOG_FILE_NAME;
+             std::string logFilePath = writablepath + "/" + LOG_FILE_NAME;
 
-            logFile.open(logFilePath);
+            logFile.open(logFilePath, std::ios::out | std::ios::trunc);
 
             if (!logFile.is_open())
             {
@@ -96,12 +98,12 @@ namespace gameanalytics
                 return;
             }
 
-            zf_log_set_output_v(ZF_LOG_PUT_STD, 0, file_output_callback);
+            //zf_log_set_output_v(ZF_LOG_PUT_STD, 0, file_output_callback);
 
             logInitialized  = true;
             currentLogCount = 0;
 
-            GALogger::i("Log file added under: %s", device::GADevice::getWritablePath().c_str());
+            GALogger::i("Log file added under: %s", logFilePath.c_str());
         }
 
 
@@ -124,19 +126,31 @@ namespace gameanalytics
                 logFile << message << '\n';
             }
 
-
-            //std::lock_guard<std::mutex> guard(_mutex);
             switch(type)
             {
                 case LogError:
+                    //ZF_LOGE("%s", message.c_str());
+                    std::cerr << message << '\n';
+                    break;
+
                 case LogWarning:
+                    //ZF_LOGW("%s", message.c_str());
                     std::cerr << message << '\n';
                     break;
 
                 case LogDebug:
+                    //ZF_LOGD("%s", message.c_str());
+                    std::cout << message << '\n';
+                    break;
+
                 case LogInfo:
+                    //ZF_LOGI("%s", message.c_str());
+                    std::cout << message << '\n';
+                    break;
+
                 case LogVerbose:
                 default:
+                    //ZF_LOGV("%s", message.c_str());
                     std::cout << message << '\n';
             }
         }

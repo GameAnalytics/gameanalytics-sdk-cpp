@@ -10,13 +10,14 @@
 #include "GAUtilities.h"
 #include <fstream>
 #include <string.h>
+#include "GAState.h"
 
 namespace gameanalytics
 {
     namespace store
     {
-        constexpr int MaxDbSizeBytes = 6291456;
-        constexpr int MaxDbSizeBytesBeforeTrim = 5242880;
+        constexpr int MaxDbSizeBytes            = 6291456;
+        constexpr int MaxDbSizeBytesBeforeTrim  = 5242880;
 
         GAStore::GAStore()
         {
@@ -24,13 +25,11 @@ namespace gameanalytics
 
         GAStore::~GAStore()
         {
-            threading::GAThreading::endThread();
         }
 
         GAStore& GAStore::getInstance()
         {
-            static GAStore instance;
-            return instance;
+            return state::GAState::getInstance()._gaStore;
         }
 
         bool GAStore::executeQuerySync(std::string const& sql)
@@ -68,8 +67,7 @@ namespace gameanalytics
             try
             {
                 // Force transaction if it is an update, insert or delete.
-                std::string sqlUpper = utilities::toUpperCase(sql);
-                if (utilities::GAUtilities::stringMatch(sqlUpper, "^(UPDATE|INSERT|DELETE)"))
+                if (utilities::GAUtilities::stringMatch(utilities::toUpperCase(sql), "^(UPDATE|INSERT|DELETE)"))
                 {
                     useTransaction = true;
                 }
@@ -214,21 +212,25 @@ namespace gameanalytics
             // lazy creation of db path
             if(getInstance().dbPath.empty())
             {
-                // device::GADevice::getWritablePath()
-                getInstance().dbPath = device::GADevice::getWritablePath() + "/ga.sqlite3";
+                std::string path = device::GADevice::getWritablePath();
+                path += "/ga.sqlite3";
+                
+                getInstance().dbPath = path;
             }
+            
+            const std::string dbPath = getInstance().dbPath;
 
             // Open database
-            if (sqlite3_open(getInstance().dbPath.c_str(), &getInstance().sqlDatabase) != SQLITE_OK)
+            if (sqlite3_open(dbPath.c_str(), &getInstance().sqlDatabase) != SQLITE_OK)
             {
                 getInstance().dbReady = false;
-                logging::GALogger::w("Could not open database: %s", getInstance().dbPath.c_str());
+                logging::GALogger::w("Could not open database: %s", dbPath.c_str());
                 return false;
             }
             else
             {
                 getInstance().dbReady = true;
-                logging::GALogger::i("Database opened: %s", getInstance().dbPath.c_str());
+                logging::GALogger::i("Database opened: %s", dbPath.c_str());
             }
 
             if (dropDatabase)

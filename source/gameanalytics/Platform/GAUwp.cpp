@@ -55,6 +55,32 @@ std::string gameanalytics::GAPlatformUWP::getBuildPlatform()
     }
 }
 
+std::string gameanalytics::GAPlatformUWP::getConnectionType()
+{
+    auto connectionProfile = Windows::Networking::Connectivity::NetworkInformation::GetInternetConnectionProfile();
+    hasInternetAccess = (connectionProfile != nullptr && connectionProfile->GetNetworkConnectivityLevel() == Windows::Networking::Connectivity::NetworkConnectivityLevel::InternetAccess);
+
+    if (hasInternetAccess)
+    {
+        if (connectionProfile->IsWlanConnectionProfile)
+        {
+            return "wifi";
+        }
+        else if (connectionProfile->IsWwanConnectionProfile)
+        {
+            return "wwan";
+        }
+        else
+        {
+            return "lan";
+        }
+    }
+    else
+    {
+        return "offline";
+    }
+}
+
 std::string gameanalytics::GAPlatformUWP::getPersistentPath()
 {
     return utilities::GAUtilities::ws2s(Windows::Storage::ApplicationData::Current->LocalFolder->Path->Data()) + "\\GameAnalytics";

@@ -23,7 +23,6 @@
 #include <cstdio>
 #include <array>
 
-// todo include path
 #include "nlohmann/json.hpp"
 
 #if IS_MAC
@@ -89,5 +88,26 @@ namespace gameanalytics
         Warning     = 3,
         Error       = 4,
         Critical    = 5
+    };
+
+	enum EGALoggerMessageType
+    {
+        LogError    = 0,
+        LogWarning  = 1,
+        LogInfo     = 2,
+        LogDebug    = 3,
+        LogVerbose  = 4
+    };
+
+    using LogHandler = std::function<void(std::string const&, EGALoggerMessageType)>;
+
+	namespace state
+	{
+		class GAState;
+	}
+
+	struct IRemoteConfigsListener
+    {
+        virtual void onRemoteConfigsUpdated(std::string const& remoteConfigs) = 0;
     };
 }

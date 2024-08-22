@@ -15,7 +15,7 @@ extern "C" {
 struct GAString_;
 EXPORT void ga_string_free(GAString_* s);
 
-EXPORT struct GAString_
+struct GAString_
 {
     const char* str = 0;
     unsigned int size = 0;

@@ -71,14 +71,19 @@ namespace gameanalytics
             return str.substr(0, std::min(size, str.size()));
         }
 
-        static inline std::int64_t getTimestamp()
+        inline json parseFields(std::string const& fields)
+        {
+            return fields.empty() ? json() : json::parse(fields);
+        }
+
+        inline std::int64_t getTimestamp()
         {
             return std::chrono::duration_cast<std::chrono::seconds>(
                 std::chrono::high_resolution_clock::now().time_since_epoch()
             ).count();
         }
 
-        static inline std::string toLowerCase(std::string const& str)
+        inline std::string toLowerCase(std::string const& str)
         {
             std::string s = str;
             std::transform(s.begin(), s.end(), s.begin(), 
@@ -87,7 +92,7 @@ namespace gameanalytics
             return s;
         }
 
-        static inline std::string toUpperCase(std::string const& str)
+        inline std::string toUpperCase(std::string const& str)
         {
             std::string s = str;
             std::transform(s.begin(), s.end(), s.begin(), 
@@ -97,6 +102,7 @@ namespace gameanalytics
         }
 
         std::string printArray(const StringVector& v, std::string const& delimiter = ", ");
+        int64_t getNumberFromCache(json& node, std::string const& key, int64_t defValue);
 
         struct GAUtilities
         {

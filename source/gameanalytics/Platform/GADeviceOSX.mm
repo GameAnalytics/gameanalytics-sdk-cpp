@@ -62,6 +62,7 @@ SCNetworkReachabilityRef createReachabilityRef()
 
 const char* getConnectionType()
 {
+    // todo: keep this in a class
     static SCNetworkReachabilityRef reachabilityRef = createReachabilityRef();
     
     SCNetworkReachabilityFlags flags;

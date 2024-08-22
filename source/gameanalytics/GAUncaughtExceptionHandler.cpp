@@ -53,7 +53,7 @@ namespace gameanalytics
 
                     ++errorCount;
 
-                    events::GAEvents::addErrorEvent(EGAErrorSeverity::Critical, stackTrace, {}, false, false);
+                    events::GAEvents::addErrorEvent(EGAErrorSeverity::Critical, stackTrace, "", -1, {}, false, false);
                     events::GAEvents::processEvents("error", false);
                 }
             }

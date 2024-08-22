@@ -114,6 +114,8 @@ namespace gameanalytics
 
         class GAHTTPApi
         {
+            friend class state::GAState;
+            
             static constexpr const char* PROTOCOL               = "https";
             static constexpr const char* HOST_NAME              = "api.gameanalytics.com";
             static constexpr const char* VERSION                = "v2";

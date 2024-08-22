@@ -6,6 +6,7 @@
 
 #include "GAState.h"
 #include "GAEvents.h"
+#include "GALogger.h"
 #include <stacktrace/call_stack.hpp>
 
 namespace gameanalytics
@@ -60,88 +61,120 @@ std::string GAPlatformWin32::getOSVersion()
     return osVersion + "0.0.0";
 }
 
+std::string GAPlatformWin32::getConnectionType()
+{
+    DWORD flags = {};
+    if(InternetGetConnectedState(&flags, 0))
+    {
+        if(INTERNET_CONNECTION_OFFLINE & flags)
+        {
+            return "offline";
+        }
+        else if (INTERNET_CONNECTION_LAN & flags)
+        {
+            return "lan";
+        }
+        else
+        {
+            return "wifi";
+        }
+    }
+
+    return "";
+}
+
 std::string GAPlatformWin32::getDeviceManufacturer()
 {
 #if !GA_SHARED_LIB
-    IWbemLocator*  locator  = nullptr;
-    IWbemServices* services = nullptr;
-
-    auto hResult = CoInitializeEx(0, COINIT_MULTITHREADED);
-    if (FAILED(hResult))
+    __try
     {
-        return UNKNOWN_VALUE;
-    }
-    hResult = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&locator);
+        IWbemLocator*  locator  = nullptr;
+        IWbemServices* services = nullptr;
 
-
-    auto hasFailed = [&hResult]() {
+        auto hResult = CoInitializeEx(0, COINIT_MULTITHREADED);
         if (FAILED(hResult))
         {
-            return true;
+            return UNKNOWN_VALUE;
         }
-        return false;
-        };
+        hResult = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&locator);
 
-    auto getValue = [&hResult, &hasFailed](IWbemClassObject* classObject, LPCWSTR property) {
-        BSTR propertyValueText = L"unknown";
-        VARIANT propertyValue;
-        hResult = classObject->Get(property, 0, &propertyValue, 0, 0);
-        if (!hasFailed()) {
-            if ((propertyValue.vt == VT_NULL) || (propertyValue.vt == VT_EMPTY)) {
-            }
-            else if (propertyValue.vt & VT_ARRAY) {
-                propertyValueText = L"unknown"; //Array types not supported
-            }
-            else {
-                propertyValueText = propertyValue.bstrVal;
-            }
-        }
-        VariantClear(&propertyValue);
-        return propertyValueText;
-        };
 
-    BSTR manufacturer = L"unknown";
-    if (!hasFailed()) 
-    {
-        // Connect to the root\cimv2 namespace with the current user and obtain pointer pSvc to make IWbemServices calls.
-        hResult = locator->ConnectServer(L"ROOT\\CIMV2", nullptr, nullptr, 0, NULL, 0, 0, &services);
+        auto hasFailed = [&hResult]() {
+            if (FAILED(hResult))
+            {
+                return true;
+            }
+            return false;
+            };
 
-        if (!hasFailed()) {
-            // Set the IWbemServices proxy so that impersonation of the user (client) occurs.
-            hResult = CoSetProxyBlanket(services, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, nullptr, RPC_C_AUTHN_LEVEL_CALL,
-                RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_NONE);
+        auto getValue = [&hResult, &hasFailed](IWbemClassObject* classObject, LPCWSTR property) {
+            BSTR propertyValueText = L"unknown";
+            VARIANT propertyValue;
+            hResult = classObject->Get(property, 0, &propertyValue, 0, 0);
+            if (!hasFailed()) {
+                if ((propertyValue.vt == VT_NULL) || (propertyValue.vt == VT_EMPTY)) {
+                }
+                else if (propertyValue.vt & VT_ARRAY) {
+                    propertyValueText = L"unknown"; //Array types not supported
+                }
+                else {
+                    propertyValueText = propertyValue.bstrVal;
+                }
+            }
+            VariantClear(&propertyValue);
+            return propertyValueText;
+            };
+
+        BSTR manufacturer = L"unknown";
+        if (!hasFailed()) 
+        {
+            // Connect to the root\cimv2 namespace with the current user and obtain pointer pSvc to make IWbemServices calls.
+            hResult = locator->ConnectServer(L"ROOT\\CIMV2", nullptr, nullptr, 0, NULL, 0, 0, &services);
 
             if (!hasFailed()) {
-                IEnumWbemClassObject* classObjectEnumerator = nullptr;
-                hResult = services->ExecQuery(L"WQL", L"SELECT * FROM Win32_ComputerSystem", WBEM_FLAG_FORWARD_ONLY |
-                    WBEM_FLAG_RETURN_IMMEDIATELY, nullptr, &classObjectEnumerator);
-                if (!hasFailed()) 
-                {
-                    IWbemClassObject* classObject;
-                    ULONG uReturn = 0;
-                    hResult = classObjectEnumerator->Next(WBEM_INFINITE, 1, &classObject, &uReturn);
-                    if (uReturn != 0) {
-                        manufacturer = getValue(classObject, (LPCWSTR)L"Manufacturer");
+                // Set the IWbemServices proxy so that impersonation of the user (client) occurs.
+                hResult = CoSetProxyBlanket(services, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, nullptr, RPC_C_AUTHN_LEVEL_CALL,
+                    RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_NONE);
+
+                if (!hasFailed()) {
+                    IEnumWbemClassObject* classObjectEnumerator = nullptr;
+                    hResult = services->ExecQuery(L"WQL", L"SELECT * FROM Win32_ComputerSystem", WBEM_FLAG_FORWARD_ONLY |
+                        WBEM_FLAG_RETURN_IMMEDIATELY, nullptr, &classObjectEnumerator);
+                    if (!hasFailed()) 
+                    {
+                        IWbemClassObject* classObject;
+                        ULONG uReturn = 0;
+                        hResult = classObjectEnumerator->Next(WBEM_INFINITE, 1, &classObject, &uReturn);
+                        if (uReturn != 0) {
+                            manufacturer = getValue(classObject, (LPCWSTR)L"Manufacturer");
+                        }
+
+                        if(classObject)
+                            classObject->Release();
                     }
 
-                    if(classObject)
-                        classObject->Release();
+                    if(classObjectEnumerator)
+                        classObjectEnumerator->Release();
                 }
-                classObjectEnumerator->Release();
             }
         }
-    }
 
-    if (locator) {
-        locator->Release();
-    }
-    if (services) {
-        services->Release();
-    }
-    CoUninitialize();
+        if (locator) {
+            locator->Release();
+        }
+        if (services) {
+            services->Release();
+        }
+        CoUninitialize();
 
-    std::string manufacturer = _com_util::ConvertBSTRToString(manufacturer);
-    return manufacturer;
+        std::string manufacturer = _com_util::ConvertBSTRToString(manufacturer);
+        return manufacturer;
+    }
+    __except(EXCEPTION_EXECUTE_HANDLER)
+    {
+        logging::GALogger::e("Failed to get device's model");
+        return UNKNOWN_VALUE;
+    }
 
 #else
     return UNKNOWN_VALUE;
@@ -175,16 +208,18 @@ std::string GAPlatformWin32::getPersistentPath()
 
 std::string GAPlatformWin32::getDeviceModel()
 {
-    try
+    __try
     {
         constexpr const TCHAR* subkey = _T("SYSTEM\\CurrentControlSet\\Control\\SystemInformation");
         constexpr const TCHAR* value  = _T("SystemProductName");
 
         constexpr DWORD maxBufSize = 128;
 
-        DWORD size = maxBufSize;
+        DWORD size = {};
         TCHAR buffer[maxBufSize] = _T("");
         RegGetValue(HKEY_LOCAL_MACHINE, subkey, value, RRF_RT_REG_SZ, NULL, buffer, &size);
+
+        size = std::min(size, maxBufSize);
 
         if (!GetLastError() && size > 0)
         {
@@ -200,96 +235,108 @@ std::string GAPlatformWin32::getDeviceModel()
             return modelName;
         }
     }
-    catch (...)
+    __except(EXCEPTION_EXECUTE_HANDLER)
     {
+        logging::GALogger::e("Failed to get device's model");
+        return UNKNOWN_VALUE;
     }
 
 #ifdef GA_USE_WBEM_SERVICES
 
-    IWbemLocator* locator = nullptr;
-    IWbemServices* services = nullptr;
-    auto hResult = CoInitializeEx(0, COINIT_MULTITHREADED);
-    if (FAILED(hResult))
+    __try
     {
-        snprintf(GADevice::_deviceModel, sizeof(GADevice::_deviceModel), "unknown");
-    }
-    hResult = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&locator);
-
-    auto hasFailed = [&hResult]() {
+        IWbemLocator* locator = nullptr;
+        IWbemServices* services = nullptr;
+        auto hResult = CoInitializeEx(0, COINIT_MULTITHREADED);
         if (FAILED(hResult))
         {
-            return true;
+            snprintf(GADevice::_deviceModel, sizeof(GADevice::_deviceModel), "unknown");
         }
-        return false;
-        };
+        hResult = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&locator);
 
-    auto getValue = [&hResult, &hasFailed](IWbemClassObject* classObject, LPCWSTR property) {
-        BSTR propertyValueText = L"unknown";
-        VARIANT propertyValue = {};
+        auto hasFailed = [&hResult]() {
+            if (FAILED(hResult))
+            {
+                return true;
+            }
+            return false;
+            };
 
-        if(!classObject || !property)
+        auto getValue = [&hResult, &hasFailed](IWbemClassObject* classObject, LPCWSTR property) {
+            BSTR propertyValueText = L"unknown";
+            VARIANT propertyValue = {};
+
+            if(!classObject || !property)
+                return propertyValueText;
+
+            hResult = classObject->Get(property, 0, &propertyValue, 0, 0);
+            if (!hasFailed()) {
+                if ((propertyValue.vt == VT_NULL) || (propertyValue.vt == VT_EMPTY)) {
+                }
+                else if (propertyValue.vt & VT_ARRAY) {
+                    propertyValueText = L"unknown"; //Array types not supported
+                }
+                else {
+                    propertyValueText = propertyValue.bstrVal;
+                }
+            }
+            VariantClear(&propertyValue);
             return propertyValueText;
+            };
 
-        hResult = classObject->Get(property, 0, &propertyValue, 0, 0);
+        BSTR model = L"unknown";
         if (!hasFailed()) {
-            if ((propertyValue.vt == VT_NULL) || (propertyValue.vt == VT_EMPTY)) {
-            }
-            else if (propertyValue.vt & VT_ARRAY) {
-                propertyValueText = L"unknown"; //Array types not supported
-            }
-            else {
-                propertyValueText = propertyValue.bstrVal;
-            }
-        }
-        VariantClear(&propertyValue);
-        return propertyValueText;
-        };
-
-    BSTR model = L"unknown";
-    if (!hasFailed()) {
-        // Connect to the root\cimv2 namespace with the current user and obtain pointer pSvc to make IWbemServices calls.
-        hResult = locator->ConnectServer(L"ROOT\\CIMV2", nullptr, nullptr, 0, NULL, 0, 0, &services);
-
-        if (!hasFailed()) {
-            // Set the IWbemServices proxy so that impersonation of the user (client) occurs.
-            hResult = CoSetProxyBlanket(services, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, nullptr, RPC_C_AUTHN_LEVEL_CALL,
-                RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_NONE);
+            // Connect to the root\cimv2 namespace with the current user and obtain pointer pSvc to make IWbemServices calls.
+            hResult = locator->ConnectServer(L"ROOT\\CIMV2", nullptr, nullptr, 0, NULL, 0, 0, &services);
 
             if (!hasFailed()) {
-                IEnumWbemClassObject* classObjectEnumerator = nullptr;
-                hResult = services->ExecQuery(L"WQL", L"SELECT * FROM Win32_ComputerSystem", WBEM_FLAG_FORWARD_ONLY |
-                    WBEM_FLAG_RETURN_IMMEDIATELY, nullptr, &classObjectEnumerator);
+                // Set the IWbemServices proxy so that impersonation of the user (client) occurs.
+                hResult = CoSetProxyBlanket(services, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, nullptr, RPC_C_AUTHN_LEVEL_CALL,
+                    RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_NONE);
+
                 if (!hasFailed()) {
-                    IWbemClassObject* classObject;
-                    ULONG uReturn = 0;
-                    hResult = classObjectEnumerator->Next(WBEM_INFINITE, 1, &classObject, &uReturn);
-                    if (uReturn != 0) {
-                        model = getValue(classObject, (LPCWSTR)L"Model");
+                    IEnumWbemClassObject* classObjectEnumerator = nullptr;
+                    hResult = services->ExecQuery(L"WQL", L"SELECT * FROM Win32_ComputerSystem", WBEM_FLAG_FORWARD_ONLY |
+                        WBEM_FLAG_RETURN_IMMEDIATELY, nullptr, &classObjectEnumerator);
+                    if (!hasFailed()) 
+                    {
+                        IWbemClassObject* classObject;
+                        ULONG uReturn = 0;
+                        hResult = classObjectEnumerator->Next(WBEM_INFINITE, 1, &classObject, &uReturn);
+                        if (uReturn != 0) {
+                            model = getValue(classObject, (LPCWSTR)L"Model");
+                        }
+
+                        if(classObject)
+                            classObject->Release();
                     }
 
-                    if(classObject)
-                        classObject->Release();
+                    if(classObjectEnumerator)
+                        classObjectEnumerator->Release();
                 }
-
-                if(classObjectEnumerator)
-                    classObjectEnumerator->Release();
             }
         }
-    }
 
-    if (locator) 
+        if (locator) 
+        {
+            locator->Release();
+        }
+
+        if (services) 
+        {
+            services->Release();
+        }
+
+        CoUninitialize();
+
+        return _com_util::ConvertBSTRToString(model);
+    }
+    __except(EXCEPTION_EXECUTE_HANDLER)
     {
-        locator->Release();
+        logging::GALogger::e("Failed to get device's manufacturer");
+        return UNKNOWN_VALUE;
     }
-
-    if (services) 
-    {
-        services->Release();
-    }
-
-    CoUninitialize();
-
-    return _com_util::ConvertBSTRToString(model);
+    
 #else
     return "";
 #endif // GA_USE_WBEM_SERVICES

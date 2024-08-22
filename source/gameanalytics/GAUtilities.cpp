@@ -50,6 +50,33 @@ namespace gameanalytics
             return s;
         }
 
+        int64_t getNumberFromCache(json& node, std::string const& key, int64_t defValue)
+        {
+            try
+            {
+                if(node.contains(key))
+                {
+                    if(node[key].is_number())
+                        return utilities::getOptionalValue<int64_t>(node, key, defValue);
+
+                    else if(node[key].is_string())
+                    {
+                        std::string val = utilities::getOptionalValue<std::string>(node, key, "");
+                        if(!val.empty())
+                        {
+                            return std::stoll(val);
+                        }
+                    }
+                }
+            }
+            catch(...)
+            {
+                // just return the default value on failure
+            }
+            
+            return defValue;
+        }
+
         // Compress a STL string using zlib with given compression level and return the binary data.
         // Note: the zlib header is supressed
         static std::vector<char> deflate_string(const char* str, int compressionlevel = Z_BEST_COMPRESSION)
@@ -70,7 +97,9 @@ namespace gameanalytics
             // set the z_stream's input
             zs.avail_in = static_cast<unsigned int>(strlen(str));
             int ret;
-            static char outbuffer[32768];
+            
+            constexpr size_t BUFFER_SIZE = 32768;
+            static char outbuffer[BUFFER_SIZE];
             std::vector<char> outstring;
 
             // retrieve the compressed bytes blockwise
@@ -374,7 +403,7 @@ namespace gameanalytics
         // using std::chrono to get time
         int64_t GAUtilities::timeIntervalSince1970()
         {
-            return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+            return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         }
 
         bool GAUtilities::isStringNullOrEmpty(const char* s)

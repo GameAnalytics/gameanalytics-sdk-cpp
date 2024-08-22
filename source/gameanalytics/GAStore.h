@@ -7,7 +7,6 @@
 
 #include <sqlite3.h>
 #include <vector>
-#include "GameAnalytics.h"
 #include <mutex>
 #include <cstdlib>
 #include "GACommon.h"
@@ -18,6 +17,8 @@ namespace gameanalytics
     {
         class GAStore
         {
+            friend class state::GAState;
+
          public:
 
             sqlite3* getDatabase();
@@ -41,6 +42,7 @@ namespace gameanalytics
             static bool isDbTooLargeForEvents();
 
         private:
+
             GAStore();
             GAStore(const GAStore&) = delete;
             GAStore& operator=(const GAStore&) = delete;

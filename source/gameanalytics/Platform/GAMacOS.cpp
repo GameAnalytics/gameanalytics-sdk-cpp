@@ -32,18 +32,23 @@ std::string gameanalytics::GAPlatformMacOS::getConnectionType()
 
 std::string gameanalytics::GAPlatformMacOS::getPersistentPath()
 {
-    std::string path = std::string(std::getenv("HOME")) + "/GameAnalytics";
-
-    mode_t nMode = 0733;
-    int result = mkdir(path.c_str(), nMode);
-    if (result == 0 || errno == EEXIST)
+    std::string path = "GameAnalytics";
+    
+    const char* homeDir = std::getenv("HOME");
+    if(homeDir && strlen(homeDir))
     {
-        return path;
+        if(std::filesystem::exists(homeDir))
+        {
+            path = std::string(homeDir) + "/" + path;
+        }
     }
-    else
+    
+    if(!std::filesystem::exists(path))
     {
-        return "";
+        std::filesystem::create_directory(path);
     }
+    
+    return path;
 }
 
 std::string gameanalytics::GAPlatformMacOS::getDeviceModel()
@@ -156,7 +161,7 @@ void gameanalytics::GAPlatformMacOS::signalHandler(int sig, siginfo_t* info, voi
         if (errorCount <= MAX_ERROR_TYPE_COUNT)
         {
             errorCount++;
-            events::GAEvents::addErrorEvent(EGAErrorSeverity::Critical, stackTrace, {}, false, false);
+            events::GAEvents::addErrorEvent(EGAErrorSeverity::Critical, stackTrace, "", -1, {}, false, false);
             events::GAEvents::processEvents("error", false);
         }
 

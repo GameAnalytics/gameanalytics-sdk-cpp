@@ -5,9 +5,10 @@
 
 #pragma once
 
-#if !USE_UWP && !USE_TIZEN
 #include <exception>
-#include <signal.h>
+#include <csignal>
+
+#include "GACommon.h"
 
 namespace gameanalytics
 {
@@ -30,4 +31,3 @@ namespace gameanalytics
         };
     }
 }
-#endif

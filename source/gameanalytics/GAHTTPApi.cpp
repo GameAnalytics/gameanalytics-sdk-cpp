@@ -43,6 +43,10 @@ namespace gameanalytics
         // Constructor - setup the basic information for HTTP
         GAHTTPApi::GAHTTPApi()
         {
+            static int i = 0;
+            std::cerr << "ctor called: " << i << '\n';
+            ++i;
+            
             curl_global_init(CURL_GLOBAL_DEFAULT);
 
             baseUrl              = protocol + "://" + hostName + "/" + version;
@@ -63,8 +67,7 @@ namespace gameanalytics
 
         GAHTTPApi& GAHTTPApi::getInstance()
         {
-            static GAHTTPApi instance;
-            return instance;
+            return state::GAState::getInstance()._gaHttp;
         }
 
         EGAHTTPApiResponse GAHTTPApi::requestInitReturningDict(json& json_out, std::string const& configsHash)

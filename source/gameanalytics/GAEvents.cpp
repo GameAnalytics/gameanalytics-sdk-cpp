@@ -34,8 +34,7 @@ namespace gameanalytics
 
         GAEvents& GAEvents::getInstance()
         {
-            static GAEvents instance;
-            return instance;
+            return state::GAState::getInstance()._gaEvents;
         }
 
         void GAEvents::stopEventQueue()
@@ -71,7 +70,7 @@ namespace gameanalytics
 
                 // Increment session number  and persist
                 state::GAState::incrementSessionNum();
-                int sessionNum = state::GAState::getSessionNum();
+                int64_t sessionNum = state::GAState::getSessionNum();
 
                 // Event specific data
                 json eventDict;
@@ -100,7 +99,7 @@ namespace gameanalytics
             }
             catch(const std::exception& e)
             {
-                logging::GALogger::e("Exception thrown: %s", e.what());
+                logging::GALogger::e("addSessionStartEvent - Exception thrown: %s", e.what());
             }
             
         }
@@ -116,16 +115,14 @@ namespace gameanalytics
             
             try
             {
-                int64_t session_start_ts    = state.getSessionStart();
-                int64_t client_ts_adjusted  = state::GAState::getClientTsAdjusted();
-                int64_t sessionLength       = client_ts_adjusted - session_start_ts;
+                int64_t sessionLength  = state.calculateSessionLength();
 
-                if(sessionLength < 0)
+                if(sessionLength < 0ll)
                 {
                     // Should never happen.
                     // Could be because of edge cases regarding time altering on device.
                     logging::GALogger::w("Session length was calculated to be less then 0. Should not be possible. Resetting to 0.");
-                    sessionLength = 0;
+                    sessionLength = 0ll;
                 }
 
                 // Event specific data
@@ -151,7 +148,7 @@ namespace gameanalytics
             }
             catch(const std::exception& e)
             {
-                logging::GALogger::e("Exception thrown: %s", e.what());
+                logging::GALogger::e("addSessionEndEvent - Exception thrown: %s", e.what());
             }
         }
 
@@ -181,7 +178,7 @@ namespace gameanalytics
                 // Increment transaction number and persist
                 state::GAState::incrementTransactionNum();
 
-                const int transactionNum = state::GAState::getTransactionNum();
+                const int64_t transactionNum = state::GAState::getTransactionNum();
 
                 StringVector params = {"transaction_num", std::to_string(transactionNum)};
                 store::GAStore::executeQuerySync("INSERT OR REPLACE INTO ga_state (key, value) VALUES(?, ?);", params);
@@ -209,7 +206,7 @@ namespace gameanalytics
             } 
             catch (std::exception const& e)
             {
-                logging::GALogger::e("Exception thrown: %s", e.what());
+                logging::GALogger::e("addBusinessEvent - Exception thrown: %s", e.what());
             }
             
         }
@@ -264,11 +261,11 @@ namespace gameanalytics
             }
             catch(const json::exception& e)
             {
-                logging::GALogger::e("Failed to parse json: %s", e.what());
+                logging::GALogger::e("addResourceEvent - Failed to parse json: %s", e.what());
             }
             catch(const std::exception& e)
             {
-                logging::GALogger::e("Exception thrown: %s", e.what());
+                logging::GALogger::e("addResourceEvent - Exception thrown: %s", e.what());
             }
             
         }
@@ -361,7 +358,7 @@ namespace gameanalytics
             }
             catch(std::exception& e)
             {
-                logging::GALogger::e("Exception thrown: %s", e.what());
+                logging::GALogger::e("addProgressionEvent - Exception thrown: %s", e.what());
             }
         }
 
@@ -418,12 +415,7 @@ namespace gameanalytics
             }
         }
 
-        void GAEvents::addErrorEvent(EGAErrorSeverity severity, std::string const& message, const json& fields, bool mergeFields)
-        {
-            addErrorEvent(severity, message, fields, mergeFields, false);
-        }
-
-        void GAEvents::addErrorEvent(EGAErrorSeverity severity, std::string const& message, const json& fields, bool mergeFields, bool skipAddingFields)
+        void GAEvents::addErrorEvent(EGAErrorSeverity severity, std::string const& message, std::string const& function, int32_t line, const json& fields, bool mergeFields, bool skipAddingFields)
         {
             try
             {
@@ -448,6 +440,15 @@ namespace gameanalytics
                 eventData["severity"] = errorSeverityString(severity);
                 eventData["message"]  = message;
 
+                constexpr int MAX_FUNCTION_LEN = 256;
+                if(!function.empty())
+                {
+                    eventData["function"] = utilities::trimString(function, MAX_FUNCTION_LEN);
+
+                    if(line >= 0)
+                        eventData["line"] = line;
+                }
+
                 json cleanedFields;
                 if(!skipAddingFields)
                 {
@@ -467,7 +468,7 @@ namespace gameanalytics
             }
             catch(std::exception& e)
             {
-                logging::GALogger::e("Exception thrown: %s", e.what());
+                logging::GALogger::e("addErrorEvent - Exception thrown: %s", e.what());
             }
         }
 
@@ -796,6 +797,9 @@ namespace gameanalytics
                 // Get default annotations
                 json ev;
                 state::GAState::getEventAnnotations(ev);
+                
+                logging::GALogger::i(ev.dump().c_str());
+                
                 ev.merge_patch(eventData);
 
                 const std::string jsonString = ev.dump();

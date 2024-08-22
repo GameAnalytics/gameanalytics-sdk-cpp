@@ -14,6 +14,7 @@ namespace gameanalytics
     {
         class GAEvents
         {
+            friend class state::GAState;
             static GAEvents& getInstance();
 
          public:
@@ -26,8 +27,7 @@ namespace gameanalytics
             static void addResourceEvent(EGAResourceFlowType flowType, std::string const& currency, double amount, std::string const& itemType, std::string const& itemId, const json& fields, bool mergeFields);
             static void addProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, const json& fields, bool mergeFields);
             static void addDesignEvent(std::string const& eventId, double value, bool sendValue, const json& fields, bool mergeFields);
-            static void addErrorEvent(EGAErrorSeverity severity, std::string const& message, const json& fields, bool mergeFields);
-            static void addErrorEvent(EGAErrorSeverity severity, std::string const& message, const json& fields, bool mergeFields, bool skipAddingFields);
+            static void addErrorEvent(EGAErrorSeverity severity, std::string const& message, std::string const& function, int32_t line, const json& fields, bool mergeFields, bool skipAddingFields = false);
             
             static std::string progressionStatusString(EGAProgressionStatus progressionStatus);
             static std::string errorSeverityString(EGAErrorSeverity errorSeverity);

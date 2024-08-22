@@ -39,7 +39,7 @@ namespace gameanalytics
 
         GAState::~GAState()
         {
-            if(_useManualSessionHandling)
+            if(!_useManualSessionHandling)
                 endSessionAndStopQueue(true);
 
             _gaThread.flush();
@@ -920,9 +920,11 @@ namespace gameanalytics
                 }
 
                 _remoteConfigsIsReady = true;
+                
+                std::string const configStr = _configurations.dump();
                 for (auto& listener : _remoteConfigsListeners)
                 {
-                    listener->onRemoteConfigsUpdated();
+                    listener->onRemoteConfigsUpdated(configStr);
                 }
             }
             catch (json::exception& e)
@@ -944,7 +946,7 @@ namespace gameanalytics
 
             threading::GAThreading::performTaskOnGAThread([=]()
             {
-                events::GAEvents::addErrorEvent(severity, message, json(), true);
+                events::GAEvents::addErrorEvent(severity, message, "", -1, json(), true);
             });
         }
 
@@ -1069,7 +1071,7 @@ namespace gameanalytics
 
         bool GAState::useErrorReporting()
         {
-            getInstance()._enableErrorReporting;
+            return getInstance()._enableErrorReporting;
         }
 
         void GAState::setEnabledEventSubmission(bool flag)

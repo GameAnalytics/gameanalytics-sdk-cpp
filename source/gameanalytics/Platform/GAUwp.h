@@ -1,5 +1,7 @@
 #pragma once
 
+#include "GACommon.h"
+
 #if IS_UWP
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -10,7 +12,9 @@
 	#define NO_MIN_MAX
 #endif
 
+// needed for CURL
 #include <winsock2.h>
+
 #include <Windows.h>
 #include <sstream>
 

@@ -53,7 +53,7 @@ void gameanalytics::GAPlatform::terminateHandler()
             
             ++errorCount;
             
-            events::GAEvents::addErrorEvent(EGAErrorSeverity::Critical, stackTrace, {}, false, false);
+            events::GAEvents::addErrorEvent(EGAErrorSeverity::Critical, stackTrace, "", -1, {}, false, false);
             events::GAEvents::processEvents("error", false);
         }
         
@@ -68,7 +68,6 @@ void gameanalytics::GAPlatform::onInit()
 {
 	if(state::GAState::useErrorReporting())
 	{
-		setupUncaughtExceptionHandler();
         previousTerminateHandler = std::set_terminate(terminateHandler);
     }
 }

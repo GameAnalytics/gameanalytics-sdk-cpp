@@ -6,6 +6,7 @@
 #include "GADevice.h"
 #include "GAUtilities.h"
 #include "Platform/GADevicePlatform.h"
+#include "GAState.h"
 
 namespace gameanalytics
 {
@@ -13,8 +14,7 @@ namespace gameanalytics
     {
         GADevice& GADevice::getInstance()
         {
-            static GADevice instance;
-            return instance;
+            return state::GAState::getInstance()._gaDevice;
         }
 
         GADevice::GADevice():
@@ -28,6 +28,11 @@ namespace gameanalytics
             if(getInstance()._platform)
             {
                 getInstance()._platform->onInit();
+
+                if(state::GAState::useErrorReporting())
+                {
+                    getInstance()._platform->setupUncaughtExceptionHandler();
+                }
             }
         }
 

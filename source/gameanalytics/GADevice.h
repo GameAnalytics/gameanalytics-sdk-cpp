@@ -15,6 +15,7 @@ namespace gameanalytics
     {
         class GADevice
         {
+            friend class state::GAState;
             static GADevice& getInstance();
 
             GADevice();

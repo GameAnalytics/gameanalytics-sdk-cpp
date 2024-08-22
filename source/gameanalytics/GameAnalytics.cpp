@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <thread>
 #include <array>
+#include "stacktrace/call_stack.hpp"
 
 namespace gameanalytics
 {
@@ -329,6 +330,25 @@ namespace gameanalytics
         });
     }
 
+    void GameAnalytics::configureExternalUserId(std::string const& uId)
+    {
+        if(_endThread)
+        {
+            return;
+        }
+
+        threading::GAThreading::performTaskOnGAThread([uId]()
+        {
+            if (isSdkReady(true, false))
+            {
+                logging::GALogger::w("A custom user id must be set before SDK is initialized.");
+                return;
+            }
+
+            state::GAState::setExternalUserId(uId);
+        });
+    }
+
     // ----------------------- INITIALIZE ---------------------- //
 
     void GameAnalytics::initialize(std::string const& gameKey, std::string const& gameSecret)
@@ -393,11 +413,7 @@ namespace gameanalytics
 
             try
             {
-                json fieldsJson;
-                
-                if(!fields.empty())
-                    fieldsJson = json::parse(fields);
-
+                json fieldsJson = utilities::parseFields(fields);
                 events::GAEvents::addBusinessEvent(currency, amount, itemType, itemId, cartType, fieldsJson, mergeFields);
             }
             catch(json::exception const& e)
@@ -427,11 +443,7 @@ namespace gameanalytics
 
             try
             {
-                json fieldsJson;
-                
-                if(!fields.empty())
-                    fieldsJson = json::parse(fields);
-
+                json fieldsJson = utilities::parseFields(fields);
                 events::GAEvents::addResourceEvent(flowType, currency, amount, itemType, itemId, fieldsJson, mergeFields);
             }
             catch (std::exception& e)
@@ -464,11 +476,7 @@ namespace gameanalytics
             try
             {
                 // Send to events
-                json fieldsJson;
-                
-                if(!fields.empty())
-                    fieldsJson = json::parse(fields);
-                
+                json fieldsJson = utilities::parseFields(fields);
                 events::GAEvents::addProgressionEvent(progressionStatus, progression01, progression02, progression03, score, false, fieldsJson, mergeFields);
             }
             catch(const json::exception& e)
@@ -487,16 +495,16 @@ namespace gameanalytics
         return addProgressionEvent(progressionStatus, 0, progression01, progression02, progression03, fields, mergeFields);
     }
 
-    void GameAnalytics::addDesignEvent(std::string const& eventId, double value, std::string const& fields_, bool mergeFields)
+    void GameAnalytics::addDesignEvent(std::string const& eventId, double value, std::string const& fields, bool mergeFields)
     {
         if(_endThread)
         {
             return;
         }
 
-        if(fields_.size() > maxFieldsSize)
+        if(fields.size() > maxFieldsSize)
         {
-            logging::GALogger::w("Custom fields length exceeded, maximum allowed is %d, fields size was %d", maxFieldsSize, fields_.size());
+            logging::GALogger::w("Custom fields length exceeded, maximum allowed is %d, fields size was %d", maxFieldsSize, fields.size());
             return;
         }
 
@@ -509,10 +517,7 @@ namespace gameanalytics
             
             try
             {
-                json fieldsJson;
-                if(!fields_.empty()) 
-                    fieldsJson = json::parse(fields_);
-                
+                json fieldsJson = utilities::parseFields(fields);
                 events::GAEvents::addDesignEvent(eventId, value, false, fieldsJson, mergeFields);
             }
             catch(json::exception const& e)
@@ -535,6 +540,30 @@ namespace gameanalytics
         }
 
         const std::string message = utilities::trimString(message_, maxErrMsgSize);
+
+        std::string function;
+        int32_t line = -1;
+
+        try
+        {
+            stacktrace::call_stack st;
+            for(auto& entry : st.stack)
+            {
+                std::string f = entry.function;
+
+                if(f.find("GameAnalytics") == std::string::npos && f.find("call_stack") == std::string::npos)
+                {
+                    function = f;
+                    line = entry.line;
+                    break;
+                }
+            }
+        }
+        catch(...)
+        {
+            function = "";
+            line = -1;
+        }
         
         if(fields.size() > maxFieldsSize)
         {
@@ -542,7 +571,7 @@ namespace gameanalytics
             return;
         }
 
-        threading::GAThreading::performTaskOnGAThread([severity, message, fields, mergeFields]()
+        threading::GAThreading::performTaskOnGAThread([=]()
         {
             if (!isSdkReady(true, true, "Could not add error event"))
             {
@@ -551,11 +580,8 @@ namespace gameanalytics
 
             try
             {
-                json fieldsJson;
-                if(!fields.empty())
-                    fieldsJson = json::parse(fields);
-
-                events::GAEvents::addErrorEvent(severity, message, fieldsJson, mergeFields);
+                json fieldsJson = utilities::parseFields(fields);
+                events::GAEvents::addErrorEvent(severity, message, function, line, fieldsJson, mergeFields);
             }
             catch(std::exception& e)
             {
@@ -803,7 +829,6 @@ namespace gameanalytics
             onSuspend();
         }
     }
-
 
     // -------------- SET GAME STATE CHANGES --------------- //
 

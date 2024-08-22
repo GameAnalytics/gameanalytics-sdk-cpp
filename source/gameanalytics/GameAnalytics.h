@@ -6,8 +6,6 @@
 #pragma once
 
 #include "GACommon.h"
-#include "GALogger.h"
-
 
 #include <vector>
 #include <memory>
@@ -19,12 +17,6 @@
 
 namespace gameanalytics
 {
-    class IRemoteConfigsListener
-    {
-        public:
-            virtual void onRemoteConfigsUpdated() = 0;
-    };
-
     class GameAnalytics
     {
      public:
@@ -53,6 +45,8 @@ namespace gameanalytics
          static void configureGameEngineVersion(std::string const& engineVersion);
 
          static void configureUserId(std::string const& uId);
+        
+         static void configureExternalUserId(std::string const& extId);
 
          // initialize - starting SDK (need configuration before starting)
          static void initialize(std::string const& gameKey, std::string const& gameSecret);

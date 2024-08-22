@@ -13,66 +13,54 @@
 
 namespace gameanalytics
 {
-    enum EGALoggerMessageType
-    {
-        LogError    = 0,
-        LogWarning  = 1,
-        LogInfo     = 2,
-        LogDebug    = 3,
-        LogVerbose  = 4
-    };
-
-    using LogHandler = std::function<void(std::string const&, EGALoggerMessageType)>;
-
     namespace logging
     {
         class GALogger
         {
+            friend class state::GAState;
+
             template<typename ...args_t>
             static void sendMessage(EGALoggerMessageType logType, std::string const& fmt, args_t&&... args)
             {
-                    if (logType == LogVerbose && !getInstance().infoLogVerboseEnabled)
-                    {
-                        return;
-                    }
+                if (logType == LogVerbose && !getInstance().infoLogVerboseEnabled)
+                {
+                    return;
+                }
 
-                    std::string tag = getInstance().tag;
-                    tag += " :";
+                std::string tag = getInstance().tag;
+                tag += " :";
                     
-                    switch (logType)
-                    {
-                        case LogError:
-                            tag = "Error/" + tag;
-                            break;
+                switch (logType)
+                {
+                    case LogError:
+                        tag = "Error/" + tag;
+                        break;
                         
-                        case LogWarning:
-                            tag = "Warning/" + tag;
-                            break;
+                    case LogWarning:
+                        tag = "Warning/" + tag;
+                        break;
 
-                        case LogDebug:
-                            tag = "Debug/" + tag;
-                            break;
+                    case LogDebug:
+                        tag = "Debug/" + tag;
+                        break;
 
-                        case LogInfo:
-                            tag = "Info/" + tag;
-                            break;
+                    case LogInfo:
+                        tag = "Info/" + tag;
+                        break;
 
-                        case LogVerbose:
-                        default:
-                            tag = "Verbose/" + tag;
-
-                    }
-
-                    try
-                    {
-                        const std::string msg = tag + ' ' + utilities::printString(fmt, std::forward<args_t>(args)...);
-                        
-                        getInstance().sendNotificationMessage(msg, logType);
-                    }
-                    catch (std::exception const& e)
-                    {
-                        std::cerr << "Error/GameAnalytics:" << e.what() << "\n";
-                    }
+                    case LogVerbose:
+                    default:
+                        tag = "Verbose/" + tag;
+                }
+                try
+                {
+                    const std::string msg = tag + ' ' + utilities::printString(fmt, std::forward<args_t>(args)...);
+                    getInstance().sendNotificationMessage(msg, logType);
+                }
+                catch (std::exception const& e)
+                {
+                    std::cerr << "Error/GameAnalytics:" << e.what() << "\n";
+                }
             }
 
             public:
