@@ -16,12 +16,16 @@
 #include <queue>
 #include <algorithm>
 
+#include "GACommon.h"
+
 namespace gameanalytics
 {
     namespace threading
     {
         class GAThreading
         {
+            friend class state::GAState;
+
          public:
 
             using Block = std::function<void()>;
@@ -33,6 +37,8 @@ namespace gameanalytics
             static bool isThreadFinished();
 
             static void scheduleTimer(std::chrono::milliseconds freq, Block task);
+            
+            static void flushTasks();
 
          private:
 
@@ -49,8 +55,7 @@ namespace gameanalytics
             };
 
             static GAThreading& getInstance();
-            static void cleanup();
-
+            
             GAThreading();
             ~GAThreading();
 

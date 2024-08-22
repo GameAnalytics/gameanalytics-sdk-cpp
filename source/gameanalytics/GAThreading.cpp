@@ -10,6 +10,7 @@
 #include "GALogger.h"
 #include <thread>
 #include <exception>
+#include "GAState.h"
 
 namespace gameanalytics
 {
@@ -21,11 +22,10 @@ namespace gameanalytics
 
         GAThreading& GAThreading::getInstance()
         {
-            static GAThreading instance;
-            return instance;
+            return state::GAState::getInstance()._gaThread;
         }
     
-        void GAThreading::cleanup()
+        void GAThreading::flushTasks()
         {
             getInstance().flush();
         }
@@ -38,8 +38,6 @@ namespace gameanalytics
                     work();
                 }
             );
-            
-            std::atexit(&cleanup);
         }
 
         GAThreading::~GAThreading()
@@ -74,7 +72,7 @@ namespace gameanalytics
                 catch(const std::exception& e)
                 {
                     logging::GALogger::e("Failed to run block on ga thread: %s", e.what());
-                }                
+                }
             }
         }
 
