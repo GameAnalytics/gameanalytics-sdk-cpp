@@ -8,14 +8,19 @@
 #include <vector>
 #include <map>
 #include <functional>
-#include "GameAnalytics.h"
 #include <mutex>
 #include <cstdlib>
 #include <unordered_map>
 
+#include "GameAnalytics.h"
 #include "GACommon.h"
 #include "GAUtilities.h"
 #include "GALogger.h"
+#include "GAThreading.h"
+#include "GAStore.h"
+#include "GAEvents.h"
+#include "GAHTTPApi.h"
+#include "GADevice.h"
 
 namespace gameanalytics
 {
@@ -69,16 +74,24 @@ namespace gameanalytics
 
         class GAState
         {
+            friend class threading::GAThreading;
+            friend class events::GAEvents;
+            friend class device::GADevice;
+            friend class logging::GALogger;
+            friend class store::GAStore;
+            friend class http::GAHTTPApi;
+            
             public:
 
                 static GAState& getInstance();
 
                 static bool isDestroyed();
                 static void setUserId(std::string const& id);
+                static void setExternalUserId(std::string const& id);
                 static bool isInitialized();
                 static int64_t getSessionStart();
-                static int getSessionNum();
-                static int getTransactionNum();
+                static int64_t getSessionNum();
+                static int64_t getTransactionNum();
                 static std::string getSessionId();
                 static std::string getCurrentCustomDimension01();
                 static std::string getCurrentCustomDimension02();
@@ -133,8 +146,10 @@ namespace gameanalytics
                 static json getValidatedCustomFields();
                 static json getValidatedCustomFields(const json& withEventFields);
 
-        private:
+                int64_t calculateSessionLength() const;
 
+        private:
+            
             GAState();
             ~GAState();
             GAState(const GAState&) = delete;
@@ -170,6 +185,13 @@ namespace gameanalytics
 
             void addErrorEvent(EGAErrorSeverity severity, std::string const& message);
 
+            threading::GAThreading  _gaThread;
+            events::GAEvents        _gaEvents;
+            device::GADevice        _gaDevice;
+            logging::GALogger       _gaLogger;
+            store::GAStore          _gaStore;
+            http::GAHTTPApi         _gaHttp;
+
             std::string _userId;
             std::string _identifier;
 
@@ -179,6 +201,8 @@ namespace gameanalytics
             int64_t _sessionStart = 0;
             int64_t _sessionNum = 0;
             int64_t _transactionNum = 0;
+
+            std::chrono::high_resolution_clock::time_point _startTimepoint;
 
             std::string _sessionId;
 
@@ -208,6 +232,7 @@ namespace gameanalytics
             std::string _configsHash;
             std::string _abId;
             std::string _abVariantId;
+            std::string _externalUserId;
 
             ProgressionTries    _progressionTries;
             json _sdkConfigDefault;
@@ -218,10 +243,12 @@ namespace gameanalytics
             bool _enableErrorReporting      = true;
             bool _enableEventSubmission     = true;
 
+            bool _enableIdTracking = true;
+            
             json _configurations;
             bool _remoteConfigsIsReady;
             std::vector<std::shared_ptr<IRemoteConfigsListener>> _remoteConfigsListeners;
-            std::mutex _mtx;
+            std::recursive_mutex _mtx;
         };
     }
 }

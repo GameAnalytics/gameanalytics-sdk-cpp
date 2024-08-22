@@ -27,7 +27,6 @@ namespace gameanalytics
 
     namespace state
     {
-
         GAState& GAState::getInstance()
         {
             static GAState instance;
@@ -40,6 +39,10 @@ namespace gameanalytics
 
         GAState::~GAState()
         {
+            if(_useManualSessionHandling)
+                endSessionAndStopQueue(true);
+
+            _gaThread.flush();
         }
 
         void GAState::setUserId(std::string const& id)
@@ -68,14 +71,19 @@ namespace gameanalytics
             return getInstance()._sessionStart;
         }
 
-        int GAState::getSessionNum()
+        int64_t GAState::getSessionNum()
         {
             return getInstance()._sessionNum;
         }
 
-        int GAState::getTransactionNum()
+        int64_t GAState::getTransactionNum()
         {
             return getInstance()._transactionNum;
+        }
+    
+        void GAState::setExternalUserId(std::string const& id)
+        {
+            getInstance()._externalUserId = id;
         }
 
         std::string GAState::getSessionId()
@@ -385,10 +393,10 @@ namespace gameanalytics
                 // collector event API version
                 out["v"] = 2;
                 out["event_uuid"] = utilities::GAUtilities::generateUUID();
-
+                
                 // User identifier
                 out["user_id"] = getInstance().getIdentifier();
-
+                
                 // remote configs configurations
                 if(getInstance()._configurations.is_object() && !getInstance()._configurations.empty())
                 {
@@ -396,7 +404,7 @@ namespace gameanalytics
                 }
 
                 out["sdk_version"] = device::GADevice::getRelevantSdkVersion();
-                out["client_ts"] = utilities::getTimestamp();
+                out["client_ts"] = utilities::GAUtilities::timeIntervalSince1970();
                 out["os_version"] = device::GADevice::getOSVersion();
                 out["manufacturer"] = device::GADevice::getDeviceManufacturer();
                 out["device"] = device::GADevice::getDeviceModel();
@@ -410,6 +418,8 @@ namespace gameanalytics
                 // A/B testing
                 utilities::addIfNotEmpty(out, "ab_id", getInstance()._abId);
                 utilities::addIfNotEmpty(out, "ab_variant_id", getInstance()._abVariantId);
+                
+                utilities::addIfNotEmpty(out, "user_id_ext", getInstance()._externalUserId);
 
                 utilities::addIfNotEmpty(out, "build", getInstance()._build);
                 utilities::addIfNotEmpty(out, "engine_version", device::GADevice::getGameEngineVersion());
@@ -419,9 +429,13 @@ namespace gameanalytics
                 utilities::addIfNotEmpty(out, "uwp_id", device::GADevice::getDeviceId());
 #endif
             }
-            catch (json::exception& e)
+            catch (json::exception const& e)
             {
-                logging::GALogger::e(e.what());
+                logging::GALogger::e("getEventAnnotations - json error: %s", e.what());
+            }
+            catch(std::exception const& e)
+            {
+                logging::GALogger::e("getEventAnnotations - exception thrown: %s", e.what());
             }
         }
 
@@ -434,7 +448,6 @@ namespace gameanalytics
             out["event_uuid"]       = utilities::GAUtilities::generateUUID();
 
             out["sdk_version"]      = device::GADevice::getRelevantSdkVersion();
-            out["client_ts"]        = utilities::getTimestamp();
             out["os_version"]       = device::GADevice::getOSVersion();
             out["manufacturer"]     = device::GADevice::getDeviceManufacturer();
             out["device"]           = device::GADevice::getDeviceModel();
@@ -472,7 +485,7 @@ namespace gameanalytics
                 utilities::addIfNotEmpty(out, "build", getInstance()._build);
                 utilities::addIfNotEmpty(out, "engine_version", device::GADevice::getGameEngineVersion());
             }
-            catch (std::exception& e)
+            catch (std::exception const& e)
             {
                 logging::GALogger::e("Exception thrown: %s", e.what());
             }
@@ -484,11 +497,11 @@ namespace gameanalytics
             {
                 _identifier = _userId;
             }
-            else if(!device::GADevice::getAdvertisingId().empty())
+            else if(!device::GADevice::getAdvertisingId().empty() && _enableIdTracking)
             {
                 _identifier = device::GADevice::getAdvertisingId();
             }
-            else if (!device::GADevice::getDeviceId().empty())
+            else if (!device::GADevice::getDeviceId().empty() && _enableIdTracking)
             {
                 _identifier = device::GADevice::getDeviceId();
             }
@@ -516,12 +529,6 @@ namespace gameanalytics
             }
 
             return "";
-        }
-
-        int64_t getNumberFromCache(json& dict, std::string const& key, int64_t defaultVal = 0ll)
-        {
-            return (dict.contains(key) && dict[key].is_number_integer()) ? 
-                std::stoll(dict[key].get<std::string>()) : defaultVal;
         }
 
         void GAState::ensurePersistedStates()
@@ -557,8 +564,8 @@ namespace gameanalytics
                     setDefaultUserId(defaultId);
                 }
 
-                _sessionNum     = getNumberFromCache(state_dict, "session_num");
-                _transactionNum = getNumberFromCache(state_dict, "transaction_num");
+                _sessionNum     = utilities::getNumberFromCache(state_dict, "session_num", 0ll);
+                _transactionNum = utilities::getNumberFromCache(state_dict, "transaction_num", 0ll);
 
                 // restore dimension settings
                 _currentCustomDimension01 = setStateFromCache(state_dict, "dimension01", _currentCustomDimension01);
@@ -789,6 +796,9 @@ namespace gameanalytics
                 // Set session start
                 _sessionStart = getClientTsAdjusted();
 
+                // to acurrately measure time
+                _startTimepoint = std::chrono::high_resolution_clock::now();
+
                 // Add session start event
                 events::GAEvents::addSessionStartEvent();
             }
@@ -833,8 +843,8 @@ namespace gameanalytics
 
         std::string GAState::getRemoteConfigsStringValue(std::string const& key, std::string const& defaultValue)
         {
-            std::lock_guard<std::mutex> lg(getInstance()._mtx);
-            std::string const value = utilities::getOptionalValue<std::string>(getInstance()._configurations, key, defaultValue);
+            std::lock_guard<std::recursive_mutex> lg(getInstance()._mtx);
+            std::string const value = utilities::getOptionalValue(getInstance()._configurations, key, defaultValue);
 
             return value;
         }
@@ -842,6 +852,11 @@ namespace gameanalytics
         bool GAState::isRemoteConfigsReady()
         {
             return getInstance()._remoteConfigsIsReady;
+        }
+
+        int64_t GAState::calculateSessionLength() const
+        {
+            return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - _startTimepoint).count();
         }
 
         void GAState::addRemoteConfigsListener(const std::shared_ptr<IRemoteConfigsListener>& listener)
@@ -865,12 +880,13 @@ namespace gameanalytics
 
         std::string GAState::getRemoteConfigsContentAsString()
         {
+            std::lock_guard<std::recursive_mutex> lg(getInstance()._mtx);
             return getInstance()._configurations.dump(JSON_PRINT_INDENT);
         }
 
         void GAState::populateConfigurations(json& sdkConfig)
         {
-            std::lock_guard<std::mutex> guard(_mtx);
+            std::lock_guard<std::recursive_mutex> guard(_mtx);
 
             try
             {
@@ -884,9 +900,9 @@ namespace gameanalytics
                         {
                             std::string key = utilities::getOptionalValue<std::string>(configuration, "key", "");
 
-                            int64_t start_ts = utilities::getOptionalValue<int64_t>(configuration, "start_ts", -1ll);
+                            int64_t start_ts = utilities::getOptionalValue<int64_t>(configuration, "start_ts", std::numeric_limits<int64_t>::min());
 
-                            int64_t end_ts  = utilities::getOptionalValue<int64_t>(configuration, "end_ts", -1ll);
+                            int64_t end_ts  = utilities::getOptionalValue<int64_t>(configuration, "end_ts", std::numeric_limits<int64_t>::max());
 
                             int64_t client_ts_adjusted = getClientTsAdjusted();
 
@@ -1020,12 +1036,12 @@ namespace gameanalytics
 
         int64_t GAState::getClientTsAdjusted()
         {
-            return utilities::getTimestamp();
+            return utilities::GAUtilities::timeIntervalSince1970();
         }
 
         std::string GAState::getBuild()
         {
-            getInstance()._build;
+            return getInstance()._build;
         }
 
         int64_t GAState::calculateServerTimeOffset(int64_t serverTs)
