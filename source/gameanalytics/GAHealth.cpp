@@ -7,6 +7,10 @@ namespace gameanalytics
     GAHealth::GAHealth(GAPlatform* platform):
         _platform(platform)
     {
+        std::fill(_fpsReadings.begin(), _fpsReadings.end(), 0);
+        std::fill(_appMemoryUsage.begin(), _appMemoryUsage.end(), 0);
+        std::fill(_sysMemoryUsage.begin(), _sysMemoryUsage.end(), 0);
+
         if(platform)
         {
             _cpuModel    = platform->getCpuModel();
