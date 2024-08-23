@@ -1,16 +1,18 @@
 #include "GAHealth.h"
 #include "GAUtilities.h"
+#include "GAThreading.h"
 
 namespace gameanalytics
 {
-    GAHealth::GAHealth(GAPlatform* platform)
+    GAHealth::GAHealth(GAPlatform* platform):
+        _platform(platform)
     {
         if(platform)
         {
-            _cpuModel = platform->getCpuModel();
-            _numCores = platform->getNumCpuCores();
-            _hardware = platform->getHardware();
-            _gpuModel = platform->getGpuModel();
+            _cpuModel    = platform->getCpuModel();
+            _numCores    = platform->getNumCpuCores();
+            _hardware    = platform->getDeviceModel();
+            _gpuModel    = platform->getGpuModel();
             _totalMemory = platform->getTotalDeviceMemory();
         }
     }
@@ -101,6 +103,69 @@ namespace gameanalytics
 
             out["memory_sys_data_table"] = sysMemUsed;
             out["memory_app_data_table"] = appMemUsed;
+        }
+    }
+
+    void GAHealth::addSDKInitData(json& out)
+    {
+        if(_platform && enableAppBootTimeTracking)
+        {
+            int64_t appBootTime = _platform->getBootTime();
+
+            if(appBootTime > 0)
+                out["app_boot_time"] = appBootTime;
+        }
+    }
+
+    void GAHealth::queryMemory()
+    {
+        if(_platform && enableMemoryTracking)
+        {
+            int64_t appMemory = _platform->getAppMemoryUsage();
+            if(appMemory > 0)
+            {
+                doAppMemoryReading(appMemory);
+            }
+
+            int64_t sysMemory = _platform->getSysMemoryUsage();
+            if(sysMemory > 0)
+            {
+                doSysMemoryReading(sysMemory);
+            }
+        }
+    }
+
+    void GAHealth::addMemoryTracker()
+    {
+        if(!_isMemoryTracked)
+        {
+            _isMemoryTracked = true;
+            threading::GAThreading::scheduleTimer(MEMORY_TRACK_FREQ, 
+                [this]() 
+                {
+                    queryMemory();
+                }
+            );
+        }
+    }
+
+    void GAHealth::addFPSTracker(FPSTracker fpsTracker)
+    {
+        _fpsTracker = fpsTracker;
+        if(!_isFPSTracked)
+        {
+            _isFPSTracked = true;
+            threading::GAThreading::scheduleTimer(FPS_TRACK_FREQ, 
+                [this]()
+                {
+                    if(enableFPSTracking)
+                    {
+                        float fps = _fpsTracker();
+                        doFpsReading(fps);
+                    }
+                }
+            );
+
         }
     }
 }
