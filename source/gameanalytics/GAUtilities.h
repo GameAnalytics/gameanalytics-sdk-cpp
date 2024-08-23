@@ -44,6 +44,12 @@ namespace gameanalytics
             return defaultValue;
         }
 
+        inline double convertBytesToMB(int64_t bytes)
+        {
+            constexpr double TO_MB = 1024 * 1024;
+            return std::round(static_cast<double>(bytes) / TO_MB);
+        }
+
         static inline bool addIfNotEmpty(json& out, std::string const& key, std::string const& str)
         {
             if (!key.empty() && !str.empty())

@@ -100,6 +100,7 @@ namespace gameanalytics
     };
 
     using LogHandler = std::function<void(std::string const&, EGALoggerMessageType)>;
+    using FPSTracker = std::function<float()>;
 
 	namespace state
 	{

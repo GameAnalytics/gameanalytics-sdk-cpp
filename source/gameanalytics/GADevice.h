@@ -7,6 +7,7 @@
 
 #include "GAConstants.h"
 #include "GACommon.h"
+#include "GAHealth.h"
 #include "Platform/GAPlatform.h"
 
 namespace gameanalytics
@@ -54,9 +55,13 @@ namespace gameanalytics
                 static std::string  getDeviceId();
                 static std::string  getAdvertisingId();
 
+                static GAPlatform*  getPlatform();
+                static GAHealth*    getHealthTracker();
+
             private:
 
                 std::unique_ptr<GAPlatform> _platform;
+                std::unique_ptr<GAHealth>   _healthTracker;
 
                 void initDeviceId();
                 void initOSVersion();

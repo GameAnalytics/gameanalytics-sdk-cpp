@@ -311,9 +311,9 @@ namespace gameanalytics
 
             bool useGzip = this->useGzip;
 
-            std::async(std::launch::async, [=]() -> void
+            auto task = std::async(std::launch::async, [=]() -> void
             {
-                int64_t now = utilities::getTimestamp();
+                int64_t now = utilities::GAUtilities::timeIntervalSince1970();
                 if(timestampMap.count(errorType) == 0)
                 {
                     timestampMap[errorType] = now;

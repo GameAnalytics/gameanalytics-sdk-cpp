@@ -78,7 +78,7 @@ namespace gameanalytics
         }
     }
 
-    void GAHealth::addHealthTables(json& out)
+    void GAHealth::addPerformanceData(json& out)
     {
         if(enableFPSTracking)
         {

@@ -17,8 +17,19 @@ namespace gameanalytics
             return state::GAState::getInstance()._gaDevice;
         }
 
+        GAHealth* GADevice::getHealthTracker()
+        {
+            return getInstance()._healthTracker.get();
+        }
+
+        GAPlatform* GADevice::getPlatform()
+        {
+            return getInstance()._platform.get();
+        }
+
         GADevice::GADevice():
             _platform(MakePlatform()),
+            _healthTracker(std::make_unique<GAHealth>(_platform.get())),
             _sdkWrapperVersion(GA_VERSION_STR)
         {
         }

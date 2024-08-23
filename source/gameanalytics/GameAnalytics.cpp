@@ -954,6 +954,53 @@ namespace gameanalytics
         return true;
     }
 
+    void GameAnalytics::enableSDKInitEvent(bool value)
+    {
+        GAHealth* healthTracker = device::GADevice::getHealthTracker();
+        if(healthTracker)
+        {
+            healthTracker->enableAppBootTimeTracking = value;
+            events::GAEvents::getInstance().enableSDKInitEvent = value;
+        }
+    }
+
+    void GameAnalytics::enableMemoryHistogram(bool value)
+    {
+        GAHealth* healthTracker = device::GADevice::getHealthTracker();
+        if(healthTracker)
+        {
+            healthTracker->enableMemoryTracking = value;
+            healthTracker->addMemoryTracker();
+            if(value)
+            {
+                events::GAEvents::getInstance().enableHealthEvent = true;
+            }
+        }
+    }
+    
+    void GameAnalytics::enableFPSHistogram(FPSTracker fpsTracker, bool value)
+    {
+        GAHealth* healthTracker = device::GADevice::getHealthTracker();
+        if(healthTracker)
+        {
+            healthTracker->enableFPSTracking = value;
+            healthTracker->addFPSTracker(fpsTracker);
+            if(value)
+            {
+                events::GAEvents::getInstance().enableHealthEvent = true;
+            }
+        }
+    }
+
+    void GameAnalytics::enableHardwareTracking(bool value)
+    {
+        GAHealth* healthTracker = device::GADevice::getHealthTracker();
+        if(healthTracker)
+        {
+            healthTracker->enableHardwareTracking = value;
+        }
+    }
+
 #if USE_UWP
     void GameAnalytics::OnAppSuspending(Platform::Object ^sender, Windows::ApplicationModel::SuspendingEventArgs ^e)
     {

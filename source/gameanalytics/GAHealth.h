@@ -9,8 +9,6 @@ namespace gameanalytics
     {
         public:
 
-            using FPSTracker = std::function<float()>;
-
             GAHealth(GAPlatform* platform);
 
             bool enableMemoryTracking      = false;
@@ -19,7 +17,7 @@ namespace gameanalytics
             bool enableAppBootTimeTracking = false;
 
             void addHealthAnnotations(json& healthEvent);
-            void addHealthTables(json& healthEvent);
+            void addPerformanceData(json& healthEvent);
             void addSDKInitData(json& sdkInitEvent);
 
             void addMemoryTracker();

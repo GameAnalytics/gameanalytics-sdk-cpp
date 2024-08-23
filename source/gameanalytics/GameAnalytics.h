@@ -75,6 +75,15 @@ namespace gameanalytics
          static void setCustomDimension02(std::string const& dimension02);
          static void setCustomDimension03(std::string const& dimension03);
 
+         /////////// HEALTH EVENT
+
+         static void enableSDKInitEvent(bool value = true);
+         static void enableMemoryHistogram(bool value = true);
+         static void enableFPSHistogram(FPSTracker fpsTracker, bool value = true);
+         static void enableHardwareTracking(bool value = true);
+
+         ///////////
+
          static void setGlobalCustomEventFields(std::string const& customFields);
 
          static void startSession();

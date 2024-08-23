@@ -35,12 +35,20 @@ namespace gameanalytics
 
         GAState::GAState()
         {
+            static int i = 0;
+            std::cout << "ctor called " << i << '\n';
+            ++i;
         }
 
         GAState::~GAState()
         {
-            if(!_useManualSessionHandling)
-                endSessionAndStopQueue(true);
+            _gaThread.queueBlock(
+                [this]()
+                {
+                    if(!_useManualSessionHandling)
+                        endSessionAndStopQueue(true);
+                }
+            );
 
             _gaThread.flush();
         }
@@ -345,6 +353,8 @@ namespace gameanalytics
             getInstance()._initialized = true;
             getInstance().startNewSession();
 
+            events::GAEvents::addSDKInitEvent();
+
             if (isEnabled())
             {
                 events::GAEvents::ensureEventQueueIsRunning();
@@ -370,12 +380,13 @@ namespace gameanalytics
             if(GAState::isInitialized())
             {
                 logging::GALogger::i("Ending session.");
-                events::GAEvents::stopEventQueue();
                 if (GAState::isEnabled() && GAState::sessionIsStarted())
                 {
+                    events::GAEvents::addHealthEvent();
                     events::GAEvents::addSessionEndEvent();
                     getInstance()._sessionStart = 0;
                 }
+                events::GAEvents::stopEventQueue();
             }
 
             if(endThread)
@@ -750,10 +761,8 @@ namespace gameanalytics
                 }
 
                 json& currentSdkConfig = GAState::getSdkConfig();
-
                 {
-                    if (currentSdkConfig.is_object() && 
-                        ((currentSdkConfig.contains("enabled") && currentSdkConfig["enabled"].is_boolean()) ? currentSdkConfig["enabled"].get<bool>() : true) == false)
+                    if (!utilities::getOptionalValue<bool>(currentSdkConfig, "enabled", true))
                     {
                         _enabled = false;
                     }
@@ -1060,7 +1069,7 @@ namespace gameanalytics
 
         bool GAState::useManualSessionHandling()
         {
-            getInstance()._useManualSessionHandling;
+            return getInstance()._useManualSessionHandling;
         }
 
         void GAState::setEnableErrorReporting(bool flag)

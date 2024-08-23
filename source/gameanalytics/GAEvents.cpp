@@ -9,6 +9,7 @@
 #include "GAUtilities.h"
 #include "GALogger.h"
 #include "GAStore.h"
+#include "GADevice.h"
 #include "GAThreading.h"
 #include "GAValidator.h"
 #include <string.h>
@@ -901,6 +902,107 @@ namespace gameanalytics
                     return "Sink";
                 default:
                     return "";
+            }
+        }
+
+        void GAEvents::addSDKInitEvent()
+        {
+            try
+            {
+                if(!state::GAState::isEventSubmissionEnabled())
+                {
+                    return;
+                }
+
+                if(!getInstance().enableSDKInitEvent)
+                {
+                    return;
+                }
+
+                GAHealth* healthTracker = device::GADevice::getHealthTracker();
+                if(!healthTracker)
+                {
+                    return;
+                }
+
+                // Create empty eventData
+                json eventDict;
+                
+                // insert event specific values
+                eventDict["category"] = GAEvents::CategorySDKInit;
+
+                // session num will already be incremented to 1
+                const int64_t sessionNum  = state::GAState::getSessionNum();
+                const bool isFirstInit = sessionNum == 1;
+                eventDict["is_first_sdk_init"] = isFirstInit;
+
+                healthTracker->addHealthAnnotations(eventDict);
+                healthTracker->addSDKInitData(eventDict);
+
+                // Add custom dimensions
+                getInstance().addDimensionsToEvent(eventDict);
+
+                // Log
+                logging::GALogger::i("Added sdk init event: %s", eventDict.dump().c_str());
+
+                // Send to store
+                getInstance().addEventToStore(eventDict);
+            }
+            catch(const json::exception& e)
+            {
+                logging::GALogger::e("addSDKInitEvent - Failed to parse json: %s", e.what());
+            }
+            catch(const std::exception& e)
+            {
+                logging::GALogger::e("addSDKInitEvent - Exception thrown: %s", e.what());
+            }
+        }
+
+        void GAEvents::addHealthEvent()
+        {
+            try
+            {
+                if(!state::GAState::isEventSubmissionEnabled())
+                {
+                    return;
+                }
+
+                if(!getInstance().enableHealthEvent)
+                {
+                    return;
+                }
+
+                GAHealth* healthTracker = device::GADevice::getHealthTracker();
+                if(!healthTracker)
+                {
+                    return;
+                }
+
+                // Create empty eventData
+                json eventDict;
+                
+                // insert event specific values
+                eventDict["category"] = GAEvents::CategoryHealth;
+
+                healthTracker->addHealthAnnotations(eventDict);
+                healthTracker->addPerformanceData(eventDict);
+
+                // Add custom dimensions
+                getInstance().addDimensionsToEvent(eventDict);
+
+                // Log
+                logging::GALogger::i("Added health event: %s", eventDict.dump().c_str());
+
+                // Send to store
+                getInstance().addEventToStore(eventDict);
+            }
+            catch(const json::exception& e)
+            {
+                logging::GALogger::e("addSDKInitEvent - Failed to parse json: %s", e.what());
+            }
+            catch(const std::exception& e)
+            {
+                logging::GALogger::e("addSDKInitEvent - Exception thrown: %s", e.what());
             }
         }
     }
