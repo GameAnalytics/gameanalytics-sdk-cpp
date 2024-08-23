@@ -8,7 +8,7 @@ std::string gameanalytics::GAPlatformLinux::getOSVersion()
     uname(&info);
 
     std::string version;
-    int const strSize = strlen(info.release));
+    int const strSize = strlen(info.release);
 
     for (size_t i = 0; i < strSize; ++i)
     {

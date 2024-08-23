@@ -11,6 +11,7 @@
 #include <sys/utsname.h>
 #include <mach/mach.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 static struct sigaction prevSigAction;
 
@@ -202,7 +203,7 @@ int gameanalytics::GAPlatformMacOS::getNumCpuCores() const
 
 int64_t gameanalytics::GAPlatformMacOS::getTotalDeviceMemory() const 
 {
-    return ::getTotalDeviceMemory();
+    return utilities::convertBytesToMB(::getTotalDeviceMemory());
 }
 
 int64_t gameanalytics::GAPlatformMacOS::getAppMemoryUsage() const
@@ -214,7 +215,7 @@ int64_t gameanalytics::GAPlatformMacOS::getAppMemoryUsage() const
     
     if(result == KERN_SUCCESS) 
     {
-        return (uint64_t)info.resident_size;
+        return utilities::convertBytesToMB(info.resident_size);
     }
 
     return 0;
@@ -233,10 +234,33 @@ int64_t gameanalytics::GAPlatformMacOS::getSysMemoryUsage() const
     if(host_statistics(port, HOST_VM_INFO, (host_info_t)&stats, &hostSize) == KERN_SUCCESS)
     {
         const int64_t freeMemory = (stats.free_count + stats.inactive_count) * pageSize;
-        return getTotalDeviceMemory() - freeMemory;
+        return getTotalDeviceMemory() - utilities::convertBytesToMB(freeMemory);
     }
 
     return 0;
+}
+
+int64_t gameanalytics::GAPlatformMacOS::getBootTime() const
+{
+    const size_t len = 4;
+    int mib[len] = {0,0,0,0};
+    struct kinfo_proc kp = {};
+
+    const size_t pidId = 3;
+    
+    size_t num = len;
+    sysctlnametomib("kern.proc.pid", mib, &num);
+    mib[pidId] = getpid();
+    
+    num = sizeof(kp);
+    sysctl(mib, len, &kp, &num, NULL, 0);
+
+    struct timeval startTime = kp.kp_proc.p_un.__p_starttime;
+    struct timeval currentTime = {};
+    
+    gettimeofday(&currentTime, NULL);
+    
+    return currentTime.tv_sec - startTime.tv_sec;
 }
 
 #endif

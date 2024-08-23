@@ -5,6 +5,10 @@
 
 std::terminate_handler gameanalytics::GAPlatform::previousTerminateHandler;
 
+gameanalytics::GAPlatform::~GAPlatform()
+{
+}
+
 std::string gameanalytics::GAPlatform::getAdvertisingId()
 {
 	return "";

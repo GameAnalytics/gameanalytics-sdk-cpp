@@ -93,14 +93,14 @@ const char* getConnectionType()
 
 int getNumCpuCores()
 {
-    NSProcessInfo info = [NSProcessInfo processInfo];
+    NSProcessInfo *info = [NSProcessInfo processInfo];
     return (int)info.processorCount;
 }
 
 int64_t getTotalDeviceMemory()
 {
-    NSProcessInfo info = [NSProcessInfo processInfo];
-    return (uint64_t)info.physicalMemory
+    NSProcessInfo *info = [NSProcessInfo processInfo];
+    return (uint64_t)info.physicalMemory;
 }
 
 #endif // IS_MAC

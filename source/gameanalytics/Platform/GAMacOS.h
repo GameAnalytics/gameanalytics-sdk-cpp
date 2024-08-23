@@ -30,6 +30,8 @@ namespace gameanalytics
 			virtual int64_t getAppMemoryUsage() const override;
 			virtual int64_t getSysMemoryUsage() const override;
 
+			virtual int64_t getBootTime() const override;
+
 			void setupUncaughtExceptionHandler() override;
 
 			std::string getConnectionType() override;
