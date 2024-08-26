@@ -295,5 +295,87 @@ void GAPlatformWin32::signalHandler(int sig)
     }
 }
 
+
+std::string GAPlatformWin32::getCpuModel() const
+{
+    // todo
+    return "";
+}
+
+std::string GAPlatformWin32::getGpuModel() const
+{
+    //todo 
+    return "";
+}
+
+int GAPlatformWin32::getNumCpuCores() const
+{
+
+}
+
+int64_t GAPlatformWin32::getTotalDeviceMemory() const
+{
+    MEMORYSTATUSEX memInfo;
+    ZERO_MEMORY(&memInfo, sizeof(MEMORYSTATUSEX));
+
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+    GlobalMemoryStatusEx(&memInfo);
+    return memInfo.ullTotalPhys;
+}
+
+int64_t GAPlatformWin32::getAppMemoryUsage() const
+{
+    PROCESS_MEMORY_COUNTERS_EX pmc;
+    ZERO_MEMORY(&pmc, sizeof(PROCESS_MEMORY_COUNTERS_EX));
+
+    GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc));
+    return pmc.PrivateUsage;
+}
+
+int64_t GAPlatformWin32::getSysMemoryUsage() const
+{
+    MEMORYSTATUSEX memInfo;
+    ZERO_MEMORY(&memInfo, sizeof(MEMORYSTATUSEX));
+
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+    GlobalMemoryStatusEx(&memInfo);
+    return memInfo.ullTotalPhys - mem.ullAvailPhys;
+}
+
+int64_t GAPlatformWin32::getBootTime() const
+{
+    FILETIME creationTime = {};
+    FILETIME exitTime = {};
+    FILETIME kernetlTime = {};
+    FILETIME userTime = {};
+
+    if(GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime))
+    {
+        ULARGE_INTEGER creation;
+        creation.LowPart = creationTime.dwLowDateTime;
+        creation.HighPart = creationTime.dwHighDateTime;
+        
+        FILETIME currentTime;
+        GetSystemTimeAsFileTime(&currentTime);
+
+        ULARGE_INTEGER current;
+        current.LowPart  = currentTime.dwLowDateTime;
+        current.HighPart = currentTime.dwHighDateTime;
+
+        int64_t value = static_cast<int64_t>(current.QuadPart - creation.QuadPart);
+        if(value < 0ll)
+        {
+            return 0ll;
+        }
+        
+        // filetime is expressed in 100s of nanoseconds
+        std::chrono::nanoseconds timeInNs = std::chrono::nanoseconds(value * 100);
+        return std::chrono::duration_cast<std::chrono::seconds>(timeInNs).count();
+    }
+
+    return 0ll;
+}
+
+
 }
 #endif

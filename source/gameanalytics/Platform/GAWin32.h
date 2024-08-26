@@ -17,6 +17,7 @@
 	#include <VersionHelpers.h>
 	#include <cerrno>
 	#include <tchar.h>
+	#include <sysinfoapi.h>
 
 	#if !GA_SHARED_LIB
 		#include <comdef.h>
@@ -46,6 +47,16 @@ namespace gameanalytics
 			void setupUncaughtExceptionHandler() override;
 
 			std::string getConnectionType() override;
+
+			virtual std::string getCpuModel() 			const override;
+			virtual std::string getGpuModel() 			const override;
+			virtual int 		getNumCpuCores() 		const override;
+			virtual int64_t 	getTotalDeviceMemory() 	const override;
+
+			virtual int64_t getAppMemoryUsage() const override;
+			virtual int64_t getSysMemoryUsage() const override;
+
+			virtual int64_t getBootTime() const override;
 
 		private:
 
