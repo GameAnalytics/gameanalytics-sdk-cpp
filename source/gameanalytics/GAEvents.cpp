@@ -665,7 +665,6 @@ namespace gameanalytics
                     GAEvents::addDimensionsToEvent(ev);
 
                     json cleanedFields = state::GAState::getValidatedCustomFields();
-
                     GAEvents::addCustomFieldsToEvent(ev, cleanedFields);
 
                     std::string jsonDefaults = ev.dump();
@@ -679,11 +678,11 @@ namespace gameanalytics
                 }
                 catch(json::exception const& e)
                 {
-                    logging::GALogger::e("Failed to parse json: %s", e.what());
+                    logging::GALogger::e("updateSessionTime - Failed to parse json: %s", e.what());
                 }
                 catch(std::exception const& e)
                 {
-                    logging::GALogger::e("Exception thrown: %s", e.what());
+                    logging::GALogger::e("updateSessionTime - Exception thrown: %s", e.what());
                 }
             }
         }
@@ -725,7 +724,7 @@ namespace gameanalytics
                         json sessionEndEvent = json::parse(session["event"].get<std::string>());
 
                         int64_t event_ts = utilities::getOptionalValue<int64_t>(sessionEndEvent, "client_ts", 0);
-                        int64_t start_ts = std::stoll(utilities::getOptionalValue<std::string>(sessionEndEvent, "timestamp", "0"));
+                        int64_t start_ts = std::stoll(utilities::getOptionalValue<std::string>(session, "timestamp", "0"));
 
                         int64_t length = event_ts - start_ts;
                         length = static_cast<int64_t>(fmax(length, 0));
@@ -745,7 +744,7 @@ namespace gameanalytics
                     }
                     catch(std::exception const& e)
                     {
-                        logging::GALogger::e("Exception thrown: %s", e.what());
+                        logging::GALogger::e("fixMissingSessionEndEvents - Exception thrown: %s", e.what());
                     }
                 }
             }
