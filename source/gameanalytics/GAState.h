@@ -196,7 +196,7 @@ namespace gameanalytics
             std::string _identifier;
 
             bool _initialized = false;
-            bool _adjustTimestamp = true;
+            bool _adjustTimestamp = false;
 
             int64_t _sessionStart = 0;
             int64_t _sessionNum = 0;

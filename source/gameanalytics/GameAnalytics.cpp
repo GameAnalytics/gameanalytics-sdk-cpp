@@ -136,7 +136,7 @@ namespace gameanalytics
             }
             if (!validators::GAValidator::validateBuild(build))
             {
-                logging::GALogger::i("Validation fail - configure build: Cannot be null, empty or above 32 length. String: %s", build.data());
+                logging::GALogger::i("Validation fail - configure build: Cannot be null, empty or above 32 length. String: %s", build.c_str());
                 return;
             }
             state::GAState::setBuild(build);
@@ -302,7 +302,7 @@ namespace gameanalytics
                 logging::GALogger::i("Validation fail - configure engine: Engine version not supported. String: %s", gameEngineVersion.c_str());
                 return;
             }
-            device::GADevice::setGameEngineVersion(gameEngineVersion.data());
+            device::GADevice::setGameEngineVersion(gameEngineVersion);
         });
     }
 
@@ -544,26 +544,10 @@ namespace gameanalytics
         std::string function;
         int32_t line = -1;
 
-        try
-        {
-            stacktrace::call_stack st;
-            for(auto& entry : st.stack)
-            {
-                std::string f = entry.function;
-
-                if(f.find("GameAnalytics") == std::string::npos && f.find("call_stack") == std::string::npos)
-                {
-                    function = f;
-                    line = entry.line;
-                    break;
-                }
-            }
-        }
-        catch(...)
-        {
-            function = "";
-            line = -1;
-        }
+        std::pair<std::string, int32_t> inFunction = utilities::getRelevantFunctionFromCallStack();
+        
+        function = inFunction.first;
+        line     = inFunction.second;
         
         if(fields.size() > maxFieldsSize)
         {
@@ -1031,7 +1015,7 @@ namespace gameanalytics
 
     void GameAnalytics::OnAppResuming(Platform::Object ^sender, Platform::Object ^args)
     {
-        (void)sender;    // Unused parameter
+        (void)sender; // Unused parameter
 
         if(_endThread)
         {

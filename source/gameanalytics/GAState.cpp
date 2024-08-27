@@ -35,9 +35,6 @@ namespace gameanalytics
 
         GAState::GAState()
         {
-            static int i = 0;
-            std::cout << "ctor called " << i << '\n';
-            ++i;
         }
 
         GAState::~GAState()
@@ -641,11 +638,11 @@ namespace gameanalytics
             }
             catch (json::exception& e)
             {
-                logging::GALogger::e("Failed to parse json: %s", e.what());
+                logging::GALogger::e("ensurePersistedStates - Failed to parse json: %s", e.what());
             }
             catch (std::exception& e)
             {
-                logging::GALogger::e("Exception thrown: %s", e.what());
+                logging::GALogger::e("ensurePersistedStates - Exception thrown: %s", e.what());
             }
         }
 
@@ -813,11 +810,11 @@ namespace gameanalytics
             }
             catch (json::exception& e)
             {
-                logging::GALogger::e("Failed to parse json: %s", e.what());
+                logging::GALogger::e("startNewSession - Failed to parse json: %s", e.what());
             }
             catch (std::exception& e)
             {
-                logging::GALogger::e("Exception thrown: %s", e.what());
+                logging::GALogger::e("startNewSession - Exception thrown: %s", e.what());
             }
         }
 
@@ -938,11 +935,11 @@ namespace gameanalytics
             }
             catch (json::exception& e)
             {
-                logging::GALogger::e("Failed to parse json: %s", e.what());
+                logging::GALogger::e("populateConfigurations - Failed to parse json: %s", e.what());
             }
             catch (std::exception& e)
             {
-                logging::GALogger::e("Exception thrown: %s", e.what());
+                logging::GALogger::e("populateConfigurations - Exception thrown: %s", e.what());
             }
         }
 
@@ -1037,11 +1034,11 @@ namespace gameanalytics
             }
             catch (json::exception& e)
             {
-                logging::GALogger::e("Failed to parse json: %s", e.what());
+                logging::GALogger::e("validateAndCleanCustomFields - Failed to parse json: %s", e.what());
             }
             catch (std::exception& e)
             {
-                logging::GALogger::e("Exception thrown: %s", e.what());
+                logging::GALogger::e("validateAndCleanCustomFields - Exception thrown: %s", e.what());
             }
         }
 
@@ -1057,7 +1054,7 @@ namespace gameanalytics
 
         int64_t GAState::calculateServerTimeOffset(int64_t serverTs)
         {
-            int64_t clientTs = utilities::getTimestamp();
+            int64_t clientTs = utilities::GAUtilities::timeIntervalSince1970();
             return _adjustTimestamp ? (serverTs - clientTs) : clientTs;
         }
 

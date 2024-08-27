@@ -188,22 +188,20 @@ std::string GAPlatformWin32::getBuildPlatform()
 
 std::string GAPlatformWin32::getPersistentPath()
 {
+    std::string path = "GameAnalytics";
+
     char* appData = std::getenv("LOCALAPPDATA");
-
-    if (!appData)
-        return "";
-
-    std::string path = std::string(appData) + "\\GameAnalytics";
-
-    int result = _mkdir(path.c_str());
-    if (result == 0 || errno == EEXIST)
+    if (appData && strlen(appData))
     {
-        return path;
+        path = std::string(appData) + '\\' + path;
     }
-    else
+
+    if(!std::filesystem::exists(path))
     {
-        return "";
+        std::filesystem::create_directories(path);
     }
+
+    return path;
 }
 
 std::string GAPlatformWin32::getDeviceModel()
@@ -295,7 +293,6 @@ void GAPlatformWin32::signalHandler(int sig)
     }
 }
 
-
 std::string GAPlatformWin32::getCpuModel() const
 {
     // todo
@@ -310,7 +307,8 @@ std::string GAPlatformWin32::getGpuModel() const
 
 int GAPlatformWin32::getNumCpuCores() const
 {
-
+    //todo
+    return 0;
 }
 
 int64_t GAPlatformWin32::getTotalDeviceMemory() const
@@ -320,7 +318,7 @@ int64_t GAPlatformWin32::getTotalDeviceMemory() const
 
     memInfo.dwLength = sizeof(MEMORYSTATUSEX);
     GlobalMemoryStatusEx(&memInfo);
-    return memInfo.ullTotalPhys;
+    return utilities::convertBytesToMB(memInfo.ullTotalPhys);
 }
 
 int64_t GAPlatformWin32::getAppMemoryUsage() const
@@ -329,7 +327,7 @@ int64_t GAPlatformWin32::getAppMemoryUsage() const
     ZERO_MEMORY(&pmc, sizeof(PROCESS_MEMORY_COUNTERS_EX));
 
     GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc));
-    return pmc.PrivateUsage;
+    return utilities::convertBytesToMB(pmc.PrivateUsage);
 }
 
 int64_t GAPlatformWin32::getSysMemoryUsage() const
@@ -339,20 +337,20 @@ int64_t GAPlatformWin32::getSysMemoryUsage() const
 
     memInfo.dwLength = sizeof(MEMORYSTATUSEX);
     GlobalMemoryStatusEx(&memInfo);
-    return memInfo.ullTotalPhys - mem.ullAvailPhys;
+    return utilities::convertBytesToMB(memInfo.ullTotalPhys - mem.ullAvailPhys);
 }
 
 int64_t GAPlatformWin32::getBootTime() const
 {
     FILETIME creationTime = {};
     FILETIME exitTime = {};
-    FILETIME kernetlTime = {};
+    FILETIME kernelTime = {};
     FILETIME userTime = {};
 
     if(GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime))
     {
         ULARGE_INTEGER creation;
-        creation.LowPart = creationTime.dwLowDateTime;
+        creation.LowPart  = creationTime.dwLowDateTime;
         creation.HighPart = creationTime.dwHighDateTime;
         
         FILETIME currentTime;

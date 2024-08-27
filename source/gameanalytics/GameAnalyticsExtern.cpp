@@ -2,9 +2,8 @@
 
 #include "GameAnalytics.h"
 #include "GAUtilities.h"
-#include <vector>
 
-void ga_string_alloc(GAString* s, int size)
+void ga_string_alloc(GAString* s, unsigned int size)
 {
     if(s)
     {
@@ -12,6 +11,7 @@ void ga_string_alloc(GAString* s, int size)
         if(s->str)
         {
             s->size = size;
+            std::memset(s->str, '\0', s->size);
         }
     }
 }
@@ -105,71 +105,67 @@ void initialize(const char *gameKey, const char *gameSecret)
 }
 
 // add events
-void addBusinessEvent(const char *currency, double amount, const char *itemType, const char *itemId, const char *cartType, const char *fields, double mergeFields)
+void addBusinessEvent(const char *currency, double amount, const char *itemType, const char *itemId, const char *cartType, const char *fields, GA_BOOL mergeFields)
 {
-    gameanalytics::GameAnalytics::addBusinessEvent(currency, (int)amount, itemType, itemId, cartType, fields, mergeFields != 0.0);
+    gameanalytics::GameAnalytics::addBusinessEvent(currency, (int)amount, itemType, itemId, cartType, fields, mergeFields);
 }
 
-void addResourceEvent(double flowType, const char *currency, double amount, const char *itemType, const char *itemId, const char *fields, double mergeFields)
+void addResourceEvent(int flowType, const char *currency, double amount, const char *itemType, const char *itemId, const char *fields, GA_BOOL mergeFields)
 {
-    int flowTypeInt = (int)flowType;
-    gameanalytics::GameAnalytics::addResourceEvent((gameanalytics::EGAResourceFlowType)flowTypeInt, currency, (float)amount, itemType, itemId, fields, mergeFields != 0.0);
+    gameanalytics::GameAnalytics::addResourceEvent((gameanalytics::EGAResourceFlowType)flowType, currency, (float)amount, itemType, itemId, fields, mergeFields);
 }
 
-void addProgressionEvent(double progressionStatus, const char *progression01, const char *progression02, const char *progression03, const char *fields, double mergeFields)
+void addProgressionEvent(int progressionStatus, const char *progression01, const char *progression02, const char *progression03, const char *fields, GA_BOOL mergeFields)
 {
-    int progressionStatusInt = (int)progressionStatus;
-    gameanalytics::GameAnalytics::addProgressionEvent((gameanalytics::EGAProgressionStatus)progressionStatusInt, progression01, progression02, progression03, fields, mergeFields != 0.0);
+    gameanalytics::GameAnalytics::addProgressionEvent((gameanalytics::EGAProgressionStatus)progressionStatus, progression01, progression02, progression03, fields, mergeFields);
 }
 
-void addProgressionEventWithScore(double progressionStatus, const char *progression01, const char *progression02, const char *progression03, double score, const char *fields, double mergeFields)
+void addProgressionEventWithScore(int progressionStatus, const char *progression01, const char *progression02, const char *progression03, double score, const char *fields, GA_BOOL mergeFields)
 {
-    int progressionStatusInt = (int)progressionStatus;
-    gameanalytics::GameAnalytics::addProgressionEvent((gameanalytics::EGAProgressionStatus)progressionStatusInt, progression01, progression02, progression03, (int)score, fields, mergeFields != 0.0);
+    gameanalytics::GameAnalytics::addProgressionEvent((gameanalytics::EGAProgressionStatus)progressionStatus, progression01, progression02, progression03, (int)score, fields, mergeFields);
 }
 
-void addDesignEvent(const char *eventId, const char *fields, double mergeFields)
+void addDesignEvent(const char *eventId, const char *fields, GA_BOOL mergeFields)
 {
-    gameanalytics::GameAnalytics::addDesignEvent(eventId, fields, mergeFields != 0.0);
+    gameanalytics::GameAnalytics::addDesignEvent(eventId, fields, mergeFields);
 }
 
-void addDesignEventWithValue(const char *eventId, double value, const char *fields, double mergeFields)
+void addDesignEventWithValue(const char *eventId, double value, const char *fields, GA_BOOL mergeFields)
 {
-    gameanalytics::GameAnalytics::addDesignEvent(eventId, value, fields, mergeFields != 0.0);
+    gameanalytics::GameAnalytics::addDesignEvent(eventId, value, fields, mergeFields);
 }
 
-void addErrorEvent(double severity, const char *message, const char *fields, double mergeFields)
+void addErrorEvent(int severity, const char *message, const char *fields, GA_BOOL mergeFields)
 {
-    int severityInt = (int)severity;
-    gameanalytics::GameAnalytics::addErrorEvent((gameanalytics::EGAErrorSeverity)severityInt, message, fields, mergeFields != 0.0);
+    gameanalytics::GameAnalytics::addErrorEvent((gameanalytics::EGAErrorSeverity)severity, message, fields, mergeFields);
 }
 
 // set calls can be changed at any time (pre- and post-initialize)
 // some calls only work after a configure is called (setCustomDimension)
 
-void setEnabledInfoLog(double flag)
+void setEnabledInfoLog(GA_BOOL flag)
 {
-    gameanalytics::GameAnalytics::setEnabledInfoLog(flag != 0.0);
+    gameanalytics::GameAnalytics::setEnabledInfoLog(flag);
 }
 
-void setEnabledVerboseLog(double flag)
+void setEnabledVerboseLog(GA_BOOL flag)
 {
-    gameanalytics::GameAnalytics::setEnabledVerboseLog(flag != 0.0);
+    gameanalytics::GameAnalytics::setEnabledVerboseLog(flag);
 }
 
-void setEnabledManualSessionHandling(double flag)
+void setEnabledManualSessionHandling(GA_BOOL flag)
 {
-    gameanalytics::GameAnalytics::setEnabledManualSessionHandling(flag != 0.0);
+    gameanalytics::GameAnalytics::setEnabledManualSessionHandling(flag);
 }
 
-void setEnabledErrorReporting(double flag)
+void setEnabledErrorReporting(GA_BOOL flag)
 {
-    gameanalytics::GameAnalytics::setEnabledErrorReporting(flag != 0.0);
+    gameanalytics::GameAnalytics::setEnabledErrorReporting(flag);
 }
 
-void setEnabledEventSubmission(double flag)
+void setEnabledEventSubmission(GA_BOOL flag)
 {
-    gameanalytics::GameAnalytics::setEnabledEventSubmission(flag != 0.0);
+    gameanalytics::GameAnalytics::setEnabledEventSubmission(flag);
 }
 
 void setCustomDimension01(const char *dimension01)
@@ -231,9 +227,9 @@ GAString getRemoteConfigsValueAsStringWithDefaultValue(const char *key, const ch
     return ga_string_fromString(returnValue);
 }
 
-double isRemoteConfigsReady()
+GA_BOOL isRemoteConfigsReady()
 {
-    return gameanalytics::GameAnalytics::isRemoteConfigsReady() ? 1 : 0;
+    return gameanalytics::GameAnalytics::isRemoteConfigsReady() ? GA_TRUE : GA_FALSE;
 }
 
 GAString getRemoteConfigsContentAsString()

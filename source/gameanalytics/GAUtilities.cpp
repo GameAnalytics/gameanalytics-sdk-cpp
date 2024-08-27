@@ -21,6 +21,7 @@
 #endif
 
 #include "GAConstants.h"
+#include "stacktrace/call_stack.hpp"
 
 // From crypto
 #define MINIZ_HEADER_FILE_ONLY
@@ -75,6 +76,37 @@ namespace gameanalytics
             }
             
             return defValue;
+        }
+
+        std::pair<std::string, int32_t> getRelevantFunctionFromCallStack()
+        {
+            std::string function;
+            int32_t line = -1;
+
+            try
+            {
+                stacktrace::call_stack st;
+                for(auto& entry : st.stack)
+                {
+                    std::string f = entry.function;
+
+                    if(f.find("GameAnalytics") == std::string::npos && 
+                       f.find("call_stack") == std::string::npos && 
+                       f.find("getRelevantFunctionFromCallStack") == std::string::npos)
+                    {
+                        function = f;
+                        line = entry.line;
+                        break;
+                    }
+                }
+            }
+            catch(...)
+            {
+                function = "";
+                line = -1;
+            }
+
+            return std::make_pair(function, line);
         }
 
         // Compress a STL string using zlib with given compression level and return the binary data.

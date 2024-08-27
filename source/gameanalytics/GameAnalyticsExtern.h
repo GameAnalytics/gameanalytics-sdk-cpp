@@ -12,23 +12,25 @@ extern "C" {
 	#define EXPORT
 #endif
 
-struct GAString_;
-EXPORT void ga_string_free(GAString_* s);
-
-struct GAString_
+typedef struct GAString_
 {
     const char* str = 0;
     unsigned int size = 0;
-    
-#ifdef __cplusplus
-    ~GAString_()
-	{
-		ga_string_free(this);
-	}
-#endif
-};
 
-typedef struct GAString_ GAString;
+} GAString;
+
+#ifdef __cplusplus
+	#define GA_BOOL  bool
+	#define GA_TRUE  true
+	#define GA_FALSE false
+#else
+	#define GA_BOOL  char
+	#define GA_TRUE  ((char)1)
+	#define GA_FALSE ((char)0)
+#endif
+
+EXPORT void ga_string_alloc(GAString* s, unsigned int size);
+EXPORT void ga_string_free(GAString* s);
 
 EXPORT void configureAvailableCustomDimensions01(const char *customDimensionsJson);
 EXPORT void configureAvailableCustomDimensions02(const char *customDimensionsJson);
@@ -55,25 +57,25 @@ EXPORT void configureExternalUserId(const char* extId);
 EXPORT void initialize(const char *gameKey, const char *gameSecret);
 
 // add events
-EXPORT void addBusinessEvent(const char *currency, double amount, const char *itemType, const char *itemId, const char *cartType, const char *customFields, double mergeFields);
+EXPORT void addBusinessEvent(const char *currency, double amount, const char *itemType, const char *itemId, const char *cartType, const char *customFields, GA_BOOL mergeFields);
 
-EXPORT void addResourceEvent(double flowType, const char *currency, double amount, const char *itemType, const char *itemId, const char *customFields, double mergeFields);
+EXPORT void addResourceEvent(int flowType, const char *currency, double amount, const char *itemType, const char *itemId, const char *customFields, GA_BOOL mergeFields);
 
-EXPORT void addProgressionEvent(double progressionStatus, const char *progression01, const char *progression02, const char *progression03, const char *customFields, double mergeFields);
+EXPORT void addProgressionEvent(int progressionStatus, const char *progression01, const char *progression02, const char *progression03, const char *customFields, GA_BOOL mergeFields);
 
-EXPORT void addProgressionEventWithScore(double progressionStatus, const char *progression01, const char *progression02, const char *progression03, double score, const char *customFields, double mergeFields);
+EXPORT void addProgressionEventWithScore(int progressionStatus, const char *progression01, const char *progression02, const char *progression03, double score, const char *customFields, GA_BOOL mergeFields);
 
-EXPORT void addDesignEvent(const char *eventId, const char *customFields, double mergeFields);
-EXPORT void addDesignEventWithValue(const char *eventId, double value, const char *customFields, double mergeFields);
-EXPORT void addErrorEvent(double severity, const char *message, const char *customFields, double mergeFields);
+EXPORT void addDesignEvent(const char *eventId, const char *customFields, GA_BOOL mergeFields);
+EXPORT void addDesignEventWithValue(const char *eventId, double value, const char *customFields, GA_BOOL mergeFields);
+EXPORT void addErrorEvent(int severity, const char *message, const char *customFields, GA_BOOL mergeFields);
 
 // set calls can be changed at any time (pre- and post-initialize)
 // some calls only work after a configure is called (setCustomDimension)
-EXPORT void setEnabledInfoLog(double flag);
-EXPORT void setEnabledVerboseLog(double flag);
-EXPORT void setEnabledManualSessionHandling(double flag);
-EXPORT void setEnabledErrorReporting(double flag);
-EXPORT void setEnabledEventSubmission(double flag);
+EXPORT void setEnabledInfoLog(GA_BOOL flag);
+EXPORT void setEnabledVerboseLog(GA_BOOL flag);
+EXPORT void setEnabledManualSessionHandling(GA_BOOL flag);
+EXPORT void setEnabledErrorReporting(GA_BOOL flag);
+EXPORT void setEnabledEventSubmission(GA_BOOL flag);
 EXPORT void setCustomDimension01(const char *dimension01);
 EXPORT void setCustomDimension02(const char *dimension02);
 EXPORT void setCustomDimension03(const char *dimension03);
@@ -91,7 +93,7 @@ EXPORT void onQuit();
 
 EXPORT GAString getRemoteConfigsValueAsString(const char *key);
 EXPORT GAString getRemoteConfigsValueAsStringWithDefaultValue(const char *key, const char *defaultValue);
-EXPORT double isRemoteConfigsReady();
+EXPORT GA_BOOL isRemoteConfigsReady();
 EXPORT GAString getRemoteConfigsContentAsString();
 
 EXPORT GAString getABTestingId();
