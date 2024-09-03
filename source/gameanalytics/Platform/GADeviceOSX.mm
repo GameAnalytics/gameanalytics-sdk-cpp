@@ -70,13 +70,13 @@ const char* getConnectionType()
 
     if ((flags & kSCNetworkReachabilityFlagsReachable) == 0) {
         // The target host is not reachable.
-        return "offline";
+        return gameanalytics::CONNECTION_OFFLINE;
     }
     
     if ((flags & kSCNetworkReachabilityFlagsConnectionRequired) == 0) 
     {
-        // If the target host is reachable and no connection is required then we'll assume (for now) that you're on Wi-Fi...
-        return "wifi";
+        // If the target host is reachable and no connection is required then we'll assume (for now) that you're on lan...
+        return gameanalytics::CONNECTION_LAN;
     }
     
     if ((((flags & kSCNetworkReachabilityFlagsConnectionOnDemand ) != 0) ||
@@ -84,11 +84,11 @@ const char* getConnectionType()
         // ... and the connection is on-demand (or on-traffic) if the calling application is using the CFSocketStream or higher APIs...
         if ((flags & kSCNetworkReachabilityFlagsInterventionRequired) == 0) {
             // ... and no [user] intervention is needed...
-            return "wifi";
+            return gameanalytics::CONNECTION_WIFI;
         }
     }
 
-    return "";
+    return gameanalytics::CONNECTION_LAN;
 }
 
 int getNumCpuCores()

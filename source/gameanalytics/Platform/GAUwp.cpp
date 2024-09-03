@@ -64,20 +64,20 @@ std::string gameanalytics::GAPlatformUWP::getConnectionType()
     {
         if (connectionProfile->IsWlanConnectionProfile)
         {
-            return "wifi";
+            return CONNECTION_WIFI;
         }
         else if (connectionProfile->IsWwanConnectionProfile)
         {
-            return "wwan";
+            return CONNECTION_WWAN;
         }
         else
         {
-            return "lan";
+            return CONNECTION_LAN;
         }
     }
     else
     {
-        return "offline";
+        return CONNECTION_OFFLINE;
     }
 }
 

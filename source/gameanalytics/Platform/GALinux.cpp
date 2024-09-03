@@ -165,4 +165,62 @@ void gameanalytics::GAPlatformLinux::signalHandler(int sig, siginfo_t* info, voi
 }
 
 
+int64_t gameanalytics::GAPlatformLinux::getAppMemoryUsage() const
+{
+    struct task_basic_info info;
+    
+    mach_msg_type_number_t infoSize = TASK_BASIC_INFO_COUNT;
+    kern_return_t result = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&info, &infoSize);
+    
+    if(result == KERN_SUCCESS) 
+    {
+        return utilities::convertBytesToMB(info.resident_size);
+    }
+
+    return 0;
+}
+
+int64_t gameanalytics::GAPlatformLinux::getSysMemoryUsage() const
+{
+    mach_port_t port = mach_host_self();
+    mach_msg_type_number_t hostSize = sizeof(vm_statistics_data_t) / sizeof(integer_t);
+    
+    vm_size_t pageSize;
+    host_page_size(port, &pageSize);
+    
+    vm_statistics_data_t stats;
+    
+    if(host_statistics(port, HOST_VM_INFO, (host_info_t)&stats, &hostSize) == KERN_SUCCESS)
+    {
+        const int64_t freeMemory = (stats.free_count + stats.inactive_count) * pageSize;
+        return getTotalDeviceMemory() - utilities::convertBytesToMB(freeMemory);
+    }
+
+    return 0;
+}
+
+int64_t gameanalytics::GAPlatformLinux::getBootTime() const
+{
+    const size_t len = 4;
+    int mib[len] = {0,0,0,0};
+    struct kinfo_proc kp = {};
+
+    const size_t pidId = 3;
+    
+    size_t num = len;
+    sysctlnametomib("kern.proc.pid", mib, &num);
+    mib[pidId] = getpid();
+    
+    num = sizeof(kp);
+    sysctl(mib, len, &kp, &num, NULL, 0);
+
+    struct timeval startTime = kp.kp_proc.p_un.__p_starttime;
+    struct timeval currentTime = {};
+    
+    gettimeofday(&currentTime, NULL);
+    
+    return currentTime.tv_sec - startTime.tv_sec;
+}
+
+
 #endif
