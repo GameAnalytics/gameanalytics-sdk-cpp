@@ -2,6 +2,14 @@
 
 #if IS_LINUX
 
+#include <execinfo.h>
+#include <sys/sysctl.h>
+#include <sys/utsname.h>
+#include <mach/mach.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/sysinfo.h>
+
 std::string gameanalytics::GAPlatformLinux::getOSVersion()
 {
     struct utsname info;
@@ -164,6 +172,34 @@ void gameanalytics::GAPlatformLinux::signalHandler(int sig, siginfo_t* info, voi
     }
 }
 
+std::string gameanalytics::GAPlatformMacOS::getCpuModel() const
+{
+    struct utsname systemInfo;
+    uname(&systemInfo);
+
+    return systemInfo.machine;
+}
+
+std::string gameanalytics::GAPlatformMacOS::getGpuModel() const 
+{
+    return UNKNOWN_VALUE;
+}
+
+int gameanalytics::GAPlatformMacOS::getNumCpuCores() const
+{
+    return (int)sysconf(_SC_NPROCESSORS_ONLN);
+}
+
+int64_t gameanalytics::GAPlatformMacOS::getTotalDeviceMemory() const 
+{
+    struct sysinfo info = {};
+    if(sysinfo(&info) == 0)
+    {
+        return utilities::convertBytesToMB(info.totalram);
+    }
+
+    return 0;
+}
 
 int64_t gameanalytics::GAPlatformLinux::getAppMemoryUsage() const
 {
