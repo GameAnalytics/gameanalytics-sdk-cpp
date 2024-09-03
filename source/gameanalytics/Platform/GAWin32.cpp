@@ -112,11 +112,9 @@ std::string getRegistryKey(HKEY key, const TCHAR* subkey, const TCHAR* value)
     {
         constexpr DWORD maxBufSize = 128;
 
-        DWORD size = 0;
+        DWORD size = maxBufSize * sizeof(TCHAR);
         TCHAR buffer[maxBufSize] = _T("");
         RegGetValue(key, subkey, value, RRF_RT_REG_SZ, NULL, buffer, &size);
-
-        size = std::min(size, maxBufSize);
 
         if (!GetLastError() && size > 0)
         {
@@ -218,8 +216,15 @@ void GAPlatformWin32::signalHandler(int sig)
 
 std::string GAPlatformWin32::getGpuModel() const
 {
-    //todo 
-    return "";
+    DISPLAY_DEVICE device;
+    ZeroMemory(&device, sizeof(DISPLAY_DEVICE));
+    
+    if(EnumDisplayDevices(NULL, 0, &device, 0))
+    {
+        return device.DeviceName;
+    }
+
+    return UNKNOWN_VALUE;
 }
 
 int GAPlatformWin32::getNumCpuCores() const
