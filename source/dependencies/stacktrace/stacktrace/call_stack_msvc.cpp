@@ -5,7 +5,7 @@
 #ifdef _WIN32 // also defined in 64bit
 
 #include "call_stack.hpp"
-#include "StackWalker.h"
+#include "stackwalker/StackWalker.h"
 
 
 /** Adapter class to interfaces with the StackWalker project.

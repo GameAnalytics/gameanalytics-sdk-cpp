@@ -22,13 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#include <cstring>
 #include "guid.h"
-#include <string.h>
-#include <stdio.h>
 
 #ifdef GUID_LIBUUID
-#include <cstdlib>
-#include <random>
+#include <uuid/uuid.h>
 #endif
 
 #ifdef GUID_CFUUID
@@ -41,63 +39,156 @@ THE SOFTWARE.
 
 #ifdef GUID_ANDROID
 #include <jni.h>
+#include <cassert>
 #endif
 
-#include <iostream>
+BEGIN_XG_NAMESPACE
 
-using namespace std;
+#ifdef GUID_ANDROID
+AndroidGuidInfo androidInfo;
+
+AndroidGuidInfo AndroidGuidInfo::fromJniEnv(JNIEnv *env)
+{
+    AndroidGuidInfo info;
+    info.env = env;
+    auto localUuidClass = env->FindClass("java/util/UUID");
+    info.uuidClass = (jclass)env->NewGlobalRef(localUuidClass);
+    env->DeleteLocalRef(localUuidClass);
+    info.newGuidMethod = env->GetStaticMethodID(
+        info.uuidClass, "randomUUID", "()Ljava/util/UUID;");
+    info.mostSignificantBitsMethod = env->GetMethodID(
+        info.uuidClass, "getMostSignificantBits", "()J");
+    info.leastSignificantBitsMethod = env->GetMethodID(
+        info.uuidClass, "getLeastSignificantBits", "()J");
+    info.initThreadId = std::this_thread::get_id();
+    return info;
+}
+
+void initJni(JNIEnv *env)
+{
+    androidInfo = AndroidGuidInfo::fromJniEnv(env);
+}
+#endif
 
 // overload << so that it's easy to convert to a string
-ostream &operator<<(ostream &s, const Guid &guid)
+std::ostream &operator<<(std::ostream &s, const Guid &guid)
 {
-    return s << hex << setfill('0')
-        << setw(2) << (int)guid._bytes[0]
-        << setw(2) << (int)guid._bytes[1]
-        << setw(2) << (int)guid._bytes[2]
-        << setw(2) << (int)guid._bytes[3]
+    std::ios_base::fmtflags f(s.flags()); // politely don't leave the ostream in hex mode
+    s << std::hex << std::setfill('0')
+        << std::setw(2) << (int)guid._bytes[0]
+        << std::setw(2) << (int)guid._bytes[1]
+        << std::setw(2) << (int)guid._bytes[2]
+        << std::setw(2) << (int)guid._bytes[3]
         << "-"
-        << setw(2) << (int)guid._bytes[4]
-        << setw(2) << (int)guid._bytes[5]
+        << std::setw(2) << (int)guid._bytes[4]
+        << std::setw(2) << (int)guid._bytes[5]
         << "-"
-        << setw(2) << (int)guid._bytes[6]
-        << setw(2) << (int)guid._bytes[7]
+        << std::setw(2) << (int)guid._bytes[6]
+        << std::setw(2) << (int)guid._bytes[7]
         << "-"
-        << setw(2) << (int)guid._bytes[8]
-        << setw(2) << (int)guid._bytes[9]
+        << std::setw(2) << (int)guid._bytes[8]
+        << std::setw(2) << (int)guid._bytes[9]
         << "-"
-        << setw(2) << (int)guid._bytes[10]
-        << setw(2) << (int)guid._bytes[11]
-        << setw(2) << (int)guid._bytes[12]
-        << setw(2) << (int)guid._bytes[13]
-        << setw(2) << (int)guid._bytes[14]
-        << setw(2) << (int)guid._bytes[15];
+        << std::setw(2) << (int)guid._bytes[10]
+        << std::setw(2) << (int)guid._bytes[11]
+        << std::setw(2) << (int)guid._bytes[12]
+        << std::setw(2) << (int)guid._bytes[13]
+        << std::setw(2) << (int)guid._bytes[14]
+        << std::setw(2) << (int)guid._bytes[15];
+    s.flags(f);
+    return s;
+}
+
+bool operator<(const xg::Guid &lhs, const xg::Guid &rhs)
+{
+    return lhs.bytes() <  rhs.bytes();
+}
+
+bool Guid::isValid() const
+{
+    xg::Guid empty;
+    return *this != empty;
+}
+
+// convert to string using std::snprintf() and std::string
+std::string Guid::str() const
+{
+    char one[10], two[6], three[6], four[6], five[14];
+
+    snprintf(one, 10, "%02x%02x%02x%02x",
+        _bytes[0], _bytes[1], _bytes[2], _bytes[3]);
+    snprintf(two, 6, "%02x%02x",
+        _bytes[4], _bytes[5]);
+    snprintf(three, 6, "%02x%02x",
+        _bytes[6], _bytes[7]);
+    snprintf(four, 6, "%02x%02x",
+        _bytes[8], _bytes[9]);
+    snprintf(five, 14, "%02x%02x%02x%02x%02x%02x",
+        _bytes[10], _bytes[11], _bytes[12], _bytes[13], _bytes[14], _bytes[15]);
+    const std::string sep("-");
+    std::string out(one);
+
+    out += sep + two;
+    out += sep + three;
+    out += sep + four;
+    out += sep + five;
+
+    return out;
+}
+
+// conversion operator for std::string
+Guid::operator std::string() const
+{
+    return str();
+}
+
+// Access underlying bytes
+const std::array<unsigned char, 16>& Guid::bytes() const
+{
+    return _bytes;
 }
 
 // create a guid from vector of bytes
-Guid::Guid(const vector<unsigned char> &bytes)
-{
-    _bytes = bytes;
-}
+Guid::Guid(const std::array<unsigned char, 16> &bytes) : _bytes(bytes)
+{ }
 
-// create a guid from array of bytes
-Guid::Guid(const unsigned char *bytes)
-{
-    _bytes.assign(bytes, bytes + 16);
-}
+// create a guid from vector of bytes
+Guid::Guid(std::array<unsigned char, 16> &&bytes) : _bytes(std::move(bytes))
+{ }
 
 // converts a single hex char to a number (0 - 15)
 unsigned char hexDigitToChar(char ch)
 {
+    // 0-9
     if (ch > 47 && ch < 58)
         return ch - 48;
 
+    // a-f
     if (ch > 96 && ch < 103)
         return ch - 87;
 
+    // A-F
     if (ch > 64 && ch < 71)
         return ch - 55;
 
     return 0;
+}
+
+bool isValidHexChar(char ch)
+{
+    // 0-9
+    if (ch > 47 && ch < 58)
+        return true;
+
+    // a-f
+    if (ch > 96 && ch < 103)
+        return true;
+
+    // A-F
+    if (ch > 64 && ch < 71)
+        return true;
+
+    return false;
 }
 
 // converts the two hexadecimal characters to an unsigned char (a byte)
@@ -107,52 +198,55 @@ unsigned char hexPairToChar(char a, char b)
 }
 
 // create a guid from string
-Guid::Guid(const char* fromString)
+Guid::Guid(std::string_view fromString)
 {
-    _bytes.clear();
-
-    char charOne, charTwo;
+    char charOne = '\0';
+    char charTwo = '\0';
     bool lookingForFirstChar = true;
+    unsigned nextByte = 0;
 
-    size_t size = strlen(fromString);
-
-    for(size_t i = 0; i < size; ++i)
+    for (const char &ch : fromString)
     {
-        if (fromString[i] == '-')
+        if (ch == '-')
             continue;
+
+        if (nextByte >= 16 || !isValidHexChar(ch))
+        {
+            // Invalid string so bail
+            zeroify();
+            return;
+        }
 
         if (lookingForFirstChar)
         {
-            charOne = fromString[i];
+            charOne = ch;
             lookingForFirstChar = false;
         }
         else
         {
-            charTwo = fromString[i];
+            charTwo = ch;
             auto byte = hexPairToChar(charOne, charTwo);
-            _bytes.push_back(byte);
+            _bytes[nextByte++] = byte;
             lookingForFirstChar = true;
         }
+    }
+
+    // if there were fewer than 16 bytes in the string then guid is bad
+    if (nextByte < 16)
+    {
+        zeroify();
+        return;
     }
 }
 
 // create empty guid
-Guid::Guid()
-{
-    _bytes = vector<unsigned char>(16, 0);
-}
+Guid::Guid() : _bytes{ {0} }
+{ }
 
-// copy constructor
-Guid::Guid(const Guid &other)
+// set all bytes to zero
+void Guid::zeroify()
 {
-    _bytes = other._bytes;
-}
-
-// overload assignment operator
-Guid &Guid::operator=(const Guid &other)
-{
-    _bytes = other._bytes;
-    return *this;
+    std::fill(_bytes.begin(), _bytes.end(), static_cast<unsigned char>(0));
 }
 
 // overload equality operator
@@ -167,67 +261,34 @@ bool Guid::operator!=(const Guid &other) const
     return !((*this) == other);
 }
 
-void Guid::to_string(char* out)
+// member swap function
+void Guid::swap(Guid &other)
 {
-    snprintf(out, 37, "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-        (int)_bytes[0], (int)_bytes[1], (int)_bytes[2], (int)_bytes[3],
-        (int)_bytes[4], (int)_bytes[5], (int)_bytes[6], (int)_bytes[7],
-        (int)_bytes[8], (int)_bytes[9], (int)_bytes[10], (int)_bytes[11],
-        (int)_bytes[12], (int)_bytes[13], (int)_bytes[14], (int)_bytes[15]);
+    _bytes.swap(other._bytes);
 }
 
 // This is the linux friendly implementation, but it could work on other
 // systems that have libuuid available
 #ifdef GUID_LIBUUID
-unsigned char random_char()
+Guid newGuid()
 {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0,255);
-    return static_cast<unsigned char>(dis(gen));
-}
-
-void generate_hex(size_t len, std::vector<char>& out)
-{
-    for(size_t i = 0; i < len; ++i)
-    {
-        const auto rc = random_char();
-        char s[3];
-        snprintf(s, 3, "%02x", int(rc));
-        
-        out.push_back(s[0]);
-        out.push_back(s[1]);
-    }
-}
-
-Guid GuidGenerator::newGuid()
-{
-    std::vector<char> result;
-    generate_hex(4, result);
-    result.push_back('-');
-    generate_hex(2, result);
-    result.push_back('-');
-    generate_hex(2, result);
-    result.push_back('-');
-    generate_hex(2, result);
-    result.push_back('-');
-    generate_hex(4, result);
-    result.push_back('\0');
-
-    return result.data();
+    std::array<unsigned char, 16> data;
+    static_assert(std::is_same<unsigned char[16], uuid_t>::value, "Wrong type!");
+    uuid_generate(data.data());
+    return Guid{std::move(data)};
 }
 #endif
 
 // this is the mac and ios version
 #ifdef GUID_CFUUID
-Guid GuidGenerator::newGuid()
+Guid newGuid()
 {
     auto newId = CFUUIDCreate(NULL);
     auto bytes = CFUUIDGetUUIDBytes(newId);
     CFRelease(newId);
 
-    const unsigned char byteArray[16] =
-    {
+    std::array<unsigned char, 16> byteArray =
+    {{
         bytes.byte0,
         bytes.byte1,
         bytes.byte2,
@@ -244,81 +305,99 @@ Guid GuidGenerator::newGuid()
         bytes.byte13,
         bytes.byte14,
         bytes.byte15
-    };
-    return byteArray;
+    }};
+    return Guid{std::move(byteArray)};
 }
 #endif
 
 // obviously this is the windows version
 #ifdef GUID_WINDOWS
-Guid GuidGenerator::newGuid()
+Guid newGuid()
 {
     GUID newId;
     CoCreateGuid(&newId);
 
-    const unsigned char bytes[16] =
+    std::array<unsigned char, 16> bytes =
     {
-        (newId.Data1 >> 24) & 0xFF,
-        (newId.Data1 >> 16) & 0xFF,
-        (newId.Data1 >> 8) & 0xFF,
-        (newId.Data1) & 0xff,
+        (unsigned char)((newId.Data1 >> 24) & 0xFF),
+        (unsigned char)((newId.Data1 >> 16) & 0xFF),
+        (unsigned char)((newId.Data1 >> 8) & 0xFF),
+        (unsigned char)((newId.Data1) & 0xff),
 
-        (newId.Data2 >> 8) & 0xFF,
-        (newId.Data2) & 0xff,
+        (unsigned char)((newId.Data2 >> 8) & 0xFF),
+        (unsigned char)((newId.Data2) & 0xff),
 
-        (newId.Data3 >> 8) & 0xFF,
-        (newId.Data3) & 0xFF,
+        (unsigned char)((newId.Data3 >> 8) & 0xFF),
+        (unsigned char)((newId.Data3) & 0xFF),
 
-        newId.Data4[0],
-        newId.Data4[1],
-        newId.Data4[2],
-        newId.Data4[3],
-        newId.Data4[4],
-        newId.Data4[5],
-        newId.Data4[6],
-        newId.Data4[7]
+        (unsigned char)newId.Data4[0],
+        (unsigned char)newId.Data4[1],
+        (unsigned char)newId.Data4[2],
+        (unsigned char)newId.Data4[3],
+        (unsigned char)newId.Data4[4],
+        (unsigned char)newId.Data4[5],
+        (unsigned char)newId.Data4[6],
+        (unsigned char)newId.Data4[7]
     };
 
-    return bytes;
+    return Guid{std::move(bytes)};
 }
 #endif
 
 // android version that uses a call to a java api
 #ifdef GUID_ANDROID
-GuidGenerator::GuidGenerator(JNIEnv *env)
+Guid newGuid(JNIEnv *env)
 {
-    _env = env;
-    _uuidClass = env->FindClass("java/util/UUID");
-    _newGuidMethod = env->GetStaticMethodID(_uuidClass, "randomUUID", "()Ljava/util/UUID;");
-    _mostSignificantBitsMethod = env->GetMethodID(_uuidClass, "getMostSignificantBits", "()J");
-    _leastSignificantBitsMethod = env->GetMethodID(_uuidClass, "getLeastSignificantBits", "()J");
+    assert(env != androidInfo.env || std::this_thread::get_id() == androidInfo.initThreadId);
+
+    jobject javaUuid = env->CallStaticObjectMethod(
+        androidInfo.uuidClass, androidInfo.newGuidMethod);
+    jlong mostSignificant = env->CallLongMethod(javaUuid,
+        androidInfo.mostSignificantBitsMethod);
+    jlong leastSignificant = env->CallLongMethod(javaUuid,
+        androidInfo.leastSignificantBitsMethod);
+
+    std::array<unsigned char, 16> bytes =
+    {
+        (unsigned char)((mostSignificant >> 56) & 0xFF),
+        (unsigned char)((mostSignificant >> 48) & 0xFF),
+        (unsigned char)((mostSignificant >> 40) & 0xFF),
+        (unsigned char)((mostSignificant >> 32) & 0xFF),
+        (unsigned char)((mostSignificant >> 24) & 0xFF),
+        (unsigned char)((mostSignificant >> 16) & 0xFF),
+        (unsigned char)((mostSignificant >> 8) & 0xFF),
+        (unsigned char)((mostSignificant) & 0xFF),
+        (unsigned char)((leastSignificant >> 56) & 0xFF),
+        (unsigned char)((leastSignificant >> 48) & 0xFF),
+        (unsigned char)((leastSignificant >> 40) & 0xFF),
+        (unsigned char)((leastSignificant >> 32) & 0xFF),
+        (unsigned char)((leastSignificant >> 24) & 0xFF),
+        (unsigned char)((leastSignificant >> 16) & 0xFF),
+        (unsigned char)((leastSignificant >> 8) & 0xFF),
+        (unsigned char)((leastSignificant) & 0xFF)
+    };
+
+    env->DeleteLocalRef(javaUuid);
+
+    return Guid{std::move(bytes)};
 }
 
-Guid GuidGenerator::newGuid()
+Guid newGuid()
 {
-    jobject javaUuid = _env->CallStaticObjectMethod(_uuidClass, _newGuidMethod);
-    jlong mostSignificant = _env->CallLongMethod(javaUuid, _mostSignificantBitsMethod);
-    jlong leastSignificant = _env->CallLongMethod(javaUuid, _leastSignificantBitsMethod);
-
-    unsigned char bytes[16] =
-    {
-        (mostSignificant >> 56) & 0xFF,
-        (mostSignificant >> 48) & 0xFF,
-        (mostSignificant >> 40) & 0xFF,
-        (mostSignificant >> 32) & 0xFF,
-        (mostSignificant >> 24) & 0xFF,
-        (mostSignificant >> 16) & 0xFF,
-        (mostSignificant >> 8) & 0xFF,
-        (mostSignificant) & 0xFF,
-        (leastSignificant >> 56) & 0xFF,
-        (leastSignificant >> 48) & 0xFF,
-        (leastSignificant >> 40) & 0xFF,
-        (leastSignificant >> 32) & 0xFF,
-        (leastSignificant >> 24) & 0xFF,
-        (leastSignificant >> 16) & 0xFF,
-        (leastSignificant >> 8) & 0xFF,
-        (leastSignificant) & 0xFF,
-    };
-    return bytes;
+    return newGuid(androidInfo.env);
 }
 #endif
+
+
+END_XG_NAMESPACE
+
+// Specialization for std::swap<Guid>() --
+// call member swap function of lhs, passing rhs
+namespace std
+{
+    template <>
+    void swap(xg::Guid &lhs, xg::Guid &rhs) noexcept
+    {
+        lhs.swap(rhs);
+    }
+}

@@ -24,13 +24,23 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <iostream>
-#include <vector>
-#include <iomanip>
-
 #ifdef GUID_ANDROID
+#include <thread>
 #include <jni.h>
 #endif
+
+#include <functional>
+#include <iostream>
+#include <array>
+#include <sstream>
+#include <string_view>
+#include <utility>
+#include <iomanip>
+
+#define BEGIN_XG_NAMESPACE namespace xg {
+#define END_XG_NAMESPACE }
+
+BEGIN_XG_NAMESPACE
 
 // Class to represent a GUID/UUID. Each instance acts as a wrapper around a
 // 16 byte value that can be passed around by value. It also supports
@@ -38,65 +48,102 @@ THE SOFTWARE.
 // string via constructor.
 class Guid
 {
-    public:
+public:
+	explicit Guid(const std::array<unsigned char, 16>& bytes);
+	explicit Guid(std::array<unsigned char, 16>&& bytes);
 
-        // create a guid from vector of bytes
-        Guid(const std::vector<unsigned char> &bytes);
+	explicit Guid(std::string_view fromString);
+	Guid();
 
-        // create a guid from array of bytes
-        Guid(const unsigned char *bytes);
+	Guid(const Guid& other) = default;
+	Guid& operator=(const Guid& other) = default;
+	Guid(Guid&& other) = default;
+	Guid& operator=(Guid&& other) = default;
 
-        // create a guid from string
-        Guid(const char* fromString);
+	bool operator==(const Guid& other) const;
+	bool operator!=(const Guid& other) const;
 
-        // create empty guid
-        Guid();
+	std::string str() const;
+	operator std::string() const;
+	const std::array<unsigned char, 16>& bytes() const;
+	void swap(Guid& other);
+	bool isValid() const;
 
-        // copy constructor
-        Guid(const Guid &other);
+private:
+	void zeroify();
 
-        // overload assignment operator
-        Guid &operator=(const Guid &other);
+	// actual data
+	std::array<unsigned char, 16> _bytes;
 
-        // overload equality and inequality operator
-        bool operator==(const Guid &other) const;
-        bool operator!=(const Guid &other) const;
-
-        void to_string(char* out);
-
-    private:
-
-        // actual data
-        std::vector<unsigned char> _bytes;
-
-        // make the << operator a friend so it can access _bytes
-        friend std::ostream &operator<<(std::ostream &s, const Guid &guid);
+	// make the << operator a friend so it can access _bytes
+	friend std::ostream& operator<<(std::ostream& s, const Guid& guid);
+	friend bool operator<(const Guid& lhs, const Guid& rhs);
 };
 
-// Class that can create new guids. The only reason this exists instead of
-// just a global "newGuid" function is because some platforms will require
-// that there is some attached context. In the case of android, we need to
-// know what JNIEnv is being used to call back to Java, but the newGuid()
-// function would no longer be cross-platform if we parameterized the android
-// version. Instead, construction of the GuidGenerator may be different on
-// each platform, but the use of newGuid is uniform.
-class GuidGenerator
+Guid newGuid();
+
+#ifdef GUID_ANDROID
+struct AndroidGuidInfo
 {
-    public:
-#ifdef GUID_ANDROID
-        GuidGenerator(JNIEnv *env);
-#else
-        GuidGenerator() { }
-#endif
+	static AndroidGuidInfo fromJniEnv(JNIEnv* env);
 
-        Guid newGuid();
-
-#ifdef GUID_ANDROID
-    private:
-        JNIEnv *_env;
-        jclass _uuidClass;
-        jmethodID _newGuidMethod;
-        jmethodID _mostSignificantBitsMethod;
-        jmethodID _leastSignificantBitsMethod;
-#endif
+	JNIEnv* env;
+	jclass uuidClass;
+	jmethodID newGuidMethod;
+	jmethodID mostSignificantBitsMethod;
+	jmethodID leastSignificantBitsMethod;
+	std::thread::id initThreadId;
 };
+
+extern AndroidGuidInfo androidInfo;
+
+void initJni(JNIEnv* env);
+
+// overloading for multi-threaded calls
+Guid newGuid(JNIEnv* env);
+#endif
+
+namespace details
+{
+	template <typename...> struct hash;
+
+	template<typename T>
+	struct hash<T> : public std::hash<T>
+	{
+		using std::hash<T>::hash;
+	};
+
+
+	template <typename T, typename... Rest>
+	struct hash<T, Rest...>
+	{
+		inline std::size_t operator()(const T& v, const Rest&... rest) {
+			std::size_t seed = hash<Rest...>{}(rest...);
+			seed ^= hash<T>{}(v)+0x9e3779b9 + (seed << 6) + (seed >> 2);
+			return seed;
+		}
+	};
+}
+
+END_XG_NAMESPACE
+
+namespace std
+{
+	// Template specialization for std::swap<Guid>() --
+	// See guid.cpp for the function definition
+	template <>
+	void swap(xg::Guid& guid0, xg::Guid& guid1) noexcept;
+
+	// Specialization for std::hash<Guid> -- this implementation
+	// uses std::hash<std::string> on the stringification of the guid
+	// to calculate the hash
+	template <>
+	struct hash<xg::Guid>
+	{
+		std::size_t operator()(xg::Guid const& guid) const
+		{
+			const uint64_t* p = reinterpret_cast<const uint64_t*>(guid.bytes().data());
+			return xg::details::hash<uint64_t, uint64_t>{}(p[0], p[1]);
+		}
+	};
+}
