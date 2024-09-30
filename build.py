@@ -42,5 +42,5 @@ if __name__ == "__main__":
     os.makedirs('build', exist_ok=True)
     os.chdir('build')
 
-    run_process(['cmake', '..', f'-DPLATFORM:STRING={platform}'])
+    run_process(['cmake', '..', f'-DPLATFORM:STRING={platform}','-G', 'Xcode'])
 
