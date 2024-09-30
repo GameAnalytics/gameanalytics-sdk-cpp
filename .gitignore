@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# build folders
+[Bb]uild/
+[Bb]uild_old/
