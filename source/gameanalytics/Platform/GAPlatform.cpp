@@ -11,17 +11,17 @@ gameanalytics::GAPlatform::~GAPlatform()
 
 std::string gameanalytics::GAPlatform::getAdvertisingId()
 {
-	return "";
+    return "";
 }
 
 std::string gameanalytics::GAPlatform::getDeviceId()
 {
-	return "";
+    return "";
 }
 
 void gameanalytics::GAPlatform::setupUncaughtExceptionHandler()
 {
-	return;
+    return;
 }
 
 /* terminateHandler
@@ -29,10 +29,10 @@ void gameanalytics::GAPlatform::setupUncaughtExceptionHandler()
 */
 void gameanalytics::GAPlatform::terminateHandler()
 {
-	constexpr int MAX_ERROR_TYPE_COUNT = 5;
-	static int errorCount = 0;
+    constexpr int MAX_ERROR_TYPE_COUNT = 5;
+    static int errorCount = 0;
 
-	if(state::GAState::useErrorReporting())
+    if(state::GAState::useErrorReporting())
     {
         /*
          *    Now format into a message for sending to the user
@@ -70,8 +70,8 @@ void gameanalytics::GAPlatform::terminateHandler()
 
 void gameanalytics::GAPlatform::onInit()
 {
-	if(state::GAState::useErrorReporting())
-	{
+    if(state::GAState::useErrorReporting())
+    {
         previousTerminateHandler = std::set_terminate(terminateHandler);
     }
 }

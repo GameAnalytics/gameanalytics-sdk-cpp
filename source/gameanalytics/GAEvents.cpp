@@ -802,7 +802,7 @@ namespace gameanalytics
                 const std::string jsonString = ev.dump();
 
                 // output if VERBOSE LOG enabled
-                logging::GALogger::ii("Event added to queue: %s", jsonString.c_str());
+                logging::GALogger::v("Event added to queue: %s", jsonString.c_str());
 
                 // Add to store
                 std::string const clientTS = std::to_string(ev["client_ts"].get<int64_t>());

@@ -39,7 +39,6 @@ namespace gameanalytics
             if(getInstance()._platform)
             {
                 getInstance()._platform->onInit();
-
                 if(state::GAState::useErrorReporting())
                 {
                     getInstance()._platform->setupUncaughtExceptionHandler();

@@ -2,6 +2,21 @@
 
 #include "GAConstants.h"
 
+#if IS_MAC
+    #include <sys/sysctl.h>
+#elif IS_WIN32
+    #include <winsock2.h>
+    #include <windows.h>
+#elif IS_UWP
+    #include <winsock2.h>
+    #include <windows.h>
+#elif IS_LINUX
+    #include <sys/utsname.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
+#endif
+
+
 #include <string>
 #include <vector>
 #include <cinttypes>
@@ -25,28 +40,20 @@
 
 #include "nlohmann/json.hpp"
 
-#if IS_MAC
-	#include <sys/sysctl.h>
-#elif IS_LINUX
-	#include <sys/utsname.h>
-	#include <sys/types.h>
-	#include <sys/stat.h>
-#endif
-
 namespace gameanalytics
 {
-	using nlohmann::json;
+    using nlohmann::json;
     using StringVector = std::vector<std::string>;
 
     using LogHandler = std::function<void(std::string const&, EGALoggerMessageType)>;
     using FPSTracker = std::function<float()>;
 
-	namespace state
-	{
-		class GAState;
-	}
+    namespace state
+    {
+        class GAState;
+    }
 
-	struct IRemoteConfigsListener
+    struct IRemoteConfigsListener
     {
         virtual void onRemoteConfigsUpdated(std::string const& remoteConfigs) = 0;
     };

@@ -96,7 +96,7 @@ namespace gameanalytics
                 }
 
                 template<typename ...args_t>
-                static void ii(std::string const& fmt, args_t&&... args)
+                static void v(std::string const& fmt, args_t&&... args)
                 {
                     sendMessage(LogVerbose, fmt, std::forward<args_t>(args)...);
                 }

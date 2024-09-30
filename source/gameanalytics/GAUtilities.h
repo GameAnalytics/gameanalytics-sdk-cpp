@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include <vector>
 #include "GACommon.h"
+#include <vector>
 #include <string>
 #include <locale>
 #include <codecvt>

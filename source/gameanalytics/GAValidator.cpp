@@ -549,7 +549,8 @@ namespace gameanalytics
         // validate wrapper version, build, engine version, store
         bool GAValidator::validateSdkWrapperVersion(std::string const& wrapperVersion)
         {
-            if (!utilities::GAUtilities::stringMatch(wrapperVersion, "^(unity|unreal|corona|cocos2d|lumberyard|air|gamemaker|defold|godot) [0-9]{0,5}(\\.[0-9]{0,5}){0,2}$"))
+            // todo add beta/alpha version validation
+            if (!utilities::GAUtilities::stringMatch(wrapperVersion, "^(unity|unreal|corona|cocos2d|lumberyard|air|gamemaker|defold|godot) [0-9]{0,5}(\\.[0-9]{0,5}){0,2}(-alpha|-beta|a|b){0,1}$"))
             {
                 return false;
             }

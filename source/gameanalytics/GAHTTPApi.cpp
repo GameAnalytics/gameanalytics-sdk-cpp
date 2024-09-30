@@ -16,26 +16,11 @@ namespace gameanalytics
     {
         size_t writefunc(void *ptr, size_t size, size_t nmemb, ResponseData *s)
         {
-            const size_t new_len = s->len + size*nmemb;
+            const size_t new_len = s->packet.size() + size * nmemb + 1;
+            s->packet.reserve(new_len);
 
-            if (s->ptr)
-            {
-                std::unique_ptr<char[]> buffer = std::make_unique<char[]>(new_len);
-
-                if (!buffer) // maybe just return instead?
-                    throw std::runtime_error("Failed to allocate buffer!");
-
-                std::memcpy(buffer.get(), s->ptr.get(), s->len);
-                s->ptr = std::move(buffer);
-            }
-            else
-            {
-                s->ptr = std::make_unique<char[]>(new_len);
-            }
-
-            std::memcpy(s->ptr.get() + s->len, ptr, size * nmemb);
-            s->ptr[new_len] = '\0';
-            s->len = new_len;
+            s->packet.insert(s->packet.end(), reinterpret_cast<char*>(ptr), reinterpret_cast<char*>(ptr) + size * nmemb);
+            s->packet.push_back('\0');
 
             return size*nmemb;
         }
@@ -83,7 +68,7 @@ namespace gameanalytics
                 std::string jsonString = initAnnotations.dump();
                 if (jsonString.empty())
                 {
-                    return; JsonEncodeFailed;
+                    return JsonEncodeFailed;
                 }
 
                 std::vector<uint8_t> payloadData = createPayloadData(jsonString, useGzip);
@@ -121,7 +106,7 @@ namespace gameanalytics
 
                 json requestJsonDict = json::parse(s.toString());
 
-                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.ptr.get(), "Init");
+                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.packet.data(), "Init");
 
                 // if not 200 result
                 if (requestResponseEnum != Ok && requestResponseEnum != Created && requestResponseEnum != BadRequest)
@@ -224,7 +209,7 @@ namespace gameanalytics
 
                 logging::GALogger::d("body: %s", s.toString().c_str());
 
-                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.ptr.get(), "Events");
+                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.packet.data(), "Events");
 
                 // if not 200 result
                 if (requestResponseEnum != Ok && requestResponseEnum != Created && requestResponseEnum != BadRequest)
@@ -477,13 +462,7 @@ namespace gameanalytics
 
         std::string ResponseData::toString() const
         {
-            std::string str;
-            if (ptr && len)
-            {
-                str = std::string(ptr.get(), len);
-            }
-
-            return str;
+            return std::string(packet.begin(), packet.end());
         }
 }
 }

@@ -13,12 +13,8 @@
 #include <climits>
 #include <cctype>
 
-#if USE_UWP
-    #include <Objbase.h>
-#else
-    #include <hmac_sha2.h>
-    #include <guid.h>
-#endif
+#include <hmac_sha2.h>
+#include <guid.h>
 
 #include "GAConstants.h"
 #include "stacktrace/call_stack.hpp"
@@ -330,30 +326,10 @@ namespace gameanalytics
 
         std::string GAUtilities::generateUUID()
         {
-            char out[UUID_STR_LENGTH] = "";
-
-#if USE_UWP
-            GUID result;
-            CoCreateGuid(&result);
-
-            //if (SUCCEEDED(hr))
-            {
-                // Generate new GUID.
-                Platform::Guid guid(result);
-                auto guidString = std::wstring(guid.ToString()->Data());
-
-                // Remove curly brackets.
-                auto sessionId = guidString.substr(1, guidString.length() - 2);
-                std::string result = ws2s(sessionId);
-                snprintf(out, result.size() + 1, "%s", result.c_str());
-            }
-#else
-            GuidGenerator generator;
-            auto myGuid = generator.newGuid();
-            myGuid.to_string(out);
-#endif
-
-            return out;
+            xg::Guid guid = xg::newGuid();
+            std::stringstream stream;
+            stream << guid;
+            return stream.str();
         }
 
         // TODO(nikolaj): explain function

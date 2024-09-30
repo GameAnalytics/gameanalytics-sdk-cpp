@@ -4,7 +4,7 @@
 
 #if IS_WIN32
 
-	#include "GAWin32.h"
+    #include "GAWin32.h"
 
     namespace gameanalytics
     {

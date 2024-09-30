@@ -5,11 +5,11 @@
 
 #pragma once
 
-
+#include "GACommon.h"
+#include <curl/curl.h>
 
 #include <vector>
 #include <map>
-#include <curl/curl.h>
 #include <mutex>
 #include <cstdlib>
 #include <tuple>
@@ -104,9 +104,7 @@ namespace gameanalytics
 
         struct ResponseData
         {
-            std::unique_ptr<char[]> ptr;
-            std::size_t len = 0;
-
+            std::vector<char> packet;
             std::string toString() const;
         };
 
@@ -132,17 +130,9 @@ namespace gameanalytics
 
             static GAHTTPApi& getInstance();
 
-#if USE_UWP
-            concurrency::task<std::pair<EGAHTTPApiResponse, std::string>> requestInitReturningDict(const char* configsHash);
-            concurrency::task<std::pair<EGAHTTPApiResponse, std::string>> sendEventsInArray(const rapidjson::Value& eventArray);
-            void sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string reason, std::string gameKey, std::string secretKey);
-#else
             EGAHTTPApiResponse requestInitReturningDict(json& json_out, std::string const& configsHash);
             EGAHTTPApiResponse sendEventsInArray(json& json_out, const json& eventArray);
-            void sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string const& reason, std::string const& gameKey, std::string const& secretKey);
-#endif
-
-            
+            void sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string const& reason, std::string const& gameKey, std::string const& secretKey);            
 
         private:
 
@@ -152,14 +142,9 @@ namespace gameanalytics
             GAHTTPApi& operator=(const GAHTTPApi&) = delete;
             std::vector<uint8_t> createPayloadData(std::string const& payload, bool gzip);
 
-#if USE_UWP && defined(USE_UWP_HTTPAPI)
-            std::vector<char> createRequest(Windows::Web::Http::HttpRequestMessage^ message, const std::string& url, const std::vector<char>& payloadData, bool gzip);
-            EGAHTTPApiResponse processRequestResponse(Windows::Web::Http::HttpResponseMessage^ response, const std::string& requestId);
-            concurrency::task<Windows::Storage::Streams::InMemoryRandomAccessStream^> createStream(std::string data);
-#else
             std::vector<uint8_t> createRequest(CURL *curl, std::string const& url, const std::vector<uint8_t>& payloadData, bool gzip);
             EGAHTTPApiResponse processRequestResponse(long statusCode, const char* body, const char* requestId);
-#endif
+
             std::string protocol                = PROTOCOL;
             std::string hostName                = HOST_NAME;
             std::string version                 = VERSION;

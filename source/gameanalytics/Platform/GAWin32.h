@@ -4,8 +4,8 @@
 	#define WIN32_LEAN_AND_MEAN
 #endif
 
-#ifndef NO_MIN_MAX
-	#define NO_MIN_MAX
+#ifndef NOMINMAX
+	#define NOMINMAX
 #endif
 
 #include "Platform/GAPlatform.h"
@@ -19,17 +19,16 @@
 	#include <tchar.h>
 	#include <sysinfoapi.h>
 
-	#if !GA_SHARED_LIB
+	#ifdef GA_SHARED_LIB 
 		#include <comdef.h>
 		#include <wbemidl.h>
 		#pragma comment(lib, "wbemuuid.lib")
 	#endif
 
-#if GA_SHARED_LIB && !USE_MINGW
+
 	#pragma comment(lib, "Ws2_32.lib")
 	#pragma comment(lib, "gdi32.lib")
 	#pragma comment(lib, "crypt32.lib")
-#endif
 
 namespace gameanalytics
 {

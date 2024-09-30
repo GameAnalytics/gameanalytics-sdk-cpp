@@ -1,3 +1,7 @@
+#pragma once
+#ifndef _GA_EXTERNAL_H_
+#define _GA_EXTERNAL_H_
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -32,11 +36,11 @@ typedef struct GAString_
 EXPORT void ga_string_alloc(GAString* s, unsigned int size);
 EXPORT void ga_string_free(GAString* s);
 
-EXPORT void configureAvailableCustomDimensions01(const char *customDimensionsJson);
-EXPORT void configureAvailableCustomDimensions02(const char *customDimensionsJson);
-EXPORT void configureAvailableCustomDimensions03(const char *customDimensionsJson);
-EXPORT void configureAvailableResourceCurrencies(const char *resourceCurrenciesJson);
-EXPORT void configureAvailableResourceItemTypes(const char *resourceItemTypesJson);
+EXPORT void configureAvailableCustomDimensions01(const char **customDimensions, int size);
+EXPORT void configureAvailableCustomDimensions02(const char **customDimensions, int size);
+EXPORT void configureAvailableCustomDimensions03(const char **customDimensions, int size);
+EXPORT void configureAvailableResourceCurrencies(const char **resourceCurrencies, int size);
+EXPORT void configureAvailableResourceItemTypes(const char **resourceItemTypes, int size);
 EXPORT void configureBuild(const char *build);
 EXPORT void configureWritablePath(const char *writablePath);
 EXPORT void configureDeviceModel(const char *deviceModel);
@@ -94,7 +98,7 @@ EXPORT void onQuit();
 EXPORT GAString getRemoteConfigsValueAsString(const char *key);
 EXPORT GAString getRemoteConfigsValueAsStringWithDefaultValue(const char *key, const char *defaultValue);
 EXPORT GA_BOOL isRemoteConfigsReady();
-EXPORT GAString getRemoteConfigsContentAsString();
+EXPORT GA_BOOL getRemoteConfigsContentAsString(char* out, int size);
 
 EXPORT GAString getABTestingId();
 EXPORT GAString getABTestingVariantId();
@@ -102,3 +106,5 @@ EXPORT GAString getABTestingVariantId();
 #ifdef __cplusplus
 }
 #endif
+
+#endif // _GA_EXTERNAL_H_

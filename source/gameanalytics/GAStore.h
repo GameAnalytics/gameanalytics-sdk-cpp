@@ -59,11 +59,9 @@ namespace gameanalytics
             // local pointer to database
             sqlite3* sqlDatabase = nullptr;
 
-            // 10 MB limit for database. Will initiate trim logic when exceeded.
-            // long maxDbSizeBytes = 10485760;
-
             // ??
             bool dbReady = false;
+            
             // bool to determine if tables are ensured ready
             bool tableReady = false;
         };

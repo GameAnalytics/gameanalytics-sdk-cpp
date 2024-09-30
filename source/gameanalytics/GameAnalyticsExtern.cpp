@@ -29,6 +29,25 @@ void ga_string_free(GAString* s)
     }
 }
 
+StringVector makeStringVector(const char** arr, int size)
+{
+    if(size > 0 && arr)
+    {
+        StringVector v;
+        v.reserve(size);
+
+        for(int i = 0; i < size; ++i)
+        {
+            if(arr[i])
+                v.push_back(arr[i]);
+        }
+
+        return v;
+    }
+
+    return {};
+}
+
 GAString ga_string_fromString(std::string const& s)
 {
     GAString gaStr = {};
@@ -44,14 +63,34 @@ GAString ga_string_fromString(std::string const& s)
     return gaStr;
 }
 
-void configureAvailableResourceCurrencies(const char *resourceCurrenciesJson)
+void configureAvailableCustomDimensions01(const char **customDimensions, int size)
 {
-    gameanalytics::GameAnalytics::configureAvailableResourceCurrencies(resourceCurrenciesJson);
+    StringVector values = makeStringVector(customDimensions, size);
+    gameanalytics::GameAnalytics::configureAvailableCustomDimensions01(values);
 }
 
-void configureAvailableResourceItemTypes(const char *resourceItemTypesJson)
+void configureAvailableCustomDimensions02(const char **customDimensions, int size)
 {
-    gameanalytics::GameAnalytics::configureAvailableResourceItemTypes(resourceItemTypesJson);
+    StringVector values = makeStringVector(customDimensions, size);
+    gameanalytics::GameAnalytics::configureAvailableCustomDimensions02(values);
+}
+
+void configureAvailableCustomDimensions03(const char **customDimensions, int size)
+{
+    StringVector values = makeStringVector(customDimensions, size);
+    gameanalytics::GameAnalytics::configureAvailableCustomDimensions03(values);
+}
+
+void configureAvailableResourceCurrencies(const char** currencies, int size)
+{
+    StringVector values = makeStringVector(currencies, size);
+    gameanalytics::GameAnalytics::configureAvailableResourceCurrencies(values);
+}
+
+void configureAvailableResourceItemTypes(const char** resources, int size)
+{
+    StringVector values = makeStringVector(resources, size);
+    gameanalytics::GameAnalytics::configureAvailableResourceItemTypes(values);
 }
 
 void configureBuild(const char *build)

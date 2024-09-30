@@ -21,11 +21,32 @@ namespace gameanalytics
     {
      public:
 
-         // configure calls should be used before initialize
+         /**
+          * @brief: sets the available custom dimensions for index 1, needs to be called before initialization
+          * 
+          * @param customDimensions: valid values to be used as customDimension0
+          */
          static void configureAvailableCustomDimensions01(const StringVector &customDimensions);
+
+         /**
+          * @brief: sets the available custom dimensions for index 2, needs to be called before initialization
+          * 
+          * @param customDimensions: valid values
+          */
          static void configureAvailableCustomDimensions02(const StringVector &customDimensions);
+
+         /**
+          * @brief: sets the available custom dimensions for index 3, needs to be called before initialization
+          * 
+          * @param customDimensions: valid values to be used as customDimension3
+          */
          static void configureAvailableCustomDimensions03(const StringVector &customDimensions);
 
+         /**
+          * @brief 
+          * 
+          * @param resourceCurrencies 
+          */
          static void configureAvailableResourceCurrencies(const StringVector &resourceCurrencies);
          static void configureAvailableResourceItemTypes(const StringVector &resourceItemTypes);
 

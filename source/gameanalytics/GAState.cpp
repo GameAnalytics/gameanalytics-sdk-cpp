@@ -197,7 +197,6 @@ namespace gameanalytics
 
         json& GAState::getSdkConfig()
         {
-
             if (getInstance()._sdkConfig.is_object())
             {
                 return _sdkConfig;
@@ -505,14 +504,6 @@ namespace gameanalytics
             {
                 _identifier = _userId;
             }
-            else if(!device::GADevice::getAdvertisingId().empty() && _enableIdTracking)
-            {
-                _identifier = device::GADevice::getAdvertisingId();
-            }
-            else if (!device::GADevice::getDeviceId().empty() && _enableIdTracking)
-            {
-                _identifier = device::GADevice::getDeviceId();
-            }
             else
             {
                 _identifier = _defaultUserId;
@@ -526,7 +517,7 @@ namespace gameanalytics
         {
             if (!value.empty())
             {
-                store::GAStore::setState(key.c_str(), value.c_str());
+                store::GAStore::setState(key, value);
                 return value;
             }
             else if(dict.contains(key) && dict[key].is_string())

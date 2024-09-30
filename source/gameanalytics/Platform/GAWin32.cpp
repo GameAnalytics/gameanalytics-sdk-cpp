@@ -7,10 +7,21 @@
 #include "GAState.h"
 #include "GAEvents.h"
 #include "GALogger.h"
+
+#include <psapi.h>
+#include <wininet.h>
+
+#pragma comment(lib, "Wininet.lib")
+
 #include <stacktrace/call_stack.hpp>
 
 namespace gameanalytics
 {
+
+void (*GAPlatformWin32::old_state_ill)	(int) = nullptr;
+void (*GAPlatformWin32::old_state_abrt)	(int) = nullptr;
+void (*GAPlatformWin32::old_state_fpe)	(int) = nullptr;
+void (*GAPlatformWin32::old_state_segv)	(int) = nullptr;
 
 // no official helper function exists for win11 (for the time being at least)
 bool IsWin11OrGreater()
@@ -68,15 +79,15 @@ std::string GAPlatformWin32::getConnectionType()
     {
         if(INTERNET_CONNECTION_OFFLINE & flags)
         {
-            return "offline";
+            return CONNECTION_OFFLINE;
         }
         else if (INTERNET_CONNECTION_LAN & flags)
         {
-            return "lan";
+            return CONNECTION_LAN;
         }
         else
         {
-            return "wifi";
+            return CONNECTION_WIFI;
         }
     }
 
@@ -108,7 +119,6 @@ std::string GAPlatformWin32::getPersistentPath()
 
 std::string getRegistryKey(HKEY key, const TCHAR* subkey, const TCHAR* value)
 {
-    __try
     {
         constexpr DWORD maxBufSize = 128;
 
@@ -129,10 +139,6 @@ std::string getRegistryKey(HKEY key, const TCHAR* subkey, const TCHAR* value)
 
             return val;
         }
-    }
-    __except(EXCEPTION_EXECUTE_HANDLER)
-    {
-        logging::GALogger::e("Failed to get device's model");
     }
 
     return UNKNOWN_VALUE;
@@ -157,9 +163,17 @@ std::string GAPlatformWin32::getDeviceManufacturer()
 std::string GAPlatformWin32::getCpuModel() const
 {
     constexpr const TCHAR* subkey = _T("HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0");
-    constexpr const TCHAR* value  = _T("ProcessorName");
 
-    return getRegistryKey(HKEY_LOCAL_MACHINE, subkey, value);
+    constexpr const TCHAR* values[] = { _T("ProcessorName"), _T("ProcessorNameString") };
+
+    for (auto& val : values)
+    {
+        std::string s = getRegistryKey(HKEY_LOCAL_MACHINE, subkey, val);
+        if (!s.empty())
+            return s;
+    }
+
+    return UNKNOWN_VALUE;
 }
 
 void GAPlatformWin32::setupUncaughtExceptionHandler()
@@ -191,7 +205,7 @@ void GAPlatformWin32::signalHandler(int sig)
                 errorCount++;
 
                 std::string truncatedMsg(buffer.get(), std::min<std::size_t>(strSize, MAX_ERROR_MSG_LEN));
-                events::GAEvents::addErrorEvent(EGAErrorSeverity::Critical, truncatedMsg, {}, false);
+                events::GAEvents::addErrorEvent(EGAErrorSeverity::Critical, truncatedMsg, "", -1, {}, false);
                 events::GAEvents::processEvents("error", false);
             }
         }
@@ -221,7 +235,11 @@ std::string GAPlatformWin32::getGpuModel() const
     
     if(EnumDisplayDevices(NULL, 0, &device, 0))
     {
+#ifdef UNICODE
+        return utilities::GAUtilities::ws2s(device.DeviceName);
+#else
         return device.DeviceName;
+#endif
     }
 
     return UNKNOWN_VALUE;
@@ -260,7 +278,7 @@ int GAPlatformWin32::getNumCpuCores() const
 int64_t GAPlatformWin32::getTotalDeviceMemory() const
 {
     MEMORYSTATUSEX memInfo;
-    ZERO_MEMORY(&memInfo, sizeof(MEMORYSTATUSEX));
+    ZeroMemory(&memInfo, sizeof(MEMORYSTATUSEX));
 
     memInfo.dwLength = sizeof(MEMORYSTATUSEX);
     GlobalMemoryStatusEx(&memInfo);
@@ -270,7 +288,7 @@ int64_t GAPlatformWin32::getTotalDeviceMemory() const
 int64_t GAPlatformWin32::getAppMemoryUsage() const
 {
     PROCESS_MEMORY_COUNTERS_EX pmc;
-    ZERO_MEMORY(&pmc, sizeof(PROCESS_MEMORY_COUNTERS_EX));
+    ZeroMemory(&pmc, sizeof(PROCESS_MEMORY_COUNTERS_EX));
 
     GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc));
     return utilities::convertBytesToMB(pmc.PrivateUsage);
@@ -279,11 +297,11 @@ int64_t GAPlatformWin32::getAppMemoryUsage() const
 int64_t GAPlatformWin32::getSysMemoryUsage() const
 {
     MEMORYSTATUSEX memInfo;
-    ZERO_MEMORY(&memInfo, sizeof(MEMORYSTATUSEX));
+    ZeroMemory(&memInfo, sizeof(MEMORYSTATUSEX));
 
     memInfo.dwLength = sizeof(MEMORYSTATUSEX);
     GlobalMemoryStatusEx(&memInfo);
-    return utilities::convertBytesToMB(memInfo.ullTotalPhys - mem.ullAvailPhys);
+    return utilities::convertBytesToMB(memInfo.ullTotalPhys - memInfo.ullAvailPhys);
 }
 
 int64_t GAPlatformWin32::getBootTime() const
@@ -318,23 +336,6 @@ int64_t GAPlatformWin32::getBootTime() const
     }
 
     return 0ll;
-}
-
-std::string GAPlatformWin32::getConnectionType()
-{
-    DWORD flags = 0;
-    if(InternetGetConnectedState(&flags, 0))
-    {
-        if(flags & INTERNET_CONNECTION_OFFLINE)
-            return CONNECTION_OFFLINE;
-
-        if(flags & INTERNET_CONNECTION_LAN)
-            return CONNECTION_LAN;
-
-        return CONNECTION_WIFI;
-    }
-
-    return CONNECTION_OFFLINE;
 }
 
 }

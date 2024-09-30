@@ -14,7 +14,6 @@
 #include "GAEvents.h"
 #include "GAUtilities.h"
 #include "GAStore.h"
-#include "GAUncaughtExceptionHandler.h"
 #include <cstdlib>
 #include <thread>
 #include <array>

@@ -27,6 +27,16 @@ namespace gameanalytics
 
 			virtual std::string getConnectionType() override;
 
+			virtual std::string getCpuModel() 			const override;
+			virtual std::string getGpuModel() 			const override;
+			virtual int 		getNumCpuCores() 		const override;
+			virtual int64_t 	getTotalDeviceMemory() 	const override;
+
+			virtual int64_t getAppMemoryUsage() const override;
+			virtual int64_t getSysMemoryUsage() const override;
+
+			virtual int64_t getBootTime() const override;
+
 		private:
 
 			static void signalHandler(int sig, siginfo_t* info, void* context);

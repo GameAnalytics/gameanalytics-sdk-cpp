@@ -1,55 +1,66 @@
 #pragma once
 
-#if defined(_WIN32) || defined(_WIN64)
-	#define IS_WIN32 1
+#if defined(_WIN32) || defined(_WIN64) || defined(GA_UWP_BUILD)
 
-	#define _WIN32_DCOM
+    #ifndef GA_UWP_BUILD
+        #define IS_WIN32 1
+        #define IS_UWP 0
+    #else
+        #define IS_WIN32 0
+        #define IS_UWP 1
+    #endif
 
-	#ifndef WIN32_LEAN_AND_MEAN
-		#define WIN32_LEAN_AND_MEAN
-	#endif
+    #define _WIN32_DCOM
 
-		#ifndef NO_MIN_MAX
-			#define NO_MIN_MAX
-		#endif
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
 
 #else
-	#define IS_WIN32 0
+    #define IS_WIN32 0
+    #define IS_UWP   0
 #endif
 
 #if defined(__linux__) || defined(__unix__) || defined(__unix) || defined(unix)
-	#define IS_LINUX 1
+    #define IS_LINUX 1
 #else
-	#define IS_LINUX 0
+    #define IS_LINUX 0
 #endif
 
 #if defined(__MACH__) || defined(__APPLE__)
-	#define IS_MAC 1
+    #define IS_MAC 1
 #else
-	#define IS_MAC 0
+    #define IS_MAC 0
 #endif
-
-#include <cinttypes>
 
 namespace gameanalytics
 {
-	constexpr const char* GA_VERSION_STR = "cpp 4.0.0";
+    constexpr const char* GA_VERSION_STR = "cpp 4.0.0-alpha";
 
-	constexpr uint32_t MAX_CUSTOM_FIELDS_COUNT				 = 50u;
-	constexpr uint32_t MAX_CUSTOM_FIELDS_KEY_LENGTH			 = 64u;
-	constexpr uint32_t MAX_CUSTOM_FIELDS_VALUE_STRING_LENGTH = 256u;
+    constexpr int MAX_CUSTOM_FIELDS_COUNT				 = 50;
+    constexpr int MAX_CUSTOM_FIELDS_KEY_LENGTH			 = 64;
+    constexpr int MAX_CUSTOM_FIELDS_VALUE_STRING_LENGTH  = 256;
 
-	constexpr uint32_t UUID_STR_LENGTH		= 128u;
-	constexpr uint32_t TEXT_BUFFER_LENGTH	= 256u;
+    constexpr int UUID_STR_LENGTH		= 128;
+    constexpr int TEXT_BUFFER_LENGTH	= 256;
 
-	constexpr const char* UNKNOWN_VALUE = "unknown";
+    constexpr const char* UNKNOWN_VALUE = "unknown";
 
-	constexpr uint32_t MAX_ERROR_TYPE_COUNT = 10u;
-	constexpr uint32_t MAX_ERROR_MSG_LEN	= 8192u;
+    constexpr int MAX_ERROR_TYPE_COUNT = 10;
+    constexpr int MAX_ERROR_MSG_LEN	= 8192;
 
-	constexpr uint32_t JSON_PRINT_INDENT = 4u;
+    constexpr int JSON_PRINT_INDENT = 4;
 
-	/*!
+    constexpr const char* CONNECTION_OFFLINE = "offline";
+    constexpr const char* CONNECTION_LAN = "lan";
+    constexpr const char* CONNECTION_WIFI = "wifi";
+    constexpr const char* CONNECTION_WWAN = "wwan";
+
+    /*!
      @enum
      @discussion
      This enum is used to specify flow in resource events
@@ -67,7 +78,7 @@ namespace gameanalytics
     /*!
      @enum
      @discussion
-     his enum is used to specify status for progression event
+     this enum is used to specify status for progression event
      @constant GAProgressionStatusStart
      User started progression
      @constant GAProgressionStatusComplete
@@ -85,7 +96,7 @@ namespace gameanalytics
     /*!
      @enum
      @discussion
-     his enum is used to specify severity of an error event
+     this enum is used to specify severity of an error event
      @constant GAErrorSeverityDebug
      @constant GAErrorSeverityInfo
      @constant GAErrorSeverityWarning
@@ -101,7 +112,7 @@ namespace gameanalytics
         Critical    = 5
     };
 
-	enum EGALoggerMessageType
+    enum EGALoggerMessageType
     {
         LogError    = 0,
         LogWarning  = 1,
