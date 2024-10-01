@@ -28,11 +28,15 @@ Changelog
 **4.0.0**
 
 * updated to C++17
-* refactored the code base
-* rewritten GA thread logic
-* rewritten build scripts
+* public functions will now expect `std::string` instead of `const char*`
+* configureAvailableCustomDimensions, configureAvailableResourceCurrencies and configureAvailableItemTypes will now require a `std::vector<std::string>` as argument
+* removed duplicated public functions, replaced with default arguments
+* added argument for IRemoteConfigsListener callback
+* rewritten build scripts, now requires python3
 * changed user id logic to always use randomized id (except if custom id is set)
 * replaced usage of unsafe cstrings and functions with safer alternatives
+* refactored the internal codebase
+* rewritten threading logic
 * replaced RapidJson
 * removed Tizien support
 * added SDK init event
@@ -42,6 +46,7 @@ Changelog
 * added exception handling
 * improved stability
 * various bug fixes
+* added sample app
 
 How to build
 ------------
