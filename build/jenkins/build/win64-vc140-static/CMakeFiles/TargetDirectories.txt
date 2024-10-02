@@ -1,3 +1,0 @@
-D:/Workspace/Work_irl/GA-SDK-CPP-master/build/jenkins/build/win64-vc140-static/CMakeFiles/GameAnalytics.dir
-D:/Workspace/Work_irl/GA-SDK-CPP-master/build/jenkins/build/win64-vc140-static/CMakeFiles/ALL_BUILD.dir
-D:/Workspace/Work_irl/GA-SDK-CPP-master/build/jenkins/build/win64-vc140-static/CMakeFiles/ZERO_CHECK.dir
