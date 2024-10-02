@@ -80,6 +80,11 @@ namespace gameanalytics
 {
     using nlohmann::json;
 
+    namespace state
+    {
+        class GAState;
+    }
+
     constexpr const char* GA_VERSION_STR = "cpp 4.0.0-alpha";
 
     constexpr int MAX_CUSTOM_FIELDS_COUNT				 = 50;
