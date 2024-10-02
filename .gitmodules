@@ -1,6 +1,0 @@
-[submodule "libs/curl"]
-	path = libs/curl
-	url = https://github.com/curl/curl
-[submodule "libs/openssl"]
-	path = libs/openssl
-	url = https://github.com/openssl/openssl
