@@ -34,3 +34,4 @@
 # build folders
 [Bb]uild/
 [Bb]uild_old/
+/gtest_build
