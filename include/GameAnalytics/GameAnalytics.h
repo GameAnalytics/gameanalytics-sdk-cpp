@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "GATypes.h"
+#include "GameAnalytics/GATypes.h"
 
 namespace gameanalytics
 {
