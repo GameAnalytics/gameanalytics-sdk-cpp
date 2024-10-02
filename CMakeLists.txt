@@ -132,3 +132,39 @@ endif()
 
 add_library(GameAnalytics ${LIB_TYPE} ${CPP_SOURCES})
 target_link_libraries(GameAnalytics ${LIBS})
+
+# --------------------------- Google Test Setup --------------------------- #
+
+# Set Project Name
+set(UT_PROJECT_NAME "${PROJECT_NAME}UnitTests")
+
+# Add Google Test
+set(GTEST_DIR "${EXTERNALS_DIR}/googletest")
+add_subdirectory(${GTEST_DIR} ${PROJECT_SOURCE_DIR}/gtest_build)
+
+# Add tests
+enable_testing()
+
+########################################
+# Test files
+########################################
+# file(GLOB_RECURSE TEST_SOURCES "${CMAKE_BINARY_DIR}/test/*.cpp")
+file(GLOB TEST_SRC_FILES "${PROJECT_SOURCE_DIR}/test/*.cpp")
+
+########################################
+# Unit Tests
+#######################################
+add_executable(${UT_PROJECT_NAME} ${TEST_SRC_FILES})
+
+########################################
+# Standard linking to gtest and GA SDK stuff.
+########################################
+target_link_libraries(${UT_PROJECT_NAME} gtest gtest_main)
+
+########################################
+# Linking to GA SDK
+########################################
+target_link_libraries(runUnitTests ${PROJECT_NAME})
+
+
+add_test(NAME ${UT_PROJECT_NAME} COMMAND GameAnalyticsUnitTests)
