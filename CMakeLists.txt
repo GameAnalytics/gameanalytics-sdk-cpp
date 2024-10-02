@@ -164,7 +164,8 @@ target_link_libraries(${UT_PROJECT_NAME} gtest gtest_main)
 ########################################
 # Linking to GA SDK
 ########################################
-target_link_libraries(runUnitTests ${PROJECT_NAME})
+target_link_libraries(${UT_PROJECT_NAME} ${PROJECT_NAME})
 
+########################################
 
 add_test(NAME ${UT_PROJECT_NAME} COMMAND GameAnalyticsUnitTests)
