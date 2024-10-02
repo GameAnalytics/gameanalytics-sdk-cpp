@@ -1,7 +1,8 @@
 #include <string>
 #include <iostream>
+#include <thread>
 
-#include "GameAnalytics.h"
+#include "GameAnalytics/GameAnalytics.h"
 
 constexpr const char* GAME_KEY   = "bd624ee6f8e6efb32a054f8d7ba11618";
 constexpr const char* SECRET_KEY = "7f5c3f682cbd217841efba92e92ffb1b3b6612bc";

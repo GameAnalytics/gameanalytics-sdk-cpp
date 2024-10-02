@@ -5,15 +5,7 @@
 
 #pragma once
 
-#include "GACommon.h"
-
-#include <vector>
-#include <memory>
-#include <future>
-
-#if GA_SHARED_LIB
-#include "GameAnalyticsExtern.h"
-#endif
+#include "GameAnalytics/GATypes.h"
 
 namespace gameanalytics
 {

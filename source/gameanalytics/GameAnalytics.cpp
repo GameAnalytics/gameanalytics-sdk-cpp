@@ -3,7 +3,7 @@
 // Copyright 2018 GameAnalytics C++ SDK. All rights reserved.
 //
 
-#include "GameAnalytics.h"
+#include "GameAnalytics/GameAnalytics.h"
 
 #include "GAThreading.h"
 #include "GALogger.h"

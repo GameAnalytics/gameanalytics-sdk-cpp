@@ -1,5 +1,5 @@
 #include "GALogger.h"
-#include "GameAnalytics.h"
+#include "GameAnalytics/GameAnalytics.h"
 #include <iostream>
 #include "GADevice.h"
 #include <cstdarg>

@@ -6,7 +6,6 @@
 #pragma once
 
 #include "GACommon.h"
-#include "GameAnalytics.h"
 
 namespace gameanalytics
 {
