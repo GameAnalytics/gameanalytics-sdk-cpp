@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GACommon.h"
-#include "GAConstants.h"
 
 namespace gameanalytics
 {

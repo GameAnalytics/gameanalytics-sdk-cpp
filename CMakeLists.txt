@@ -7,6 +7,7 @@ set(DEPENDENCIES_DIR "${GA_SOURCE_DIR}/dependencies")
 set(EXTERNALS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/externals")
 set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs")
 set(GA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/gameanalytics")
+set(INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/CMakeIncludes")
 
@@ -32,6 +33,7 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(
     # gameanalytics includes
     "${GA_SOURCE_DIR}/gameanalytics"
+    "${INCLUDE_DIR}"
 
     # depndencies includes
     "${DEPENDENCIES_DIR}"

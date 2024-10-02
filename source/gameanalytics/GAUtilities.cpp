@@ -16,7 +16,6 @@
 #include <hmac_sha2.h>
 #include <guid.h>
 
-#include "GAConstants.h"
 #include "stacktrace/call_stack.hpp"
 
 // From crypto

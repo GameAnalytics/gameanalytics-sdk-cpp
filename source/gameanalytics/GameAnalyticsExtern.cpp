@@ -1,6 +1,6 @@
 #if GA_SHARED_LIB
 
-#include "GameAnalytics.h"
+#include "GameAnalytics/GameAnalytics.h"
 #include "GAUtilities.h"
 
 void ga_string_alloc(GAString* s, unsigned int size)

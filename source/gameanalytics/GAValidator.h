@@ -5,7 +5,6 @@
 
 #pragma once
 
-#include "GameAnalytics.h"
 #include "GAHTTPApi.h"
 
 namespace gameanalytics
