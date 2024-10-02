@@ -148,8 +148,8 @@ enable_testing()
 ########################################
 # Test files
 ########################################
-# file(GLOB_RECURSE TEST_SOURCES "${CMAKE_BINARY_DIR}/test/*.cpp")
-file(GLOB TEST_SRC_FILES "${PROJECT_SOURCE_DIR}/test/*.cpp")
+
+file(GLOB_RECURSE TEST_SRC_FILES "${PROJECT_SOURCE_DIR}/test/*.cpp")
 
 ########################################
 # Unit Tests
@@ -157,9 +157,9 @@ file(GLOB TEST_SRC_FILES "${PROJECT_SOURCE_DIR}/test/*.cpp")
 add_executable(${UT_PROJECT_NAME} ${TEST_SRC_FILES})
 
 ########################################
-# Standard linking to gtest and GA SDK stuff.
+# Standard linking to gtest and gmock components
 ########################################
-target_link_libraries(${UT_PROJECT_NAME} gtest gtest_main)
+target_link_libraries(${UT_PROJECT_NAME} gtest gtest_main gmock_main)
 
 ########################################
 # Linking to GA SDK
