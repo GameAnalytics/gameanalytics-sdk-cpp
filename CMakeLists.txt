@@ -117,7 +117,7 @@ elseif(APPLE)
         "-framework CoreFoundation"
         "-framework Foundation"
         "-framework CoreServices"
-        "-framework systemconfiguration"
+        "-framework SystemConfiguration"
     )
 
     create_source_groups(MACOS_SOURCES)
