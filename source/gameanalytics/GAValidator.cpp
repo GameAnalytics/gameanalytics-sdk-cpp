@@ -704,7 +704,8 @@ namespace gameanalytics
             {
                 if(str.empty())
                 {
-                    logging::GALogger::w("[%s] Failed array validation, empty value inside the array", logTag.c_str());
+					logging::GALogger::w("[%s] Failed array validation, empty value inside the array", logTag.c_str());
+					return false;
                 }
 
                 if(str.length() > maxStringLength)
