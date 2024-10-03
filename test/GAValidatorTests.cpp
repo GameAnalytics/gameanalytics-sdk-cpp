@@ -696,7 +696,10 @@ TEST(GAValidator, testValidateResourceCurrencies)
      ASSERT_TRUE(gameanalytics::validators::GAValidator::validateClientTs(gameanalytics::utilities::GAUtilities::timeIntervalSince1970()));
 
      ASSERT_FALSE(gameanalytics::validators::GAValidator::validateClientTs(std::numeric_limits<long>::min()));
-     ASSERT_FALSE(gameanalytics::validators::GAValidator::validateClientTs(std::numeric_limits<long>::max()));
+
+    long maxLongValue = std::numeric_limits<long>::max();
+    GTEST_LOG(INFO) << "Max long value: " << maxLongValue;
+     ASSERT_FALSE(gameanalytics::validators::GAValidator::validateClientTs(maxLongValue));
  }
 
 TEST(GAValidator, testValidateUserId)

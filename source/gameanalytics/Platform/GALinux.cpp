@@ -3,7 +3,6 @@
 #if IS_LINUX
 
 #include <execinfo.h>
-#include <linux/sysctl.h>
 #include <sys/utsname.h>
 #include <mach/mach.h>
 #include <sys/stat.h>
