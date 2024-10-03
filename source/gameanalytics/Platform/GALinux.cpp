@@ -4,7 +4,6 @@
 
 #include <execinfo.h>
 #include <sys/utsname.h>
-#include <mach/mach.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/sysinfo.h>

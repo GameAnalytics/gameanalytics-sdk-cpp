@@ -698,7 +698,7 @@ TEST(GAValidator, testValidateResourceCurrencies)
      ASSERT_FALSE(gameanalytics::validators::GAValidator::validateClientTs(std::numeric_limits<long>::min()));
 
     long maxLongValue = std::numeric_limits<long>::max();
-    GTEST_LOG(INFO) << "Max long value: " << maxLongValue;
+    GTEST_LOG_(INFO) << "Max long value: " << maxLongValue;
      ASSERT_FALSE(gameanalytics::validators::GAValidator::validateClientTs(maxLongValue));
  }
 
