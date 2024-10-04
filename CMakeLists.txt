@@ -165,7 +165,7 @@ elseif(APPLE)
     create_source_groups(MACOS_SOURCES)
 
 elseif(LINUX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGUID_LIBUUID")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGUID_STDLIB")
 endif()
 
 if(${GA_BUILD_SAMPLE})

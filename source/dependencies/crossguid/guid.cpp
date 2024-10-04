@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include "guid.h"
 
 #ifdef GUID_LIBUUID
-#include <uuid.h>
+#include <uuid/uuid.h>
 #endif
 
 #ifdef GUID_CFUUID
@@ -40,6 +40,12 @@ THE SOFTWARE.
 #ifdef GUID_ANDROID
 #include <jni.h>
 #include <cassert>
+#endif
+
+#ifdef GUID_STDLIB
+#include <random>
+#include <vector>
+#include <string>
 #endif
 
 BEGIN_XG_NAMESPACE
@@ -276,6 +282,53 @@ Guid newGuid()
     static_assert(std::is_same<unsigned char[16], uuid_t>::value, "Wrong type!");
     uuid_generate(data.data());
     return Guid{std::move(data)};
+}
+#endif
+
+#ifdef GUID_STDLIB
+unsigned char random_char()
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0,255);
+    return static_cast<unsigned char>(dis(gen));
+}
+
+void generate_hex(size_t len, std::vector<char>& out)
+{
+    for(size_t i = 0; i < len; ++i)
+    {
+        const auto rc = random_char();
+        char s[3];
+        snprintf(s, 3, "%02x", int(rc));
+        
+        out.push_back(s[0]);
+        out.push_back(s[1]);
+    }
+}
+
+Guid newGuid()
+{
+    std::vector<char> result;
+    generate_hex(4, result);
+    result.push_back('-');
+    generate_hex(2, result);
+    result.push_back('-');
+    generate_hex(2, result);
+    result.push_back('-');
+    generate_hex(2, result);
+    result.push_back('-');
+    generate_hex(4, result);
+    result.push_back('\0');
+
+    std::array<unsigned char, 16> data;
+    const int size = std::min<int>(16, result.size());
+    for(int i = 0; i < size; ++i)
+    {
+        data[i] = result[i];
+    }
+
+    return Guid(std::move(data));
 }
 #endif
 
