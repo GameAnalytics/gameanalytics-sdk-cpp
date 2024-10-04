@@ -240,7 +240,7 @@ std::string gameanalytics::GAPlatformLinux::getCpuModel() const
     return systemInfo.machine;
 }
 
-std::string gameanalytics::GAPlatformLinux::getConnectionType() const
+std::string gameanalytics::GAPlatformLinux::getConnectionType()
 {
     struct ifaddrs* list = nullptr;
     struct ifaddrs* current = nullptr;
