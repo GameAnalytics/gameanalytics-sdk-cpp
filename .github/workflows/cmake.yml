@@ -45,6 +45,14 @@ jobs:
       with:
         submodules: true
 
+    - name: Check OS Architecture
+      run: |
+        if ([Environment]::Is64BitOperatingSystem) {
+        Write-Host "64-bit Windows"
+        } else {
+        Write-Host "32-bit Windows"
+        }
+    
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
