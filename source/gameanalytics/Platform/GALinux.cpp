@@ -12,6 +12,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/sysinfo.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <linux/wireless.h>
 
 struct sigaction gameanalytics::GAPlatformLinux::prevSigAction;
 
@@ -234,6 +237,51 @@ std::string gameanalytics::GAPlatformLinux::getCpuModel() const
     uname(&systemInfo);
 
     return systemInfo.machine;
+}
+
+std::string gameanalytics::GAPlatformLinux::getConnectionType() const
+{
+    struct ifaddrs* list = nullptr;
+    struct ifaddrs* current = nullptr;
+
+    std::string connection = CONNECTION_OFFLINE
+
+    if(getifaddrs(&list) == -1)
+    {
+        return connection;
+    }
+
+    current = list;
+    while(current)
+    {
+        int sock = -1;
+        if (!current->ifa_addr || current->ifa_addr->sa_family != AF_PACKET) 
+        {
+            struct iwrew req = {};
+            strncpy(req.ifr_name, curent->ifa_name, IFNAMSIZ);
+
+            int sock = socket(AF_INET, SOCK_STREAM, 0);
+            if (sock == -1) 
+            {
+                connection = CONNECTION_LAN;
+            }
+            else
+            {
+                if (ioctl(sock, SIOCGIWNAME, &req) != -1) 
+                {
+                    connection = CONNECTION_WIFI;
+                }
+            }
+        }
+
+        if(sock != -1)
+            close(sock);
+
+        current = list->ifa_next;
+    }
+
+    freeifaddrs(list);
+    return connection;
 }
 
 std::string gameanalytics::GAPlatformLinux::getGpuModel() const 
