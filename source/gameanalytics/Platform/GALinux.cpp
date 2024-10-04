@@ -4,11 +4,65 @@
 
 #include "GAState.h"
 
+#include <errno.h>
+#include <linux/unistd.h>
+#include <linux/kernel.h>
 #include <execinfo.h>
 #include <sys/utsname.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/sysinfo.h>
+
+struct ProcessStat 
+{
+    int pid;
+    std::string comm;
+    char state;
+    long ppid;
+    long pgrp;
+    long session;
+    long tty_nr;
+    long tpgid;
+    unsigned long flags;
+    unsigned long minflt;
+    unsigned long cminflt;
+    unsigned long majflt;
+    unsigned long cmajflt;
+    unsigned long utime;
+    unsigned long stime;
+    long cutime;
+    long cstime;
+    long priority;
+    long nice;
+    long num_threads;
+    long itrealvalue;
+    long starttime;
+    long vsize;
+    long rss;
+};
+
+ProcessStat readProcessStat() 
+{
+    ProcessStat stat{};
+    std::ifstream statFile("/proc/self/stat");
+    
+    if (!statFile.is_open()) 
+    {
+        return {};
+    }
+
+    std::string line;
+    std::getline(statFile, line);
+    std::istringstream iss(line);
+
+    iss >> stat.pid >> stat.comm >> stat.state >> stat.ppid >> stat.pgrp >> stat.session
+        >> stat.tty_nr >> stat.tpgid >> stat.flags >> stat.minflt >> stat.cminflt
+        >> stat.majflt >> stat.cmajflt >> stat.utime >> stat.stime
+        >> stat.cutime >> stat.cstime >> stat.priority >> stat.nice
+        >> stat.num_threads >> stat.itrealvalue >> stat.starttime >> vsize >> rss;
+
+    return stat;
+}
 
 std::string gameanalytics::GAPlatformLinux::getOSVersion()
 {
@@ -203,33 +257,23 @@ int64_t gameanalytics::GAPlatformLinux::getTotalDeviceMemory() const
 
 int64_t gameanalytics::GAPlatformLinux::getAppMemoryUsage() const
 {
-    struct task_basic_info info;
-    
-    mach_msg_type_number_t infoSize = TASK_BASIC_INFO_COUNT;
-    kern_return_t result = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&info, &infoSize);
-    
-    if(result == KERN_SUCCESS) 
-    {
-        return utilities::convertBytesToMB(info.resident_size);
-    }
+    constexpr int k_pageSize = 1024;
+    ProcessStat procStat = readProcessStat();
 
-    return 0;
+    int64_t vmUsage      = proc.vsize / k_pageSize;
+    int64_t resident     = proc.rss * (sysconf(_SC_PAGE_SIZE) / k_pageSize);
+
+    int64_t inBytes = (vmUsage + resident) * 1024;
+
+    return utilities::convertBytesToMB(inBytes);
 }
 
 int64_t gameanalytics::GAPlatformLinux::getSysMemoryUsage() const
 {
-    mach_port_t port = mach_host_self();
-    mach_msg_type_number_t hostSize = sizeof(vm_statistics_data_t) / sizeof(integer_t);
-    
-    vm_size_t pageSize;
-    host_page_size(port, &pageSize);
-    
-    vm_statistics_data_t stats;
-    
-    if(host_statistics(port, HOST_VM_INFO, (host_info_t)&stats, &hostSize) == KERN_SUCCESS)
+    struct sysinfo info = {};
+    if(sysinfo(&info) == 0)
     {
-        const int64_t freeMemory = (stats.free_count + stats.inactive_count) * pageSize;
-        return getTotalDeviceMemory() - utilities::convertBytesToMB(freeMemory);
+        return return utilities::convertBytesToMB(info.totalram - info.freeram);
     }
 
     return 0;
@@ -237,25 +281,18 @@ int64_t gameanalytics::GAPlatformLinux::getSysMemoryUsage() const
 
 int64_t gameanalytics::GAPlatformLinux::getBootTime() const
 {
-    const size_t len = 4;
-    int mib[len] = {0,0,0,0};
-    struct kinfo_proc kp = {};
+    ProcessStat procStat = readProcessStat();
 
-    const size_t pidId = 3;
-    
-    size_t num = len;
-    sysctlnametomib("kern.proc.pid", mib, &num);
-    mib[pidId] = getpid();
-    
-    num = sizeof(kp);
-    sysctl(mib, len, &kp, &num, NULL, 0);
+    struct sysinfo info = {};
+    if(sysinfo(&info) != 0)
+    {
+        return 0;
+    }
 
-    struct timeval startTime = kp.kp_proc.p_un.__p_starttime;
-    struct timeval currentTime = {};
-    
-    gettimeofday(&currentTime, NULL);
-    
-    return currentTime.tv_sec - startTime.tv_sec;
+    int64_t startTime = procStat.starttime / sysconf(_SC_CLK_TCK);
+    int64_t bootTime = info.uptime - startTime;
+
+    return bootTime;
 }
 
 #endif
