@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include "guid.h"
 
 #ifdef GUID_LIBUUID
-#include <uuid/uuid.h>
+#include <uuid.h>
 #endif
 
 #ifdef GUID_CFUUID
