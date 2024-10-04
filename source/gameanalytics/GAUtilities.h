@@ -79,7 +79,15 @@ namespace gameanalytics
 
         inline json parseFields(std::string const& fields)
         {
-            return fields.empty() ? json() : json::parse(fields);
+            try
+            {
+                return fields.empty() ? json() : json::parse(fields);
+            }
+            catch(const std::exception& e)
+            {
+                (void)e;
+                return json();
+            }
         }
 
         inline std::int64_t getTimestamp()
@@ -134,7 +142,6 @@ namespace gameanalytics
                 }
                 catch(const std::exception& e)
                 {
-                    //logging::GALogger::d("Error with ws2s: %S", wstr.c_str());
                     return "";
                 }
             }
@@ -147,7 +154,6 @@ namespace gameanalytics
                 }
                 catch(const std::exception& e)
                 {
-                    //logging::GALogger::d("Error with s2ws: %s", str.c_str());
                     return L"";
                 }
             }
