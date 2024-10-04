@@ -10,7 +10,7 @@
 #include <GAState.h>
 #include <GALogger.h>
 #include <random>
-#include <GameAnalytics.h>
+#include <GameAnalytics/GameAnalytics.h>
 #include <GAUtilities.h>
 
 // test helpers
@@ -39,7 +39,8 @@ TEST(GAValidator, testValidateResourceCurrencies)
 
     {
         gameanalytics::StringVector currencies;
-        currencies.add("gems").add("gold");
+		currencies.push_back("gems");
+		currencies.push_back("gold");
 
         // Valid resource types
         isValid = gameanalytics::validators::GAValidator::validateResourceCurrencies(currencies);
@@ -49,7 +50,8 @@ TEST(GAValidator, testValidateResourceCurrencies)
 
     {
         gameanalytics::StringVector currencies;
-        currencies.add("").add("gold");
+		currencies.push_back("");
+		currencies.push_back("gold");
 
         // Invalid resource types
         isValid = gameanalytics::validators::GAValidator::validateResourceCurrencies(currencies);
@@ -70,7 +72,8 @@ TEST(GAValidator, testValidateResourceCurrencies)
 
      {
          gameanalytics::StringVector itemTypes;
-         itemTypes.add("gems").add("gold");
+		 itemTypes.push_back("gems");
+		 itemTypes.push_back("gold");
          // Valid resource types
          isValid = gameanalytics::validators::GAValidator::validateResourceItemTypes(itemTypes);
          ASSERT_TRUE(isValid) << "Valid resource types array should succeed";
@@ -79,7 +82,8 @@ TEST(GAValidator, testValidateResourceCurrencies)
 
      {
          gameanalytics::StringVector itemTypes;
-         itemTypes.add("").add("gold");
+		 itemTypes.push_back("");
+		 itemTypes.push_back("gold");
          // Invalid resource types
          isValid = gameanalytics::validators::GAValidator::validateResourceItemTypes(itemTypes);
          ASSERT_FALSE(isValid) << "Should falset allow empty resource type";
@@ -218,10 +222,12 @@ TEST(GAValidator, testValidateResourceCurrencies)
  {
      // Set available list
      gameanalytics::StringVector currencies;
-     currencies.add("gems").add("gold");
+	 currencies.push_back("gems");
+	 currencies.push_back("gold");
      gameanalytics::state::GAState::setAvailableResourceCurrencies(currencies);
      gameanalytics::StringVector itemTypes;
-     itemTypes.add("guns").add("powerups");
+	 itemTypes.push_back("guns");
+	 itemTypes.push_back("powerups");
      gameanalytics::state::GAState::setAvailableResourceItemTypes(itemTypes);
 
      // Store result
@@ -288,10 +294,12 @@ TEST(GAValidator, testValidateResourceCurrencies)
  {
      // Set available list
      gameanalytics::StringVector currencies;
-     currencies.add("gems").add("gold");
+	 currencies.push_back("gems");
+	 currencies.push_back("gold");
      gameanalytics::state::GAState::setAvailableResourceCurrencies(currencies);
      gameanalytics::StringVector itemTypes;
-     itemTypes.add("guns").add("powerups");
+	 itemTypes.push_back("guns");
+	 itemTypes.push_back("powerups");
      gameanalytics::state::GAState::setAvailableResourceItemTypes(itemTypes);
 
      // Store result
@@ -464,24 +472,29 @@ TEST(GAValidator, testValidateResourceCurrencies)
      bool isValid;
 
      {
-         gameanalytics::StringVector dimensions;
-         dimensions.add("abc").add("def").add("ghi");
+		 gameanalytics::StringVector dimensions = {"abc", "def", "ghi"};
+		 
          // Valid
          isValid = gameanalytics::validators::GAValidator::validateCustomDimensions(dimensions);
          ASSERT_TRUE(isValid) << "Should validate custom dimensions";
      }
 
      {
-         gameanalytics::StringVector dimensions;
-         dimensions.add("abc").add("def").add("abc").add("def").add("abc").add("def").add("abc").add("def").add("abc").add("def").add("abc").add("def").add("abc").add("def").add("abc").add("def").add("abc").add("def").add("abc").add("def").add("abc").add("def").add("abc").add("def").add("abc").add("def").add("abc").add("def");
+		 gameanalytics::StringVector dimensions = {
+			 "abc", "def", "abc", "def", "abc", "def",
+			 "abc", "def", "abc", "def", "abc", "def",
+			 "abc", "def", "abc", "def", "abc", "def",
+			 "abc", "def", "abc", "def", "abc", "def",
+			 "abc", "def", "abc", "def"
+		 };
          // Invalid
          isValid = gameanalytics::validators::GAValidator::validateCustomDimensions(dimensions);
          ASSERT_FALSE(isValid) << "Should falset allow more than 20 custom dimensions";
      }
 
      {
-         gameanalytics::StringVector dimensions;
-         dimensions.add("abc").add("");
+		 gameanalytics::StringVector dimensions{"adc",""};
+         
          isValid = gameanalytics::validators::GAValidator::validateCustomDimensions(dimensions);
          ASSERT_FALSE(isValid) << "Should falset allow empty custom dimension value";
      }
@@ -651,8 +664,7 @@ TEST(GAValidator, testValidateResourceCurrencies)
  TEST(GAValidator, testValidateArrayOfStringsWithArray)
  {
      {
-         gameanalytics::StringVector strings;
-         strings.add(GATestHelpers::getRandomString(3).c_str()).add(GATestHelpers::getRandomString(10).c_str()).add(GATestHelpers::getRandomString(7).c_str());
+		 gameanalytics::StringVector strings = { (GATestHelpers::getRandomString(3).c_str()), (GATestHelpers::getRandomString(10).c_str()), (GATestHelpers::getRandomString(7).c_str()) };
          ASSERT_TRUE(gameanalytics::validators::GAValidator::validateArrayOfStrings(strings, 3, 10, false, "test"));
      }
      {
@@ -661,18 +673,15 @@ TEST(GAValidator, testValidateResourceCurrencies)
      }
 
      {
-         gameanalytics::StringVector strings;
-         strings.add(GATestHelpers::getRandomString(3).c_str()).add(GATestHelpers::getRandomString(12).c_str()).add(GATestHelpers::getRandomString(7).c_str());
+		 gameanalytics::StringVector strings = { GATestHelpers::getRandomString(3).c_str(), GATestHelpers::getRandomString(12).c_str(), GATestHelpers::getRandomString(7).c_str() };
          ASSERT_FALSE(gameanalytics::validators::GAValidator::validateArrayOfStrings(strings, 3, 10, false, "test"));
      }
      {
-         gameanalytics::StringVector strings;
-         strings.add(GATestHelpers::getRandomString(3).c_str()).add("").add(GATestHelpers::getRandomString(7).c_str());
+		 gameanalytics::StringVector strings = { GATestHelpers::getRandomString(3).c_str(), "", GATestHelpers::getRandomString(7).c_str() };
          ASSERT_FALSE(gameanalytics::validators::GAValidator::validateArrayOfStrings(strings, 3, 10, false, "test"));
      }
      {
-         gameanalytics::StringVector strings;
-         strings.add(GATestHelpers::getRandomString(3).c_str()).add(GATestHelpers::getRandomString(10).c_str()).add(GATestHelpers::getRandomString(7).c_str());
+		 gameanalytics::StringVector strings = { GATestHelpers::getRandomString(3).c_str(), GATestHelpers::getRandomString(10).c_str(), GATestHelpers::getRandomString(7).c_str() };
          ASSERT_FALSE(gameanalytics::validators::GAValidator::validateArrayOfStrings(strings, 2, 10, false, "test"));
      }
      {
@@ -686,8 +695,8 @@ TEST(GAValidator, testValidateResourceCurrencies)
  {
      ASSERT_TRUE(gameanalytics::validators::GAValidator::validateClientTs(gameanalytics::utilities::GAUtilities::timeIntervalSince1970()));
 
-     ASSERT_FALSE(gameanalytics::validators::GAValidator::validateClientTs(std::numeric_limits<long>::min()));
-     ASSERT_FALSE(gameanalytics::validators::GAValidator::validateClientTs(std::numeric_limits<long>::max()));
+     ASSERT_FALSE(gameanalytics::validators::GAValidator::validateClientTs(std::numeric_limits<long long>::min()));
+     ASSERT_FALSE(gameanalytics::validators::GAValidator::validateClientTs(std::numeric_limits<long long>::max()));
  }
 
 TEST(GAValidator, testValidateUserId)

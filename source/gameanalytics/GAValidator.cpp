@@ -288,7 +288,7 @@ namespace gameanalytics
 
             if (!GAValidator::validateEventPartCharacters(progression))
             {
-                    logging::GALogger::w("Validation fail - progression event - progression0%d: Cannot contain other characters than A-z, 0-9, -_., ()!?. String: %s", progressionLvl + 1, progression.c_str());
+                    logging::GALogger::w("Validation fail - progression event - progression0%d: Cannot contain other characters than A-z, 0-9, -_., ()!?. String:\"%s\"", progressionLvl + 1, progression.c_str());
                     out.category = http::EGASdkErrorCategory::EventValidation;
                     out.area = http::EGASdkErrorArea::ProgressionEvent;
                     out.action = http::EGASdkErrorAction::InvalidEventPartCharacters;
@@ -332,16 +332,12 @@ namespace gameanalytics
                 return;
             }
 
-            if(!validateProgressionString(progression01, out, 0))
-                return;
+			bool isProgression01Valid = validateProgressionString(progression01, out, 0);
+			bool isProgression02Valid = validateProgressionString(progression02, out, 1);
+			bool isProgression03Valid = validateProgressionString(progression03, out, 2);
+			
+			out.result = isProgression01Valid || (isProgression01Valid && isProgression02Valid) || (isProgression01Valid && isProgression02Valid && isProgression03Valid);
 
-            if(!validateProgressionString(progression02, out, 1))
-                return;
-
-            if(!validateProgressionString(progression03, out, 2))
-                return;
-
-            out.result = true;
         }
 
 
@@ -704,7 +700,8 @@ namespace gameanalytics
             {
                 if(str.empty())
                 {
-                    logging::GALogger::w("[%s] Failed array validation, empty value inside the array", logTag.c_str());
+					logging::GALogger::w("[%s] Failed array validation, empty value inside the array", logTag.c_str());
+					return false;
                 }
 
                 if(str.length() > maxStringLength)
@@ -720,6 +717,9 @@ namespace gameanalytics
         bool GAValidator::validateClientTs(int64_t clientTs)
         {
             constexpr int64_t k_maxTs = 99999999999;
+
+            logging::GALogger::d("clientTs = %lld", clientTs);
+
             if (clientTs < 0 || clientTs > k_maxTs)
             {
                 return false;

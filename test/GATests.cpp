@@ -3,8 +3,9 @@
 // Copyright 2015 GameAnalytics. All rights reserved.
 //
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
 #include <string>
 #include <vector>
 

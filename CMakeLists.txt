@@ -69,6 +69,43 @@ FILE(GLOB_RECURSE CPP_SOURCES
 
 create_source_groups(CPP_SOURCES)
 
+# --------------------------- Detect Platform Automatically --------------------------- #
+# Check if the PLATFORM variable was passed in from the command line
+if(NOT DEFINED PLATFORM)
+    message(STATUS "PLATFORM not set. Detecting platform...")
+
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+            set(PLATFORM "linux_x64")
+        else()
+            set(PLATFORM "linux_x86")
+        endif()
+
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        # macOS
+        set(PLATFORM "osx")
+
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+            set(PLATFORM "win64")
+        elseif(CMAKE_SYSTEM_VERSION MATCHES "10.0")
+            # UWP platform
+            set(PLATFORM "uwp")
+        else()
+            set(PLATFORM "win32")
+        endif()
+
+    else()
+        message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
+    endif()
+
+    message(STATUS "Auto-detected platform: ${PLATFORM}")
+else()
+    message(STATUS "Using user-specified PLATFORM: ${PLATFORM}")
+endif()
+
+# --------------------------- END --------------------------- #
+
 if(${GA_USE_PACKAGE})
 
     find_package(CURL REQUIRED PATHS ${EXTERNALS_DIR}/curl)
@@ -122,7 +159,7 @@ elseif(APPLE)
         "-framework CoreFoundation"
         "-framework Foundation"
         "-framework CoreServices"
-        "-framework systemconfiguration"
+        "-framework SystemConfiguration"
     )
 
     create_source_groups(MACOS_SOURCES)
@@ -137,3 +174,41 @@ endif()
 
 add_library(GameAnalytics ${LIB_TYPE} ${CPP_SOURCES})
 target_link_libraries(GameAnalytics PRIVATE ${LIBS} PUBLIC ${PUBLIC_LIBS})
+
+# --------------------------- Google Test Setup --------------------------- #
+
+# Set Project Name
+set(UT_PROJECT_NAME "${PROJECT_NAME}UnitTests")
+
+# Add Google Test
+set(GTEST_DIR "${EXTERNALS_DIR}/googletest")
+add_subdirectory(${GTEST_DIR} ${PROJECT_SOURCE_DIR}/gtest_build)
+
+# Add tests
+enable_testing()
+
+########################################
+# Test files
+########################################
+
+file(GLOB_RECURSE TEST_SRC_FILES "${PROJECT_SOURCE_DIR}/test/*.cpp")
+
+########################################
+# Unit Tests
+#######################################
+add_executable(${UT_PROJECT_NAME} ${TEST_SRC_FILES})
+
+########################################
+# Standard linking to gtest and gmock components
+########################################
+target_link_libraries(${UT_PROJECT_NAME} gtest gtest_main gmock_main)
+
+########################################
+# Linking to GA SDK
+########################################
+target_link_libraries(${UT_PROJECT_NAME} ${PROJECT_NAME})
+
+########################################
+
+add_test(NAME ${UT_PROJECT_NAME} COMMAND GameAnalyticsUnitTests)
+

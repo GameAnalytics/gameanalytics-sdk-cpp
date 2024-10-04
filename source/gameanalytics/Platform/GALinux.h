@@ -7,7 +7,7 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/sysctl.h>
+#include <linux/sysctl.h>
 #include <sys/utsname.h>
 
 namespace gameanalytics
