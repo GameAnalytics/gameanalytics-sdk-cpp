@@ -273,7 +273,7 @@ int64_t gameanalytics::GAPlatformLinux::getSysMemoryUsage() const
     struct sysinfo info = {};
     if(sysinfo(&info) == 0)
     {
-        return return utilities::convertBytesToMB(info.totalram - info.freeram);
+        return utilities::convertBytesToMB(info.totalram - info.freeram);
     }
 
     return 0;
