@@ -13,6 +13,8 @@
 #include <unistd.h>
 #include <sys/sysinfo.h>
 
+struct sigaction gameanalytics::GAPlatformLinux::prevSigAction;
+
 struct ProcessStat 
 {
     int pid;
