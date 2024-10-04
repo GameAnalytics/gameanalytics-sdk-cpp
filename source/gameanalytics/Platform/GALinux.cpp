@@ -245,7 +245,7 @@ std::string gameanalytics::GAPlatformLinux::getConnectionType()
     struct ifaddrs* list = nullptr;
     struct ifaddrs* current = nullptr;
 
-    std::string connection = CONNECTION_OFFLINE
+    std::string connection = CONNECTION_OFFLINE;
 
     if(getifaddrs(&list) == -1)
     {
@@ -258,8 +258,8 @@ std::string gameanalytics::GAPlatformLinux::getConnectionType()
         int sock = -1;
         if (!current->ifa_addr || current->ifa_addr->sa_family != AF_PACKET) 
         {
-            struct iwrew req = {};
-            strncpy(req.ifr_name, curent->ifa_name, IFNAMSIZ);
+            struct iwreq req = {};
+            strncpy(req.ifr_name, current->ifa_name, IFNAMSIZ);
 
             int sock = socket(AF_INET, SOCK_STREAM, 0);
             if (sock == -1) 
