@@ -2,6 +2,8 @@
 
 #if IS_LINUX
 
+#include "GAState.h"
+
 #include <execinfo.h>
 #include <sys/sysctl.h>
 #include <sys/utsname.h>
@@ -172,7 +174,7 @@ void gameanalytics::GAPlatformLinux::signalHandler(int sig, siginfo_t* info, voi
     }
 }
 
-std::string gameanalytics::GAPlatformMacOS::getCpuModel() const
+std::string gameanalytics::GAPlatformLinux::getCpuModel() const
 {
     struct utsname systemInfo;
     uname(&systemInfo);
@@ -180,17 +182,17 @@ std::string gameanalytics::GAPlatformMacOS::getCpuModel() const
     return systemInfo.machine;
 }
 
-std::string gameanalytics::GAPlatformMacOS::getGpuModel() const 
+std::string gameanalytics::GAPlatformLinux::getGpuModel() const 
 {
     return UNKNOWN_VALUE;
 }
 
-int gameanalytics::GAPlatformMacOS::getNumCpuCores() const
+int gameanalytics::GAPlatformLinux::getNumCpuCores() const
 {
     return (int)sysconf(_SC_NPROCESSORS_ONLN);
 }
 
-int64_t gameanalytics::GAPlatformMacOS::getTotalDeviceMemory() const 
+int64_t gameanalytics::GAPlatformLinux::getTotalDeviceMemory() const 
 {
     struct sysinfo info = {};
     if(sysinfo(&info) == 0)
@@ -257,6 +259,5 @@ int64_t gameanalytics::GAPlatformLinux::getBootTime() const
     
     return currentTime.tv_sec - startTime.tv_sec;
 }
-
 
 #endif
