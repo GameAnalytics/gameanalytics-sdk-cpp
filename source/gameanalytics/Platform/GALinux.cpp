@@ -278,7 +278,7 @@ std::string gameanalytics::GAPlatformLinux::getConnectionType()
         if(sock != -1)
             close(sock);
 
-        current = list->ifa_next;
+        current = current->ifa_next;
     }
 
     freeifaddrs(list);
