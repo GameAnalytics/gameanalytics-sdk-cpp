@@ -53,6 +53,9 @@ FILE(GLOB_RECURSE CPP_SOURCES
     "${GA_SOURCE_DIR}/gameanalytics/*.h"
     "${GA_SOURCE_DIR}/gameanalytics/*.cpp"
 
+    "${INCLUDE_DIR}/*.h"
+    "${INCLUDE_DIR}/*.cpp"
+
     # Add dependencies
     "${DEPENDENCIES_DIR}/crossguid/*"
     "${DEPENDENCIES_DIR}/nlohmann/*"
@@ -104,12 +107,14 @@ endif()
 # --------------------------- END --------------------------- #
 
 if(${GA_USE_PACKAGE})
+
     find_package(CURL REQUIRED PATHS ${EXTERNALS_DIR}/curl)
     find_package(OpenSSL REQUIRED PATHS ${EXTERNALS_DIR}/openssl)
     set(LIBS CURL::libcurl)
+
 else()
-    add_definitions("-DUSE_OPENSSL -DCURL_STATICLIB")
-    add_definitions("-DCRYPTOPP_DISABLE_ASM")
+
+    add_definitions("-DUSE_OPENSSL -DCURL_STATICLIB -DCRYPTOPP_DISABLE_ASM")
 
     link_directories(
         "${EXTERNALS_DIR}/openssl/1.1.1d/libs/${PLATFORM}"
@@ -150,7 +155,7 @@ elseif(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGUID_CFUUID")
     FILE(GLOB_RECURSE MACOS_SOURCES "${GA_SOURCE_DIR}/gameanalytics/Platform/*.mm")
     list(APPEND CPP_SOURCES ${MACOS_SOURCES})
-    list(APPEND LIBS
+    set(PUBLIC_LIBS
         "-framework CoreFoundation"
         "-framework Foundation"
         "-framework CoreServices"
@@ -168,7 +173,7 @@ if(${GA_BUILD_SAMPLE})
 endif()
 
 add_library(GameAnalytics ${LIB_TYPE} ${CPP_SOURCES})
-target_link_libraries(GameAnalytics ${LIBS})
+target_link_libraries(GameAnalytics PRIVATE ${LIBS} PUBLIC ${PUBLIC_LIBS})
 
 # --------------------------- Google Test Setup --------------------------- #
 
@@ -206,3 +211,4 @@ target_link_libraries(${UT_PROJECT_NAME} ${PROJECT_NAME})
 ########################################
 
 add_test(NAME ${UT_PROJECT_NAME} COMMAND GameAnalyticsUnitTests)
+
