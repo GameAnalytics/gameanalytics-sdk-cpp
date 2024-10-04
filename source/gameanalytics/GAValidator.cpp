@@ -718,7 +718,7 @@ namespace gameanalytics
         {
             constexpr int64_t k_maxTs = 99999999999;
 
-            logging::GALogger::w("clientTs = %lld", clientTs);
+            logging::GALogger::d("clientTs = %lld", clientTs);
 
             if (clientTs < 0 || clientTs > k_maxTs)
             {
