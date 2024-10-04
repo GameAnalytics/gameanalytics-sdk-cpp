@@ -85,7 +85,7 @@ Usage of the SDK
 Remember to include the GameAnalytics header file wherever you are using the SDK:
 
 ``` c++
- #include "GameAnalytics.h"
+ #include "GameAnalytics/GameAnalytics.h"
 ```
 
 ### Custom log handler
