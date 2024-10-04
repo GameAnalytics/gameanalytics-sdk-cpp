@@ -59,7 +59,7 @@ ProcessStat readProcessStat()
         >> stat.tty_nr >> stat.tpgid >> stat.flags >> stat.minflt >> stat.cminflt
         >> stat.majflt >> stat.cmajflt >> stat.utime >> stat.stime
         >> stat.cutime >> stat.cstime >> stat.priority >> stat.nice
-        >> stat.num_threads >> stat.itrealvalue >> stat.starttime >> vsize >> rss;
+        >> stat.num_threads >> stat.itrealvalue >> stat.starttime >> stat.vsize >> stat.rss;
 
     return stat;
 }
@@ -210,7 +210,7 @@ void gameanalytics::GAPlatformLinux::signalHandler(int sig, siginfo_t* info, voi
         if (errorCount <= MAX_ERROR_TYPE_COUNT)
         {
             errorCount++;
-            events::GAEvents::addErrorEvent(EGAErrorSeverity::Critical, stackTrace, {}, false, false);
+            events::GAEvents::addErrorEvent(EGAErrorSeverity::Critical, stackTrace, "", -1, {}, false, false);
             events::GAEvents::processEvents("error", false);
         }
 
@@ -258,7 +258,7 @@ int64_t gameanalytics::GAPlatformLinux::getTotalDeviceMemory() const
 int64_t gameanalytics::GAPlatformLinux::getAppMemoryUsage() const
 {
     constexpr int k_pageSize = 1024;
-    ProcessStat procStat = readProcessStat();
+    ProcessStat proc = readProcessStat();
 
     int64_t vmUsage      = proc.vsize / k_pageSize;
     int64_t resident     = proc.rss * (sysconf(_SC_PAGE_SIZE) / k_pageSize);
