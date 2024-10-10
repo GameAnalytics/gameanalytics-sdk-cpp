@@ -5,6 +5,8 @@ import shutil
 import glob
 
 def run_command(command, shell=True, cwd=None):
+	if os.name == 'nt':  # Check if the OS is Windows
+		command = f'powershell.exe -Command "{command}"'
 	result = subprocess.run(command, shell=shell, check=True, text=True, cwd=cwd)
 	return result
 
@@ -70,7 +72,7 @@ def main():
 	elif args.os == 'linux':
 		run_command(f'file {package_dir}/*GameAnalytics.*')
 	elif args.os == 'windows':
-		run_command(f'dumpbin /headers {package_dir}/*GameAnalytics.*')
+		run_command(f'dumpbin /headers {package_dir}/GameAnalytics.lib | findstr machine')
 	
 
 if __name__ == "__main__":
