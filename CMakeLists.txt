@@ -285,19 +285,20 @@ if (LCOV_PATH AND GCOV_PATH)
         # Run tests
         COMMAND GameAnalyticsUnitTests
 
+        message(STATUS "Capturing lcov counters and generating report")
         # Capturing lcov counters and generating report
         COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info
         COMMAND ${LCOV_PATH} --remove ${covname}.info
-                             '${CMAKE_SOURCE_DIR}/lib/include/*'
+                             '${CMAKE_SOURCE_DIR}/include/*'
+                             '${CMAKE_SOURCE_DIR}/source/gameanalytics/*'
                              '${CMAKE_SOURCE_DIR}/test/*'
-                             '${CMAKE_SOURCE_DIR}/catch2/*'
-                             '${CMAKE_SOURCE_DIR}/fakeit/*'
-                             '/usr/*'
                              --output-file ${covname}.info.cleaned
     )
 
     if (GENHTML_PATH)
         add_custom_target(cov
+
+            message(STATUS, "Generating HTML report...")
             # Cleanup lcov
             ${LCOV_PATH} --directory . --zerocounters
 
@@ -308,7 +309,7 @@ if (LCOV_PATH AND GCOV_PATH)
             COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info
             COMMAND ${LCOV_PATH} --remove ${covname}.info
                                  '${CMAKE_SOURCE_DIR}/include/*'
-                                 '${CMAKE_SOURCE_DIR}/source/*'
+                                 '${CMAKE_SOURCE_DIR}/source/gameanalytics/*'
                                  '${CMAKE_SOURCE_DIR}/test/*'
                                  --output-file ${covname}.info.cleaned
             COMMAND ${GENHTML_PATH} -o ${covname} ${covname}.info.cleaned

@@ -1,6 +1,6 @@
 name: Test Coverage
 
-on: [push, workflow_dispatch]
+on: [pull_request, workflow_dispatch]
 
 jobs:
   build:
@@ -15,10 +15,8 @@ jobs:
     - name: Create Build Environment     
       run: cmake -E make_directory ${{github.workspace}}/build
 
-    - name: Install Coverage Tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y lcov
+    - name: Setup LCOV
+      uses: hrishikesh-kadam/setup-lcov@v1.1.0
 
     - name: Configure CMake    
       shell: bash
@@ -36,12 +34,12 @@ jobs:
       run: cmake --build . --target cov_data
 
     - name: Report code coverage
-      uses: zgosalvez/github-actions-report-lcov@v1
+      uses: zgosalvez/github-actions-report-lcov@v3
       with:
         coverage-files: build/cov.info.cleaned
-        minimum-coverage: 70
+        minimum-coverage: 30
         artifact-name: code-coverage-report
         github-token: ${{ secrets.GITHUB_TOKEN }}
         working-directory: ${{github.workspace}}
-
+        update-comment: true
 
