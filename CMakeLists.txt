@@ -301,7 +301,7 @@ if (LCOV_PATH AND GCOV_PATH)
             ${LCOV_PATH} --directory . --zerocounters
 
             # Run tests
-            COMMAND TestSampleLib
+            COMMAND GameAnalyticsUnitTests
 
             # Capturing lcov counters and generating report
             COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info
