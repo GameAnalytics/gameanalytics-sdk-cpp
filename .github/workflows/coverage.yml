@@ -1,0 +1,47 @@
+name: Test Coverage
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    name: Report Test Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Create Build Environment     
+      run: cmake -E make_directory ${{github.workspace}}/build
+
+    - name: Install Coverage Tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y lcov
+
+    - name: Configure CMake    
+      shell: bash
+      working-directory: ${{github.workspace}}/build   
+      run: cmake ..
+
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: cmake --build .
+
+    - name: Prepare coverage data
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: cmake --build . --target cov_data
+
+    - name: Report code coverage
+      uses: zgosalvez/github-actions-report-lcov@v1
+      with:
+        coverage-files: build/cov.info.cleaned
+        minimum-coverage: 70
+        artifact-name: code-coverage-report
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ${{github.workspace}}
+
+
