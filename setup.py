@@ -7,7 +7,7 @@ import glob
 def run_command(command, shell=True, cwd=None):
 	if os.name == 'nt':  # Check if the OS is Windows
 		command = f'powershell.exe -Command "{command}"'
-	result = subprocess.run(command, shell=shell, check=True, text=True, cwd=cwd)
+	result = subprocess.run(command, shell=shell, check=True, text=True)
 	return result
 
 def main():

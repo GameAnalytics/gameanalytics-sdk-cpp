@@ -35,10 +35,11 @@ namespace gameanalytics
         if((memory > 0) && (_totalMemory > 0))
         {
             int memoryPercent = std::round(static_cast<double>(memory) / static_cast<double>(_totalMemory) * 100.0);
-            return memoryPercent;
+			return std::min(memoryPercent, 100);
         }
 
-        return -1;
+        return 0;
+		
     }
 
     void GAHealth::doAppMemoryReading(int64_t memory)
