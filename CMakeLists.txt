@@ -306,14 +306,14 @@ if (LCOV_PATH AND GCOV_PATH)
             COMMAND GameAnalyticsUnitTests
 
             # Capturing lcov counters and generating report
-            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info
+            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info --rc lcov_branch_coverage=1 --rc derive_function_end_line=0
             COMMAND ${LCOV_PATH} --remove ${covname}.info
                                  '${CMAKE_SOURCE_DIR}/source/dependencies/*'
-                                 '${CMAKE_SOURCE_DIR}/test/*'
                                  '/usr/*'
-                                 '/Applications/Xcode.app/*'
                                  --output-file ${covname}.info.cleaned
-            COMMAND ${GENHTML_PATH} -o ${covname} ${covname}.info.cleaned
+                                 --rc lcov_branch_coverage=1 
+                                 --rc derive_function_end_line=0
+            COMMAND ${GENHTML_PATH} -o ${covname} ${covname}.info.cleaned --rc lcov_branch_coverage=1 --rc derive_function_end_line=0
             COMMAND ${CMAKE_COMMAND} -E remove ${covname}.info ${covname}.info.cleaned
 
             COMMENT "Resetting code coverage counters to zero.\nProcessing code coverage counters and generating report."
