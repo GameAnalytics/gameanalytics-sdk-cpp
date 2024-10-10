@@ -16,7 +16,7 @@ jobs:
       run: cmake -E make_directory ${{github.workspace}}/build
 
     - name: Setup LCOV
-      uses: hrishikesh-kadam/setup-lcov@v1.1.0
+      uses: hrishikesh-kadam/setup-lcov@v1
 
     - name: Configure CMake    
       shell: bash

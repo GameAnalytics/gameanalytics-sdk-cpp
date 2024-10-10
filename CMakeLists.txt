@@ -289,9 +289,9 @@ if (LCOV_PATH AND GCOV_PATH)
         # Capturing lcov counters and generating report
         COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info
         COMMAND ${LCOV_PATH} --remove ${covname}.info
-                             '${CMAKE_SOURCE_DIR}/include/*'
-                             '${CMAKE_SOURCE_DIR}/source/gameanalytics/*'
+                             '${CMAKE_SOURCE_DIR}/source/dependencies/*'
                              '${CMAKE_SOURCE_DIR}/test/*'
+                             '/usr/*'
                              --output-file ${covname}.info.cleaned
     )
 
@@ -308,9 +308,9 @@ if (LCOV_PATH AND GCOV_PATH)
             # Capturing lcov counters and generating report
             COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info
             COMMAND ${LCOV_PATH} --remove ${covname}.info
-                                 '${CMAKE_SOURCE_DIR}/include/*'
-                                 '${CMAKE_SOURCE_DIR}/source/gameanalytics/*'
+                                 '${CMAKE_SOURCE_DIR}/source/dependencies/*'
                                  '${CMAKE_SOURCE_DIR}/test/*'
+                                 '/usr/*'
                                  --output-file ${covname}.info.cleaned
             COMMAND ${GENHTML_PATH} -o ${covname} ${covname}.info.cleaned
             COMMAND ${CMAKE_COMMAND} -E remove ${covname}.info ${covname}.info.cleaned
