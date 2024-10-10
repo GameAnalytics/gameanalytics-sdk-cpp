@@ -280,22 +280,20 @@ if (LCOV_PATH AND GCOV_PATH)
 
     add_custom_target(cov_data
         # Cleanup lcov
+        COMMENT "Resetting code coverage counters to zero."
         ${LCOV_PATH} --directory . --zerocounters
 
         # Run tests
         COMMAND GameAnalyticsUnitTests
 
         # Capturing lcov counters and generating report
-        COMMENT "Capturing lcov counters and generating report..."
         COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info
-        COMMENT "Removing unwanted files from coverage report..."
         COMMAND ${LCOV_PATH} --remove ${covname}.info
                              '${CMAKE_SOURCE_DIR}/source/dependencies/*'
                              '${CMAKE_SOURCE_DIR}/test/*'
                              '/usr/*'
                              '/Applications/Xcode.app/*'
                              --output-file ${covname}.info.cleaned
-        COMMENT "Report Done!"
     )
 
     if (GENHTML_PATH)
