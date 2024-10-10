@@ -286,12 +286,16 @@ if (LCOV_PATH AND GCOV_PATH)
         COMMAND GameAnalyticsUnitTests
 
         # Capturing lcov counters and generating report
+        COMMENT "Capturing lcov counters and generating report..."
         COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info
+        COMMENT "Removing unwanted files from coverage report..."
         COMMAND ${LCOV_PATH} --remove ${covname}.info
                              '${CMAKE_SOURCE_DIR}/source/dependencies/*'
                              '${CMAKE_SOURCE_DIR}/test/*'
                              '/usr/*'
+                             '/Applications/Xcode.app/*'
                              --output-file ${covname}.info.cleaned
+        COMMENT "Report Done!"
     )
 
     if (GENHTML_PATH)
@@ -309,6 +313,7 @@ if (LCOV_PATH AND GCOV_PATH)
                                  '${CMAKE_SOURCE_DIR}/source/dependencies/*'
                                  '${CMAKE_SOURCE_DIR}/test/*'
                                  '/usr/*'
+                                 '/Applications/Xcode.app/*'
                                  --output-file ${covname}.info.cleaned
             COMMAND ${GENHTML_PATH} -o ${covname} ${covname}.info.cleaned
             COMMAND ${CMAKE_COMMAND} -E remove ${covname}.info ${covname}.info.cleaned
