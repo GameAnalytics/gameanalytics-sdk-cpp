@@ -7,6 +7,7 @@ import glob
 def run_command(command, shell=True, cwd=None):
 	if os.name == 'nt':  # Check if the OS is Windows
 		command = f'powershell.exe -Command "{command}"'
+  
 	result = subprocess.run(command, shell=shell, check=True, text=True, cwd=cwd)
 	return result
 
@@ -49,7 +50,7 @@ def main():
 	# Code Coverage
 	if args.coverage:
 		# Prepare coverage data
-		run_command(f'cmake --build {build_output_dir} --target cov_data', cwd=build_output_dir)
+		run_command(f'cmake --build {build_output_dir} --target cov', cwd=build_output_dir)
 
 	# Package Build Artifacts
 	package_dir = os.path.join(build_output_dir, 'package')
