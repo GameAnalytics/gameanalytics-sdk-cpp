@@ -3,207 +3,173 @@
 #include <GAHealth.h>
 #include <nlohmann/json.hpp>
 
+using json = nlohmann::json;
 using namespace gameanalytics;
-using ::testing::Return;
-
-namespace gameanalytics
-{
-    class MockGAPlatform : public GAPlatform
-	{
-	public:
-		MOCK_METHOD(std::string, getOSVersion, (), (override));
-		MOCK_METHOD(std::string, getDeviceManufacturer, (), (override));
-		MOCK_METHOD(std::string, getBuildPlatform, (), (override));
-		MOCK_METHOD(std::string, getPersistentPath, (), (override));
-		MOCK_METHOD(std::string, getDeviceModel, (), (override));
-		MOCK_METHOD(std::string, getConnectionType, (), (override));
-		
-		// Mocking non-pure virtual methods
-		MOCK_METHOD(std::string, getAdvertisingId, (), (override));
-		MOCK_METHOD(std::string, getDeviceId, (), (override));
-		MOCK_METHOD(void, setupUncaughtExceptionHandler, (), (override));
-		MOCK_METHOD(void, onInit, (), (override));
-		
-		// Mocking const methods
-		MOCK_METHOD(std::string, getCpuModel, (), (const, override));
-		MOCK_METHOD(std::string, getGpuModel, (), (const, override));
-		MOCK_METHOD(int, getNumCpuCores, (), (const, override));
-		MOCK_METHOD(int64_t, getTotalDeviceMemory, (), (const, override));
-		MOCK_METHOD(int64_t, getAppMemoryUsage, (), (const, override));
-		MOCK_METHOD(int64_t, getSysMemoryUsage, (), (const, override));
-		MOCK_METHOD(int64_t, getBootTime, (), (const, override));
-		
-		MockGAPlatform()
-		{
-			ON_CALL(*this, getOSVersion).WillByDefault(Return("10.0"));
-			ON_CALL(*this, getDeviceManufacturer).WillByDefault(Return("GenericManufacturer"));
-			ON_CALL(*this, getBuildPlatform).WillByDefault(Return("Windows"));
-			ON_CALL(*this, getPersistentPath).WillByDefault(Return("/persistent/path"));
-			ON_CALL(*this, getDeviceModel).WillByDefault(Return("DeviceModelX"));
-			ON_CALL(*this, getConnectionType).WillByDefault(Return("WiFi"));
-			
-			ON_CALL(*this, getAdvertisingId).WillByDefault(Return("ad-id-123"));
-			ON_CALL(*this, getDeviceId).WillByDefault(Return("device-id-456"));
-			ON_CALL(*this, setupUncaughtExceptionHandler).WillByDefault(Return());
-			ON_CALL(*this, onInit).WillByDefault(Return());
-			
-			ON_CALL(*this, getCpuModel).WillByDefault(Return("Intel Core i7"));
-			ON_CALL(*this, getGpuModel).WillByDefault(Return("Nvidia GTX 1080"));
-			ON_CALL(*this, getNumCpuCores).WillByDefault(Return(8));
-			ON_CALL(*this, getTotalDeviceMemory).WillByDefault(Return(16384)); // 16GB
-			ON_CALL(*this, getAppMemoryUsage).WillByDefault(Return(1024)); // 1GB
-			ON_CALL(*this, getSysMemoryUsage).WillByDefault(Return(2048)); // 2GB
-			ON_CALL(*this, getBootTime).WillByDefault(Return(30000)); // 30 seconds
-		}
-	};
-}
 
 
-// Test subclass to access protected members
-class GAHealthTestable : public gameanalytics::GAHealth
+class MockGAPlatform : public GAPlatform
 {
 public:
-	using gameanalytics::GAHealth::GAHealth;  // Inherit constructor
-	using gameanalytics::GAHealth::_fpsReadings;  // Expose protected member for testing
-	using gameanalytics::GAHealth::_appMemoryUsage; // Expose protected memory usage for testing
-	using gameanalytics::GAHealth::_sysMemoryUsage; // Expose system memory usage for testing
-	using gameanalytics::GAHealth::getMemoryPercent;
+	// Mock the pure virtual methods
+	MOCK_METHOD(std::string, getOSVersion, (), (override));
+	MOCK_METHOD(std::string, getDeviceManufacturer, (), (override));
+	MOCK_METHOD(std::string, getBuildPlatform, (), (override));
+	MOCK_METHOD(std::string, getPersistentPath, (), (override));
+	MOCK_METHOD(std::string, getDeviceModel, (), (override));
+	MOCK_METHOD(std::string, getConnectionType, (), (override));
+	
+	MOCK_METHOD(std::string, getAdvertisingId, (), (override));
+	MOCK_METHOD(std::string, getDeviceId, (), (override));
+	MOCK_METHOD(void, setupUncaughtExceptionHandler, (), (override));
+	MOCK_METHOD(void, onInit, (), (override));
+	
+	MOCK_METHOD(std::string, getCpuModel, (), (const, override));
+	MOCK_METHOD(std::string, getGpuModel, (), (const, override));
+	MOCK_METHOD(int, getNumCpuCores, (), (const, override));
+	MOCK_METHOD(int64_t, getTotalDeviceMemory, (), (const, override));
+	MOCK_METHOD(int64_t, getAppMemoryUsage, (), (const, override));
+	MOCK_METHOD(int64_t, getSysMemoryUsage, (), (const, override));
+	MOCK_METHOD(int64_t, getBootTime, (), (const, override));
+};
+
+// Test subclass to access protected members
+class TestableGAHealth : public GAHealth
+{
+public:
+	using GAHealth::GAHealth;
+	
+	// Expose protected members for testing
+	using gameanalytics::GAHealth::_cpuModel;
+	using gameanalytics::GAHealth::_numCores;
+	using gameanalytics::GAHealth::_hardware;
+	using gameanalytics::GAHealth::_gpuModel;
+	using gameanalytics::GAHealth::_fpsReadings;
+	using gameanalytics::GAHealth::_appMemoryUsage;
+	using gameanalytics::GAHealth::_sysMemoryUsage;
 	using gameanalytics::GAHealth::_totalMemory;
+	
+	// Expose protected methods for testing
+	using gameanalytics::GAHealth::getMemoryPercent;
 };
 
 
 class GAHealthTest : public ::testing::Test
 {
 protected:
-	MockGAPlatform* mockPlatform;
-	GAHealthTestable* gaHealth;
-	
-	virtual void SetUp() override
+	void SetUp() override
 	{
-		mockPlatform = new MockGAPlatform();
-		gaHealth = new GAHealthTestable(mockPlatform);
+		platform = new MockGAPlatform();
+		EXPECT_CALL(*platform, getCpuModel()).WillOnce(::testing::Return("Mock CPU"));
+		EXPECT_CALL(*platform, getNumCpuCores()).WillOnce(::testing::Return(8));
+		EXPECT_CALL(*platform, getDeviceModel()).WillOnce(::testing::Return("Mock Device"));
+		EXPECT_CALL(*platform, getGpuModel()).WillOnce(::testing::Return("Mock GPU"));
+		EXPECT_CALL(*platform, getTotalDeviceMemory()).WillOnce(::testing::Return(16000));
+		
+		health = new TestableGAHealth(platform);
 	}
 	
-	virtual void TearDown() override
+	void TearDown() override
 	{
-		delete gaHealth;
-		delete mockPlatform;
+		delete health;
+		delete platform;
 	}
+	
+	TestableGAHealth* health;
+	MockGAPlatform* platform;
 };
 
-TEST_F(GAHealthTest, ConstructorInitializesPlatform)
+// Test 1: Constructor Initialization
+TEST_F(GAHealthTest, ConstructorInitializesPlatformValues)
 {
-	EXPECT_CALL(*mockPlatform, getCpuModel()).WillOnce(Return("Intel"));
-	EXPECT_CALL(*mockPlatform, getNumCpuCores()).WillOnce(Return(4));
-	EXPECT_CALL(*mockPlatform, getDeviceModel()).WillOnce(Return("Device123"));
-	EXPECT_CALL(*mockPlatform, getGpuModel()).WillOnce(Return("Nvidia"));
-	EXPECT_CALL(*mockPlatform, getTotalDeviceMemory()).WillOnce(Return(8192));
-	
-	gameanalytics::GAHealth health(mockPlatform);
-	health.enableHardwareTracking = true;
-	
-	json out;
-	health.addHealthAnnotations(out);
-	
-	std::cout << std::setw(4) << out << '\n';
-	
-	EXPECT_EQ(out["cpu_model"], "Intel");
-	EXPECT_EQ(out["cpu_num_cores"], 4);
-	EXPECT_EQ(out["hardware"], "Device123");
+	EXPECT_EQ(health->_cpuModel, "Mock CPU");
+	EXPECT_EQ(health->_numCores, 8);
+	EXPECT_EQ(health->_hardware, "Mock Device");
+	EXPECT_EQ(health->_gpuModel, "Mock GPU");
+	EXPECT_EQ(health->_totalMemory, 16000);
 }
 
-TEST_F(GAHealthTest, AddHealthAnnotationsIncludesHardwareTracking)
+// Test 2: doFpsReading Method
+TEST_F(GAHealthTest, DoFpsReadingAddsToBucket)
 {
-	EXPECT_CALL(*mockPlatform, getCpuModel()).WillOnce(Return("Intel"));
-	EXPECT_CALL(*mockPlatform, getNumCpuCores()).WillOnce(Return(4));
-	EXPECT_CALL(*mockPlatform, getDeviceModel()).WillOnce(Return("Device123"));
+	health->doFpsReading(30.0f);
+	health->doFpsReading(30.4f);
 	
-	GAHealthTestable* _localHealthTracker = new GAHealthTestable(mockPlatform);
+	EXPECT_EQ(health->_fpsReadings[30], 2);
+}
+
+// Test 3: doAppMemoryReading Method
+TEST_F(GAHealthTest, DoAppMemoryReadingIncrementsAppMemoryUsage)
+{
+	health->doAppMemoryReading(4000);
+	int memoryPercent = health->getMemoryPercent(4000);
 	
-	_localHealthTracker->enableHardwareTracking = true;
+	EXPECT_EQ(health->_appMemoryUsage[memoryPercent], 1);
+}
+
+// Test 4: addHealthAnnotations Method
+TEST_F(GAHealthTest, AddHealthAnnotations)
+{
+	json healthEvent;
+	
+	health->enableHardwareTracking = true;
+	health->enableMemoryTracking = true;
+	
+	health->addHealthAnnotations(healthEvent);
+	
+	EXPECT_EQ(healthEvent["cpu_model"], "Mock CPU");
+	EXPECT_EQ(healthEvent["hardware"], "Mock Device");
+	EXPECT_EQ(healthEvent["cpu_num_cores"], 8);
+	EXPECT_EQ(healthEvent["memory_sys_total"], 16000);
+}
+
+// Test 5: getMemoryPercent Method
+TEST_F(GAHealthTest, GetMemoryPercentCorrectValue)
+{
+	EXPECT_EQ(health->getMemoryPercent(8000), 50); // Half of 16000
+	EXPECT_EQ(health->getMemoryPercent(16000), 100); // Full memory
+	
+	EXPECT_EQ(health->getMemoryPercent(1), 0);  // Very small usage
+}
+
+// Test group for edge cases
+TEST_F(GAHealthTest, GetMemoryPercentEdgeCases) {
+	// Test when memory is exactly 0
+	EXPECT_EQ(health->getMemoryPercent(0), -1);
+	
+	// Test negative memory values
+	EXPECT_EQ(health->getMemoryPercent(-1), -1);
+	EXPECT_EQ(health->getMemoryPercent(-500), -1);
+	
+}
+
+// Test 6: addPerformanceData Method
+TEST_F(GAHealthTest, AddPerformanceData)
+{
+	health->enableFPSTracking = true;
+	health->enableMemoryTracking = true;
+	
+	health->doFpsReading(30);
+	health->doAppMemoryReading(4000);
+	health->doSysMemoryReading(8000);
 	
 	json healthEvent;
-	_localHealthTracker->addHealthAnnotations(healthEvent);
+	health->addPerformanceData(healthEvent);
 	
-	std::cout << std::setw(4) << healthEvent["cpu_model"] << '\n';
-	
-	EXPECT_EQ(healthEvent["cpu_model"], "Intel");
-	EXPECT_EQ(healthEvent["cpu_num_cores"], 4);
-	EXPECT_EQ(healthEvent["hardware"], "Device123");
+	EXPECT_EQ(healthEvent["fps_data_table"][30], 1);
+	EXPECT_EQ(healthEvent["memory_sys_data_table"][50], 1);  // 8000 out of 16000
+	EXPECT_EQ(healthEvent["memory_app_data_table"][25], 1);  // 4000 out of 16000
 }
 
-TEST_F(GAHealthTest, DoFpsReadingIncrementsBucketCorrectly)
+// Test 7: addSDKInitData Method
+TEST_F(GAHealthTest, AddSDKInitData)
 {
-	float testFps = 60.0f;
-	
-	gaHealth->doFpsReading(testFps);
-	
-	EXPECT_EQ(gaHealth->_fpsReadings[60], 1);
-}
-
-TEST_F(GAHealthTest, GetMemoryPercentReturnsCorrectValue)
-{
-	int percent = gaHealth->getMemoryPercent(4096);
-	EXPECT_EQ(percent, 25); // 25% memory usage
-}
-
-// Test getMemoryPercent with various inputs
-TEST_F(GAHealthTest, GetMemoryPercentReturnsCorrectValues)
-{
-    // Case 1: 50% memory usage
-    int64_t totalMemory = 1000;
-    gaHealth->_totalMemory = totalMemory;
-    int memory = 500;
-    int expectedPercent = 50;
-    EXPECT_EQ(gaHealth->getMemoryPercent(memory), expectedPercent);
-
-    // Case 2: 100% memory usage
-    memory = 1000;
-    expectedPercent = 100;
-    EXPECT_EQ(gaHealth->getMemoryPercent(memory), expectedPercent);
-
-    // Case 3: 0% memory usage
-    memory = 1;
-    expectedPercent = 0;
-    EXPECT_EQ(gaHealth->getMemoryPercent(memory), expectedPercent);
-
-    // Case 4: More than 100% memory usage (should not happen, but edge case)
-    memory = 2000;
-    expectedPercent = 100;  // Assuming 100% cap
-    EXPECT_EQ(gaHealth->getMemoryPercent(memory), expectedPercent);
-
-    // Case 5: Negative memory value (should return 0 or handle gracefully)
-    memory = -100;
-    expectedPercent = 0;  // Assuming a negative value will result in 0%
-    EXPECT_EQ(gaHealth->getMemoryPercent(memory), expectedPercent);
-}
-
-TEST_F(GAHealthTest, AddPerformanceDataIncludesFPSTracking)
-{
-	gaHealth->enableFPSTracking = true;
-	
-	// Fill FPS readings with some values
-	gaHealth->_fpsReadings[60] = 5;
-	gaHealth->_fpsReadings[30] = 2;
-	
-	json performanceData;
-	gaHealth->addPerformanceData(performanceData);
-	
-	
-	json expectedFpsData;
-	expectedFpsData["fps_data_table"] = gaHealth->_fpsReadings;
-	
-	EXPECT_EQ(performanceData["fps_data_table"], expectedFpsData["fps_data_table"]);
-}
-
-TEST_F(GAHealthTest, AddSDKInitDataIncludesBootTime)
-{
-	gaHealth->enableAppBootTimeTracking = true;
-	
-	EXPECT_CALL(*mockPlatform, getBootTime()).WillOnce(Return(5000));
+	EXPECT_CALL(*platform, getBootTime()).WillOnce(::testing::Return(5000));
+	health->enableAppBootTimeTracking = true;
 	
 	json sdkInitEvent;
-	gaHealth->addSDKInitData(sdkInitEvent);
+	health->addSDKInitData(sdkInitEvent);
 	
 	EXPECT_EQ(sdkInitEvent["app_boot_time"], 5000);
 }
+
+
