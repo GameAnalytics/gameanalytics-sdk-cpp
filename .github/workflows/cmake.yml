@@ -102,4 +102,5 @@ jobs:
       with:
         name: ga-cpp-sdk-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}
         path: ${{ steps.strings.outputs.build-output-dir }}/package/
+        retention-days: 3
     
