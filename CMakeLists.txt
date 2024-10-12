@@ -14,6 +14,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/CMakeInc
 include("create_source_groups_macro")
 include("eval_condition_macro")
 
+# --------------------------- Options --------------------------- #
+option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
 option(GA_SHARED_LIB "Build GA as a shared library" OFF)
 option(GA_UWP_BUILD  "Build GA for UWP (if targeting windows)" OFF)
 option(GA_BUILD_SAMPLE "Builds the GA Sample app" ON)
@@ -242,87 +244,87 @@ target_link_libraries(${UT_PROJECT_NAME} gtest gtest_main gmock_main)
 target_link_libraries(${UT_PROJECT_NAME} ${PROJECT_NAME})
 
 ########################################
-
 add_test(NAME ${UT_PROJECT_NAME} COMMAND GameAnalyticsUnitTests)
 
-# --------------------------- Google Test Setup --------------------------- #
+# --------------------------- Code Coverage Setup --------------------------- #
 
-find_program(GCOV_PATH gcov)
-if (NOT GCOV_PATH)
-    message(WARNING "program gcov not found")
-endif()
+if (ENABLE_COVERAGE)
+    find_program(GCOV_PATH gcov)
+    if (NOT GCOV_PATH)
+        message(WARNING "program gcov not found")
+    endif()
 
-find_program(LCOV_PATH lcov)
-if (NOT LCOV_PATH)
-    message(WARNING "program lcov not found")
-endif()
+    find_program(LCOV_PATH lcov)
+    if (NOT LCOV_PATH)
+        message(WARNING "program lcov not found")
+    endif()
 
-find_program(GENHTML_PATH genhtml)
-if (NOT GENHTML_PATH)
-    message(WARNING "program genhtml not found")
-endif()
+    find_program(GENHTML_PATH genhtml)
+    if (NOT GENHTML_PATH)
+        message(WARNING "program genhtml not found")
+    endif()
 
-if (LCOV_PATH AND GCOV_PATH)
+    if (LCOV_PATH AND GCOV_PATH)
 
-    target_compile_options(
-        GameAnalytics
-        PRIVATE
-            -g -O0 -fprofile-arcs -ftest-coverage
-    )
+        target_compile_options(
+            GameAnalytics
+            PRIVATE
+                -g -O0 -fprofile-arcs -ftest-coverage
+        )
 
-    target_link_libraries(
-        GameAnalytics
-        PRIVATE
-            --coverage
-    )
+        target_link_libraries(
+            GameAnalytics
+            PRIVATE
+                --coverage
+        )
 
-    set(covname cov)
+        set(covname cov)
 
-    add_custom_target(cov_data
-        # Cleanup lcov
-        COMMENT "Resetting code coverage counters to zero."
-        ${LCOV_PATH} --directory . --zerocounters
-
-        # Run tests
-        COMMAND GameAnalyticsUnitTests
-
-        # Capturing lcov counters and generating report
-        COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info
-        COMMAND ${LCOV_PATH} --remove ${covname}.info
-                             '${CMAKE_SOURCE_DIR}/source/dependencies/*'
-                             '${CMAKE_SOURCE_DIR}/test/*'
-                             '/usr/*'
-                             '/Applications/Xcode.app/*'
-                             --output-file ${covname}.info.cleaned
-    )
-
-    if (GENHTML_PATH)
-        add_custom_target(cov
-
+        add_custom_target(cov_data
             # Cleanup lcov
+            COMMENT "Resetting code coverage counters to zero."
             ${LCOV_PATH} --directory . --zerocounters
 
             # Run tests
             COMMAND GameAnalyticsUnitTests
 
             # Capturing lcov counters and generating report
-            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info --rc lcov_branch_coverage=1 --rc derive_function_end_line=0
+            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info
             COMMAND ${LCOV_PATH} --remove ${covname}.info
-                                 '${CMAKE_SOURCE_DIR}/source/dependencies/*'
-                                 '/usr/*'
-                                 --output-file ${covname}.info.cleaned
-                                 --rc lcov_branch_coverage=1 
-                                 --rc derive_function_end_line=0
-            COMMAND ${GENHTML_PATH} -o ${covname} ${covname}.info.cleaned --rc lcov_branch_coverage=1 --rc derive_function_end_line=0
-            COMMAND ${CMAKE_COMMAND} -E remove ${covname}.info ${covname}.info.cleaned
-
-            COMMENT "Resetting code coverage counters to zero.\nProcessing code coverage counters and generating report."
+                                '${CMAKE_SOURCE_DIR}/source/dependencies/*'
+                                '${CMAKE_SOURCE_DIR}/test/*'
+                                '/usr/*'
+                                '/Applications/Xcode.app/*'
+                                --output-file ${covname}.info.cleaned
         )
+
+        if (GENHTML_PATH)
+            add_custom_target(cov
+
+                # Cleanup lcov
+                ${LCOV_PATH} --directory . --zerocounters
+
+                # Run tests
+                COMMAND GameAnalyticsUnitTests
+
+                # Capturing lcov counters and generating report
+                COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info --rc lcov_branch_coverage=1 --rc derive_function_end_line=0
+                COMMAND ${LCOV_PATH} --remove ${covname}.info
+                                    '${CMAKE_SOURCE_DIR}/source/dependencies/*'
+                                    '/usr/*'
+                                    --output-file ${covname}.info.cleaned
+                                    --rc lcov_branch_coverage=1 
+                                    --rc derive_function_end_line=0
+                COMMAND ${GENHTML_PATH} -o ${covname} ${covname}.info.cleaned --rc lcov_branch_coverage=1 --rc derive_function_end_line=0
+                COMMAND ${CMAKE_COMMAND} -E remove ${covname}.info ${covname}.info.cleaned
+
+                COMMENT "Resetting code coverage counters to zero.\nProcessing code coverage counters and generating report."
+            )
+        else()
+            message(WARNING "unable to generate coverage report: missing genhtml")
+        endif()
+
     else()
-        message(WARNING "unable to generate coverage report: missing genhtml")
+        message(WARNING "unable to add coverage targets: missing coverage tools")
     endif()
-
-else()
-    message(WARNING "unable to add coverage targets: missing coverage tools")
 endif()
-
