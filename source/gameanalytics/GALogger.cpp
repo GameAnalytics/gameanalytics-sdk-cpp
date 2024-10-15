@@ -9,6 +9,7 @@
 #include "GAState.h"
 
 #define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_BUF_SZ 2048
 #include "zf_log.h"
 
 constexpr const char* LOG_FILE_NAME = "ga_log.txt";
@@ -129,29 +130,24 @@ namespace gameanalytics
             switch(type)
             {
                 case LogError:
-                    //ZF_LOGE("%s", message.c_str());
-                    std::cerr << message << '\n';
+                    ZF_LOGE("%s", message.c_str());
                     break;
 
                 case LogWarning:
-                    //ZF_LOGW("%s", message.c_str());
-                    std::cerr << message << '\n';
+                    ZF_LOGW("%s", message.c_str());
                     break;
 
                 case LogDebug:
-                    //ZF_LOGD("%s", message.c_str());
-                    std::cout << message << '\n';
+                    ZF_LOGD("%s", message.c_str());
                     break;
 
                 case LogInfo:
-                    //ZF_LOGI("%s", message.c_str());
-                    std::cout << message << '\n';
+                    ZF_LOGI("%s", message.c_str());
                     break;
 
                 case LogVerbose:
                 default:
-                    //ZF_LOGV("%s", message.c_str());
-                    std::cout << message << '\n';
+                    ZF_LOGV("%s", message.c_str());
             }
         }
     }
