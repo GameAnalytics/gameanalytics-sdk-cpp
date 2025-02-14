@@ -34,7 +34,7 @@ jobs:
       run: cmake --build . --target cov_data
 
     - name: Report code coverage
-      uses: zgosalvez/github-actions-report-lcov@v3
+      uses: zgosalvez/github-actions-report-lcov@v4
       with:
         coverage-files: build/cov.info.cleaned
         minimum-coverage: 30
