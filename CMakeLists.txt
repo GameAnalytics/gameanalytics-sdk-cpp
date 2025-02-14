@@ -287,14 +287,21 @@ if (ENABLE_COVERAGE)
             COMMAND GameAnalyticsUnitTests
 
             # Capturing lcov counters and generating report
-            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info --branch-coverage  --exclude '/Applications/Xcode-*/' --rc geninfo_unexecuted_blocks=1
 
+            COMMAND echo "Processing code coverage counters and generating report."
+
+            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info --branch-coverage  --exclude '/Applications/Xcode*/' --rc geninfo_unexecuted_blocks=1
+
+            COMMAND echo "Removing unwanted files from coverage report."
+            
             COMMAND ${LCOV_PATH} --remove ${covname}.info
                                 '${CMAKE_SOURCE_DIR}/source/dependencies/*'
                                 '${CMAKE_SOURCE_DIR}/test/*'
                                 '/usr/*'
                                 '/Applications/Xcode.app/*'
                                 --output-file ${covname}.info.cleaned
+            
+            COMMAND echo "Finished processing code coverage counters and generating report."
         )
 
         if (GENHTML_PATH)
