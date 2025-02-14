@@ -296,9 +296,11 @@ if (ENABLE_COVERAGE)
             
             COMMAND ${LCOV_PATH} --remove ${covname}.info
                                 '${CMAKE_SOURCE_DIR}/source/dependencies/*'
+                                '${CMAKE_SOURCE_DIR}/test/*'
                                 '/usr/*'
                                 '/Applications/Xcode.app/*'
                                 --output-file ${covname}.info.cleaned
+                                --ignore-errors unused
             
             COMMAND echo "Finished processing code coverage counters and generating report."
         )
