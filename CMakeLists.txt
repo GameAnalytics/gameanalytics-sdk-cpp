@@ -273,9 +273,7 @@ if (ENABLE_COVERAGE)
         )
 
         target_link_libraries(
-            GameAnalytics
-            PRIVATE
-                --coverage
+            GameAnalytics PRIVATE -fprofile-arcs -ftest-coverage
         )
 
         set(covname cov)
@@ -289,7 +287,8 @@ if (ENABLE_COVERAGE)
             COMMAND GameAnalyticsUnitTests
 
             # Capturing lcov counters and generating report
-            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info
+            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info --branch-coverage
+
             COMMAND ${LCOV_PATH} --remove ${covname}.info
                                 '${CMAKE_SOURCE_DIR}/source/dependencies/*'
                                 '${CMAKE_SOURCE_DIR}/test/*'
