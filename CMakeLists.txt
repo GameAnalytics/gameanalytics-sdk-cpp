@@ -273,9 +273,7 @@ if (ENABLE_COVERAGE)
         )
 
         target_link_libraries(
-            GameAnalytics
-            PRIVATE
-                --coverage
+            GameAnalytics PRIVATE -fprofile-arcs -ftest-coverage
         )
 
         set(covname cov)
@@ -289,13 +287,22 @@ if (ENABLE_COVERAGE)
             COMMAND GameAnalyticsUnitTests
 
             # Capturing lcov counters and generating report
-            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info
+
+            COMMAND echo "Processing code coverage counters and generating report."
+
+            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info --branch-coverage --rc geninfo_unexecuted_blocks=1 --rc no_exception_branch=1
+
+            COMMAND echo "Removing unwanted files from coverage report."
+            
             COMMAND ${LCOV_PATH} --remove ${covname}.info
                                 '${CMAKE_SOURCE_DIR}/source/dependencies/*'
                                 '${CMAKE_SOURCE_DIR}/test/*'
                                 '/usr/*'
                                 '/Applications/Xcode.app/*'
                                 --output-file ${covname}.info.cleaned
+                                --ignore-errors unused
+            
+            COMMAND echo "Finished processing code coverage counters and generating report."
         )
 
         if (GENHTML_PATH)
