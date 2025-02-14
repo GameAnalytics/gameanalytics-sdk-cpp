@@ -517,7 +517,7 @@ namespace gameanalytics
             try
             {
                 json fieldsJson = utilities::parseFields(fields);
-                events::GAEvents::addDesignEvent(eventId, value, false, fieldsJson, mergeFields);
+                events::GAEvents::addDesignEvent(eventId, value, true, fieldsJson, mergeFields);
             }
             catch(json::exception const& e)
             {
@@ -737,11 +737,6 @@ namespace gameanalytics
         {
             state::GAState::setGlobalCustomEventFields(fields);
         });
-    }
-
-    std::string GameAnalytics::getRemoteConfigsValueAsString(std::string const& key)
-    {
-        return getRemoteConfigsValueAsString(key, "");
     }
 
     std::string GameAnalytics::getRemoteConfigsValueAsString(std::string const& key, std::string const& defaultValue)
