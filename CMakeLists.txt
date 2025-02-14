@@ -290,7 +290,7 @@ if (ENABLE_COVERAGE)
 
             COMMAND echo "Processing code coverage counters and generating report."
 
-            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info --branch-coverage  --exclude '/Applications/Xcode*/' --rc geninfo_unexecuted_blocks=1
+            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info --branch-coverage  --exclude '/Applications/Xcode*/' --rc geninfo_unexecuted_blocks=1 --rc no_exception_branch=1
 
             COMMAND echo "Removing unwanted files from coverage report."
             
