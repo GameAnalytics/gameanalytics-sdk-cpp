@@ -332,7 +332,7 @@ int64_t GAPlatformWin32::getBootTime() const
         
         // filetime is expressed in 100s of nanoseconds
         std::chrono::nanoseconds timeInNs = std::chrono::nanoseconds(value * 100);
-        return std::chrono::duration_cast<std::chrono::seconds>(timeInNs).count();
+        return std::chrono::duration_cast<std::chrono::milliseconds>(timeInNs).count();
     }
 
     return 0ll;

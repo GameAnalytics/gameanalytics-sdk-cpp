@@ -259,8 +259,9 @@ int64_t gameanalytics::GAPlatformMacOS::getBootTime() const
     struct timeval currentTime = {};
     
     gettimeofday(&currentTime, NULL);
-    
-    return currentTime.tv_sec - startTime.tv_sec;
+
+    int64_t remainingMs = static_cast<double>(currentTime.tv_usec - startTime.tv_usec) * 1e-3;
+    return (currentTime.tv_sec - startTime.tv_sec) * 1000 + remainingMs;
 }
 
 #endif
