@@ -356,8 +356,7 @@ namespace gameanalytics
         {
             return;
         }
-
-
+        
         threading::GAThreading::performTaskOnGAThread([gameKey, gameSecret]()
         {
             if (isSdkReady(true, false))

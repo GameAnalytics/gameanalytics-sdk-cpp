@@ -50,7 +50,10 @@ namespace gameanalytics
 
             static GAStore& getInstance();
 
+            bool fixOldDatabase();
             bool trimEventTable();
+            
+            bool initDatabaseLocation();
 
             // set when calling "ensureDatabase"
             // using a "writablePath" that needs to be set into the C++ component before

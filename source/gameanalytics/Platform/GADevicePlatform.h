@@ -49,5 +49,3 @@ namespace gameanalytics
         return std::make_unique<GADevicePlatform>();
     }
 }
-
-
