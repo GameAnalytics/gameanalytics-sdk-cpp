@@ -1,5 +1,20 @@
-Changelog
+# Changelog
+
+## 4.1.0
+
+### Added
+
+- **Boot Time in Milliseconds**: Boot time now reported in milliseconds for precise performance metrics.
+
+### Fixed
+
+- **Design Event Values**: Improved the consistency of design event value handling, ensuring more accurate data delivery.
+- **Local Cache Path**: Refined the local cache path configuration to automatically use the default writable path, streamlining setup by making `configureWritablePath` optional.
+- **Verbose Logging**: more logs are not visible when verbose logging is enabled.
+
 ---------
+
+## Older deprecated versions
 
 **4.0.0**
 
