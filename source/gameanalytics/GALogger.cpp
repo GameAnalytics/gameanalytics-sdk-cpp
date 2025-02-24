@@ -8,6 +8,7 @@
 #include "GAUtilities.h"
 #include "GAState.h"
 
+#define ZF_LOG_SRCLOC ZF_LOG_SRCLOC_NONE
 #define ZF_LOG_LEVEL ZF_LOG_VERBOSE
 #define ZF_LOG_BUF_SZ 2048
 #include "zf_log.h"

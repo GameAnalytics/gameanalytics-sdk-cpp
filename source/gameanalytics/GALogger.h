@@ -8,8 +8,7 @@
 #include "GACommon.h"
 #include "GAUtilities.h"
 
-#define ZF_LOG_SRCLOC ZF_LOG_SRCLOC_NONE
-#include "zf_log.h"
+struct zf_log_message;
 
 namespace gameanalytics
 {
