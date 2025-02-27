@@ -102,15 +102,13 @@ namespace gameanalytics
          static void startSession();
          static void endSession();
 
-         static std::string getRemoteConfigsValueAsString(std::string const& key);
-         static std::string getRemoteConfigsValueAsString(std::string const& key, std::string const& defaultValue);
+         static std::string getRemoteConfigsValueAsString(std::string const& key, std::string const& defaultValue = "");
 
          static bool        isRemoteConfigsReady();
          static void        addRemoteConfigsListener(const std::shared_ptr<IRemoteConfigsListener> &listener);
          static void        removeRemoteConfigsListener(const std::shared_ptr<IRemoteConfigsListener> &listener);
          
          static std::string getRemoteConfigsContentAsString();
-         static std::string getRemoteConfigsContentAsJson();
 
          static std::string getABTestingId();
          static std::string getABTestingVariantId();
