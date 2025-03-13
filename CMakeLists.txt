@@ -198,8 +198,8 @@ elseif(LINUX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGUID_STDLIB -std=c++17")
 
     if(CLANG)
-        message(STATUS "Using Linux Clang with libstdc++")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
+        message(STATUS "Detected Clang compiler: ${CMAKE_CXX_COMPILER}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
     endif()
     
 endif()
