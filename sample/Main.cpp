@@ -1,6 +1,7 @@
 #include <string>
 #include <iostream>
 #include <thread>
+#include <chrono>
 
 #include "GameAnalytics/GameAnalytics.h"
 
