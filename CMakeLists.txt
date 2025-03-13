@@ -199,7 +199,7 @@ elseif(LINUX)
 
     if (CMAKE_CXX_COMPILER MATCHES "clang")
         message(STATUS "Detected Clang compiler: ${CMAKE_CXX_COMPILER}")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -nostdinc++")
     endif()
     
 endif()
