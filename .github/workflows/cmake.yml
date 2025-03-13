@@ -71,11 +71,16 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    - name: Set Clang 16 as default
-      if: matrix.os == 'ubuntu-24.04' && matrix.c_compiler == 'clang'
+    - name: Set Clang 16 as Default
       run: |
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100
+        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100
         sudo update-alternatives --set clang /usr/bin/clang-16
         sudo update-alternatives --set clang++ /usr/bin/clang++-16
+    
+        # Verify the change
+        clang --version
+        clang++ --version
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
