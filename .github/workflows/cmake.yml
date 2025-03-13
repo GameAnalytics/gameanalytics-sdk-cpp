@@ -72,6 +72,7 @@ jobs:
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
     - name: Set Clang 16 as Default
+      if: matrix.os == 'ubuntu-24.04' && matrix.c_compiler == 'clang'
       run: |
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100
         sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100
