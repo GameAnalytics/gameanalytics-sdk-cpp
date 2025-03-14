@@ -71,6 +71,11 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
+    - name: Install Clang and Libraries
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang libc++-dev libc++abi-dev
+
     - name: Check Clang Settings
       if: matrix.os == 'ubuntu-20.04' && matrix.c_compiler == 'clang'
       run: |
