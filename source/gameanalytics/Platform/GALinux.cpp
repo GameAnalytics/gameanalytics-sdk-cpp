@@ -4,6 +4,7 @@
 
 #include "GAState.h"
 
+#include <sstream>
 #include <errno.h>
 #include <linux/unistd.h>
 #include <linux/kernel.h>
