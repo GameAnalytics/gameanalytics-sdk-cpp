@@ -77,6 +77,14 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y clang libc++-dev libc++abi-dev
 
+    - name: Set Clang 16 as Default
+      if: matrix.os == 'ubuntu-24.04' && matrix.c_compiler == 'clang'
+      run: |
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100
+        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100
+        sudo update-alternatives --set clang /usr/bin/clang-16
+        sudo update-alternatives --set clang++ /usr/bin/clang++-16
+
     - name: Check Clang Settings
       if: matrix.os == 'ubuntu-24.04' && matrix.c_compiler == 'clang'
       run: |
