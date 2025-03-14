@@ -210,7 +210,7 @@ if(${GA_BUILD_SAMPLE})
 endif()
 
 add_library(GameAnalytics ${LIB_TYPE} ${CPP_SOURCES})
-target_link_libraries(GameAnalytics PRIVATE ${LIBS} PUBLIC ${PUBLIC_LIBS} -lc)
+target_link_libraries(GameAnalytics PRIVATE ${LIBS} PUBLIC ${PUBLIC_LIBS})
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 message(STATUS "CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
 message(STATUS "CMAKE_SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
@@ -240,7 +240,7 @@ add_executable(${UT_PROJECT_NAME} ${TEST_SRC_FILES})
 ########################################
 # Standard linking to gtest and gmock components
 ########################################
-target_link_libraries(${UT_PROJECT_NAME} gtest gtest_main gmock_main -lc)
+target_link_libraries(${UT_PROJECT_NAME} gtest gtest_main gmock_main)
 
 ########################################
 # Linking to GA SDK
