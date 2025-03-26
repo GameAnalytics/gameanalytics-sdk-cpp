@@ -61,7 +61,7 @@ namespace gameanalytics
             getInstance().cacheIdentifier();
         }
 
-        std::string GAState::getIdentifier()
+        std::string GAState::getUserId()
         {
             return getInstance()._identifier;
         }
