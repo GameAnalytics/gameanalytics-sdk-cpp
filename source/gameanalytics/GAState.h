@@ -141,6 +141,8 @@ namespace gameanalytics
                 static std::string getRemoteConfigsContentAsString();
                 static std::string getAbId();
                 static std::string getAbVariantId();
+                static std::string getUserId();
+                static std::string getExternalUserId();
 
                 static json getValidatedCustomFields();
                 static json getValidatedCustomFields(const json& withEventFields);
@@ -164,7 +166,6 @@ namespace gameanalytics
                 addErrorEvent(severity, msg);
             }
 
-            std::string getIdentifier();
             void  setDefaultUserId(std::string const& id);
             json& getSdkConfig();
             void  cacheIdentifier();

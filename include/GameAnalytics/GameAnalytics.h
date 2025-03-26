@@ -110,6 +110,9 @@ namespace gameanalytics
          
          static std::string getRemoteConfigsContentAsString();
 
+         static std::string getUserId();
+         static std::string getExternalUserId();
+
          static std::string getABTestingId();
          static std::string getABTestingVariantId();
 

@@ -475,7 +475,7 @@ namespace gameanalytics
             {
                 // Send to events
                 json fieldsJson = utilities::parseFields(fields);
-                events::GAEvents::addProgressionEvent(progressionStatus, progression01, progression02, progression03, score, false, fieldsJson, mergeFields);
+                events::GAEvents::addProgressionEvent(progressionStatus, progression01, progression02, progression03, score, true, fieldsJson, mergeFields);
             }
             catch(const json::exception& e)
             {
@@ -761,6 +761,16 @@ namespace gameanalytics
     std::string GameAnalytics::getRemoteConfigsContentAsString()
     {
         return state::GAState::getRemoteConfigsContentAsString();
+    }
+
+    std::string GameAnalytics::getUserId()
+    {
+        return state::GAState::getUserId();
+    }
+
+    std::string GameAnalytics::getExternalUserId()
+    {
+        return state::GAState::getExternalUserId();
     }
 
     std::string GameAnalytics::getABTestingId()
