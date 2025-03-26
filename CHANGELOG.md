@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.1.1
+
+### Added
+
+- added `getUserId()` and `getExternalUserId()` functions.
+
+### Fixed
+
+- fixed linux compilations issues with clang 18.X version
+- fixed progression event will now correctly send value
+
 ## 4.1.0
 
 ### Added

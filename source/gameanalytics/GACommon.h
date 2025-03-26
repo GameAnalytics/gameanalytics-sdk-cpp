@@ -85,7 +85,7 @@ namespace gameanalytics
         class GAState;
     }
 
-    constexpr const char* GA_VERSION_STR = "cpp 4.1.0";
+    constexpr const char* GA_VERSION_STR = "cpp 4.1.1";
 
     constexpr int MAX_CUSTOM_FIELDS_COUNT				 = 50;
     constexpr int MAX_CUSTOM_FIELDS_KEY_LENGTH			 = 64;
