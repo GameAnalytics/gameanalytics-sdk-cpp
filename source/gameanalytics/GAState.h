@@ -186,8 +186,6 @@ namespace gameanalytics
 
             int64_t  calculateServerTimeOffset(int64_t serverTs);
 
-            std::chrono::milliseconds getCurrentSessionLength() const;
-
             void validateAndCleanCustomFields(const json& fields, json& out);
 
             void setConfigsHash(std::string const& configsHash);
