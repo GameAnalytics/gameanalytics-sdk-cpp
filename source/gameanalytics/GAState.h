@@ -147,7 +147,15 @@ namespace gameanalytics
                 static json getValidatedCustomFields();
                 static json getValidatedCustomFields(const json& withEventFields);
 
-                int64_t calculateSessionLength() const;
+                int64_t getTotalSessionLength() const;
+
+                template<typename T = std::chrono::milliseconds>
+                inline int64_t calculateSessionLength() const
+                {
+                    return std::chrono::duration_cast<T>(std::chrono::high_resolution_clock::now() - _startTimepoint).count();
+                }
+
+                void populateConfigurations(json& sdkConfig);
 
         private:
             
@@ -174,8 +182,11 @@ namespace gameanalytics
             void  validateAndFixCurrentDimensions();
             std::string getBuild();
 
+            void updateTotalSessionTime();
+
             int64_t  calculateServerTimeOffset(int64_t serverTs);
-            void     populateConfigurations(json& sdkConfig);
+
+            std::chrono::milliseconds getCurrentSessionLength() const;
 
             void validateAndCleanCustomFields(const json& fields, json& out);
 
@@ -192,7 +203,7 @@ namespace gameanalytics
             store::GAStore          _gaStore;
             http::GAHTTPApi         _gaHttp;
 
-            std::string _userId;
+            std::string _customUserId;
             std::string _identifier;
 
             bool _initialized = false;
@@ -202,6 +213,7 @@ namespace gameanalytics
             int64_t _sessionNum = 0;
             int64_t _transactionNum = 0;
 
+            int64_t _totalElapsedSessionTime = 0;
             std::chrono::high_resolution_clock::time_point _startTimepoint;
 
             std::string _sessionId;

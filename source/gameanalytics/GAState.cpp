@@ -57,7 +57,7 @@ namespace gameanalytics
                 return;
             }
 
-            getInstance()._userId = id;
+            getInstance()._customUserId = id;
             getInstance().cacheIdentifier();
         }
 
@@ -383,6 +383,7 @@ namespace gameanalytics
                 logging::GALogger::i("Ending session.");
                 if (GAState::isEnabled() && GAState::sessionIsStarted())
                 {
+                    getInstance().updateTotalSessionTime();
                     events::GAEvents::addHealthEvent();
                     events::GAEvents::addSessionEndEvent();
                     getInstance()._sessionStart = 0;
@@ -505,9 +506,9 @@ namespace gameanalytics
 
         void GAState::cacheIdentifier()
         {
-            if(!_userId.empty())
+            if(!_customUserId.empty())
             {
-                _identifier = _userId;
+                _identifier = _customUserId;
             }
             else
             {
@@ -515,7 +516,6 @@ namespace gameanalytics
             }
 
             logging::GALogger::d("identifier, {clean:%s}", _identifier.c_str());
-        
         }
 
         std::string setStateFromCache(json& dict, std::string const& key, std::string const& value)
@@ -533,6 +533,11 @@ namespace gameanalytics
             }
 
             return "";
+        }
+
+        int64_t GAState::getTotalSessionLength() const
+        {
+            return _totalElapsedSessionTime + calculateSessionLength<std::chrono::seconds>();
         }
 
         void GAState::ensurePersistedStates()
@@ -555,6 +560,9 @@ namespace gameanalytics
                         }
                     }
                 }
+                
+                std::string s = state_dict.dump();
+                _gaLogger.d("state_dict: %s", s.c_str());
 
                 // insert into GAState instance
                 std::string defaultId = utilities::getOptionalValue<std::string>(state_dict, "default_user_id");
@@ -575,6 +583,20 @@ namespace gameanalytics
                 _currentCustomDimension01 = setStateFromCache(state_dict, "dimension01", _currentCustomDimension01);
                 _currentCustomDimension02 = setStateFromCache(state_dict, "dimension02", _currentCustomDimension02);
                 _currentCustomDimension03 = setStateFromCache(state_dict, "dimension03", _currentCustomDimension03);
+                
+                try
+                {
+                    std::string cachedSessionTime = utilities::getOptionalValue<std::string>(state_dict, "total_session_time", "0");
+                    
+                    _totalElapsedSessionTime = std::stoull(cachedSessionTime);
+
+                }
+                catch(const std::exception& e)
+                {
+                    _gaLogger.w("Failed to read total_session_time from cache!");
+                    _totalElapsedSessionTime = 0;
+                }
+                
 
                 // get cached init call values
                 if (state_dict.contains("sdk_config_cached") && state_dict["sdk_config_cached"].is_string())
@@ -856,11 +878,6 @@ namespace gameanalytics
             return getInstance()._remoteConfigsIsReady;
         }
 
-        int64_t GAState::calculateSessionLength() const
-        {
-            return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - _startTimepoint).count();
-        }
-
         void GAState::addRemoteConfigsListener(const std::shared_ptr<IRemoteConfigsListener>& listener)
         {
             if(std::find(getInstance()._remoteConfigsListeners.begin(), getInstance()._remoteConfigsListeners.end(), listener) == getInstance()._remoteConfigsListeners.end())
@@ -1041,6 +1058,12 @@ namespace gameanalytics
         int64_t GAState::getClientTsAdjusted()
         {
             return utilities::GAUtilities::timeIntervalSince1970();
+        }
+
+        void GAState::updateTotalSessionTime()
+        {
+            int64_t totalSessionTime = getTotalSessionLength();
+            _gaStore.setState("total_session_time", std::to_string(totalSessionTime));
         }
 
         std::string GAState::getBuild()

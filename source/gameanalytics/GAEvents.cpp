@@ -116,7 +116,8 @@ namespace gameanalytics
             
             try
             {
-                int64_t sessionLength  = state.calculateSessionLength();
+                // get session length in seconds
+                int64_t sessionLength  = state.calculateSessionLength<std::chrono::seconds>();
 
                 if(sessionLength < 0ll)
                 {
