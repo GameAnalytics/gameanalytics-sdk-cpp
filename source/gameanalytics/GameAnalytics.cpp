@@ -988,4 +988,14 @@ namespace gameanalytics
         }
     }
 
+    int64_t GameAnalytics::getElapsedTimeFromAllSessions()
+    {
+        return state::GAState::getInstance().getTotalSessionLength();
+    }
+
+    int64_t GameAnalytics::getElapsedSessionTime()
+    {
+        return state::GAState::getInstance().calculateSessionLength<std::chrono::seconds>();
+    }
+
 } // namespace gameanalytics
