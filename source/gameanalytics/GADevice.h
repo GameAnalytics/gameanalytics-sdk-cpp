@@ -78,6 +78,7 @@ namespace gameanalytics
                 std::string _osVersion;
                 std::string _deviceModel;
                 std::string _deviceManufacturer;
+                std::string _gpu;
 
                 std::string _writablepath;
                 bool        _writablepathStatus{false};
