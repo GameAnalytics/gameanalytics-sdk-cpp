@@ -233,16 +233,18 @@ std::string GAPlatformWin32::getGpuModel() const
     DISPLAY_DEVICE device;
     ZeroMemory(&device, sizeof(DISPLAY_DEVICE));
     
-    if(EnumDisplayDevices(NULL, 0, &device, 0))
+    device.cb = sizeof(DISPLAY_DEVICE);
+
+    if(EnumDisplayDevices(NULL, 0, &device, EDD_GET_DEVICE_INTERFACE_NAME))
     {
 #ifdef UNICODE
-        return utilities::GAUtilities::ws2s(device.DeviceName);
+        return utilities::GAUtilities::ws2s(device.DeviceString);
 #else
-        return device.DeviceName;
+        return device.DeviceString;
 #endif
     }
 
-    return UNKNOWN_VALUE;
+    return "";
 }
 
 int GAPlatformWin32::getNumCpuCores() const
