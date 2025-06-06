@@ -740,7 +740,78 @@ namespace gameanalytics
 
     std::string GameAnalytics::getRemoteConfigsValueAsString(std::string const& key, std::string const& defaultValue)
     {
-        return state::GAState::getRemoteConfigsStringValue(key, defaultValue);
+        return state::GAState::getRemoteConfigsValue<std::string>(key, defaultValue);
+    }
+
+    int64_t GameAnalytics::getRemoteConfigsValueAsInt(std::string const& key, int64_t defaultValue)
+    {
+        try
+        {
+            std::string s = getRemoteConfigsValueAsString(key);
+            if(!s.empty())
+            {
+                return std::stoll(s);
+            }
+        }
+        catch(std::exception& e)
+        {
+            (void)e;
+        }
+
+        return defaultValue;
+    }
+
+    uint64_t GameAnalytics::getRemoteConfigsValueAsUInt(std::string const& key, uint64_t defaultValue)
+    {
+        try
+        {
+            std::string s = getRemoteConfigsValueAsString(key);
+            if(!s.empty())
+            {
+                return std::stoull(s);
+            }
+        }
+        catch(std::exception& e)
+        {
+            (void)e;
+        }
+
+        return defaultValue;
+    }
+
+    double GameAnalytics::getRemoteConfigsValueAsFloat(std::string const& key, double defaultValue)
+    {
+        try
+        {
+            std::string s = getRemoteConfigsValueAsString(key);
+            if(!s.empty())
+            {
+                return std::stod(s);
+            }
+        }
+        catch(std::exception& e)
+        {
+            (void)e;
+        }
+
+        return defaultValue;
+    }
+
+    bool GameAnalytics::getRemoteConfigsValueAsBool(std::string const& key, bool defaultValue)
+    {
+        std::string s = getRemoteConfigsValueAsString(key, "false");
+        return utilities::toLowerCase(s) == "true";
+    }
+
+    std::string GameAnalytics::getRemoteConfigsValueAsJson(std::string const& key)
+    {
+        std::string jsonString = getRemoteConfigsValueAsString(key);
+        if(!json::accept(jsonString))
+        {
+            return "";
+        }
+
+        return jsonString;
     }
 
     bool GameAnalytics::isRemoteConfigsReady()
@@ -874,8 +945,9 @@ namespace gameanalytics
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
         }
-        catch (const std::exception&)
+        catch (const std::exception& e)
         {
+            logging::GALogger::e(e.what());
         }
     }
 
@@ -906,7 +978,7 @@ namespace gameanalytics
         {
             if (warn)
             {
-                logging::GALogger::w("%sDatastore not initialized", m.c_str());
+                logging::GALogger::w("%s; Datastore not initialized", m.c_str());
             }
             return false;
         }
@@ -915,7 +987,7 @@ namespace gameanalytics
         {
             if (warn)
             {
-                logging::GALogger::w("%sSDK is not initialized", m.c_str());
+                logging::GALogger::w("%s; SDK is not initialized", m.c_str());
             }
             return false;
         }
@@ -924,7 +996,7 @@ namespace gameanalytics
         {
             if (warn)
             {
-                logging::GALogger::w("%s;SDK is disabled", m.c_str());
+                logging::GALogger::w("%s; SDK is disabled", m.c_str());
             }
             return false;
         }
@@ -934,7 +1006,7 @@ namespace gameanalytics
         {
             if (warn)
             {
-                logging::GALogger::w("%s;Session has not started yet", m.c_str());
+                logging::GALogger::w("%s; Session has not started yet", m.c_str());
             }
             return false;
         }
