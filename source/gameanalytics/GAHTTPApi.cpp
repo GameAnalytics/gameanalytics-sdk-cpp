@@ -56,7 +56,7 @@ namespace gameanalytics
             std::string gameKey = state::GAState::getGameKey();
 
             // Generate URL
-            std::string url = remoteConfigsBaseUrl + "/" + initializeUrlPath + "?game_key=" + gameKey + "&interval_seconds=0&configs_hash=" + configsHash;
+            std::string url = remoteConfigsBaseUrl + "/" + initializeUrlPath + "?game_key=" + gameKey + "&interval_seconds=0&configs_hash=" + configsHash + "&config_vsn_supported=3";
 
             logging::GALogger::d("Sending 'init' URL: %s", url.c_str());
 
