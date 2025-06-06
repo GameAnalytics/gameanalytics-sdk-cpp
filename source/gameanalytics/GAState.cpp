@@ -413,7 +413,7 @@ namespace gameanalytics
                 // remote configs configurations
                 if(getInstance()._configurations.is_object() && !getInstance()._configurations.empty())
                 {
-                    out["configurations"] = getInstance()._configurations;
+                    out["configurations_v3"] = getInstance().getRemoteConfigAnnotations();
                 }
 
                 out["sdk_version"] = device::GADevice::getRelevantSdkVersion();
@@ -865,14 +865,6 @@ namespace gameanalytics
             return getInstance()._sessionStart != 0;
         }
 
-        std::string GAState::getRemoteConfigsStringValue(std::string const& key, std::string const& defaultValue)
-        {
-            std::lock_guard<std::recursive_mutex> lg(getInstance()._mtx);
-            std::string const value = utilities::getOptionalValue(getInstance()._configurations, key, defaultValue);
-
-            return value;
-        }
-
         bool GAState::isRemoteConfigsReady()
         {
             return getInstance()._remoteConfigsIsReady;
@@ -900,12 +892,28 @@ namespace gameanalytics
         std::string GAState::getRemoteConfigsContentAsString()
         {
             std::lock_guard<std::recursive_mutex> lg(getInstance()._mtx);
-            return getInstance()._configurations.dump(JSON_PRINT_INDENT);
+
+            json contents;
+
+            for(auto& obj : getInstance()._configurations)
+            {
+                if(obj.contains("key") && obj.contains("value"))
+                {
+                    std::string key = utilities::getOptionalValue<std::string>(obj, "key", "");
+                    if(!key.empty())
+                    {
+                        contents[key] = obj["value"];
+                    }
+                }
+            }
+
+            return contents.dump(JSON_PRINT_INDENT);
         }
 
         void GAState::populateConfigurations(json& sdkConfig)
         {
             std::lock_guard<std::recursive_mutex> guard(_mtx);
+            _configurations = {};
 
             try
             {
@@ -918,21 +926,15 @@ namespace gameanalytics
                         if (!configuration.empty())
                         {
                             std::string key = utilities::getOptionalValue<std::string>(configuration, "key", "");
-
                             int64_t start_ts = utilities::getOptionalValue<int64_t>(configuration, "start_ts", std::numeric_limits<int64_t>::min());
-
                             int64_t end_ts  = utilities::getOptionalValue<int64_t>(configuration, "end_ts", std::numeric_limits<int64_t>::max());
 
                             int64_t client_ts_adjusted = getClientTsAdjusted();
 
                             if (!key.empty() && configuration.contains("value") && client_ts_adjusted > start_ts && client_ts_adjusted < end_ts)
                             {
-                                json& value = configuration["value"];
-                                if (value.is_string() || value.is_number())
-                                {
-                                    _configurations[key] = value;
-                                    logging::GALogger::d("configuration added: %s", configuration.dump(JSON_PRINT_INDENT).c_str());
-                                }
+                                _configurations[key] = configuration;
+                                logging::GALogger::d("configuration added: %s", configuration.dump(JSON_PRINT_INDENT).c_str());
                             }
                         }
                     }
@@ -1154,6 +1156,22 @@ namespace gameanalytics
             getInstance().validateAndCleanCustomFields(d, cleanedFields);
 
             return cleanedFields;
+        }
+
+        json GAState::getRemoteConfigAnnotations()
+        {
+            json configs;
+            for(json& obj : _configurations)
+            {
+                json cfg;
+                cfg["vsn"] = utilities::getOptionalValue<int>(obj, "vsn", 0);
+                cfg["key"] = utilities::getOptionalValue<std::string>(obj, "key", "");
+                cfg["id"] = utilities::getOptionalValue<std::string>(obj, "id", "");
+
+                configs.push_back(cfg);
+            }
+
+            return configs;
         }
     }
 }

@@ -134,7 +134,6 @@ namespace gameanalytics
                 static void setEnabledEventSubmission(bool flag);
                 static bool isEventSubmissionEnabled();
                 static bool sessionIsStarted();
-                static std::string getRemoteConfigsStringValue(std::string const& key, std::string const& defaultValue);
                 static bool isRemoteConfigsReady();
                 static void addRemoteConfigsListener(const std::shared_ptr<IRemoteConfigsListener>& listener);
                 static void removeRemoteConfigsListener(const std::shared_ptr<IRemoteConfigsListener>& listener);
@@ -147,15 +146,32 @@ namespace gameanalytics
                 static json getValidatedCustomFields();
                 static json getValidatedCustomFields(const json& withEventFields);
 
-                int64_t getTotalSessionLength() const;
+                template<typename T>
+                inline static T getRemoteConfigsValue(std::string const& key, T const& defaultValue)
+                {
+                    std::lock_guard<std::recursive_mutex> lg(getInstance()._mtx);
+                    if(getInstance()._configurations.contains(key))
+                    {
+                        json& config = getInstance()._configurations[key];
+                        T value = utilities::getOptionalValue<T>(config, "value", defaultValue);
+                        return value;
+                    }
+                    
+                    return defaultValue;
+                }
 
                 template<typename T = std::chrono::milliseconds>
                 inline int64_t calculateSessionLength() const
                 {
-                    return std::chrono::duration_cast<T>(std::chrono::high_resolution_clock::now() - _startTimepoint).count();
+                    auto len = std::chrono::high_resolution_clock::now() - _startTimepoint;
+                    return std::chrono::duration_cast<T>(len).count();
                 }
 
+                int64_t getTotalSessionLength() const;
+
                 void populateConfigurations(json& sdkConfig);
+
+                json getRemoteConfigAnnotations();
 
         private:
             
@@ -184,7 +200,7 @@ namespace gameanalytics
 
             void updateTotalSessionTime();
 
-            int64_t  calculateServerTimeOffset(int64_t serverTs);
+            int64_t calculateServerTimeOffset(int64_t serverTs);
 
             void validateAndCleanCustomFields(const json& fields, json& out);
 
