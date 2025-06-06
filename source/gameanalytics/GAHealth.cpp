@@ -64,6 +64,7 @@ namespace gameanalytics
         {
             utilities::addIfNotEmpty(out, "cpu_model", _cpuModel);
             utilities::addIfNotEmpty(out, "hardware",  _hardware);
+            utilities::addIfNotEmpty(out, "gpu_model", _gpuModel);
             
             if(_numCores > 0)
             {
