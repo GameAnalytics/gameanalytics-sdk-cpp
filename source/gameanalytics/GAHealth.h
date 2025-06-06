@@ -29,7 +29,8 @@ namespace gameanalytics
 
         protected:
 
-            static constexpr size_t MAX_FPS_COUNT      = 120 + 1;
+            static constexpr int    MAX_FPS_VALUE      = 120;
+            static constexpr size_t MAX_FPS_COUNT      = MAX_FPS_VALUE + 1;
             static constexpr size_t MAX_MEMORY_COUNT   = 100 + 1;
 
             static constexpr std::chrono::milliseconds MEMORY_TRACK_FREQ {5000};
