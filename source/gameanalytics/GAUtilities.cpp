@@ -20,7 +20,7 @@
 
 // From crypto
 #define MINIZ_HEADER_FILE_ONLY
-#include "miniz.c"
+#include "GA_Zip.h"
 
 namespace gameanalytics
 {
