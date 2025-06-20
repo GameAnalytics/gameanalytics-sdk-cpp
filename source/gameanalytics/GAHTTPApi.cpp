@@ -53,6 +53,14 @@ namespace gameanalytics
 
         EGAHTTPApiResponse GAHTTPApi::requestInitReturningDict(json& json_out, std::string const& configsHash)
         {
+            json initAnnotations;
+            state::GAState::getInitAnnotations(initAnnotations);
+
+            return requestInitReturningDict(json_out, initAnnotations, configsHash);
+        }
+
+        EGAHTTPApiResponse GAHTTPApi::requestInitReturningDict(json& json_out, json& initAnnotations, std::string const& configsHash)
+        {
             std::string gameKey = state::GAState::getGameKey();
 
             // Generate URL
@@ -60,9 +68,6 @@ namespace gameanalytics
 
             logging::GALogger::d("Sending 'init' URL: %s", url.c_str());
 
-            json initAnnotations;
-            state::GAState::getInitAnnotations(initAnnotations);
-            
             try
             {
                 std::string jsonString = initAnnotations.dump();

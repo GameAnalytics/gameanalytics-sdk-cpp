@@ -131,6 +131,7 @@ namespace gameanalytics
             static GAHTTPApi& getInstance();
 
             EGAHTTPApiResponse requestInitReturningDict(json& json_out, std::string const& configsHash);
+            EGAHTTPApiResponse requestInitReturningDict(json& json_out, json& initAnnotations, std::string const& configsHash);
             EGAHTTPApiResponse sendEventsInArray(json& json_out, const json& eventArray);
             void sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string const& reason, std::string const& gameKey, std::string const& secretKey);            
 
