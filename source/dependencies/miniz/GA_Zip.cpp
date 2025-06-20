@@ -219,9 +219,9 @@
 #define MINIZ_HAS_64BIT_REGISTERS 1
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace gameanalytics {
+namespace utilities {
+namespace zip {
 
 // ------------------- zlib-style API Definitions.
 
@@ -919,10 +919,6 @@ mz_uint32 tdefl_get_adler32(tdefl_compressor *d);
 mz_uint tdefl_create_comp_flags_from_zip_params(int level, int window_bits, int strategy);
 #endif // #ifndef MINIZ_NO_ZLIB_APIS
 
-#ifdef __cplusplus
-}
-#endif
-
 #endif // MINIZ_HEADER_INCLUDED
 
 // ------------------- End of Header: Implementation follows. (If you only want the header, define MINIZ_HEADER_FILE_ONLY.)
@@ -966,10 +962,6 @@ typedef unsigned char mz_validate_uint64[sizeof(mz_uint64)==8 ? 1 : -1];
   #define MZ_FORCEINLINE inline __attribute__((__always_inline__))
 #else
   #define MZ_FORCEINLINE inline
-#endif
-
-#ifdef __cplusplus
-  extern "C" {
 #endif
 
 // ------------------- zlib-style API's
@@ -4882,11 +4874,11 @@ void *mz_zip_extract_archive_file_to_heap(const char *pZip_filename, const char 
 
 #endif // #ifndef MINIZ_NO_ARCHIVE_APIS
 
-#ifdef __cplusplus
-}
-#endif
-
 #endif // MINIZ_HEADER_FILE_ONLY
+
+} // namespace zip
+} // namespace utilities
+} // namespace gameanalytics
 
 /*
   This is free and unencumbered software released into the public domain.
