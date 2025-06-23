@@ -20,12 +20,14 @@
 
 // From crypto
 #define MINIZ_HEADER_FILE_ONLY
-#include "miniz.c"
+#include "GA_Zip.cpp"
 
 namespace gameanalytics
 {
     namespace utilities
     {
+        using namespace zip;
+
         std::string printArray(StringVector const& v, std::string const& delim)
         {
             if(v.empty())

@@ -123,7 +123,7 @@ Example:
 Example:
 
 ``` c++
- gameanalytics::GameAnalytics::initialize("<your game key>", "<your secret key");
+ gameanalytics::GameAnalytics::initialize("<your game key>", "<your secret key>");
 ```
 
 ### Send events
