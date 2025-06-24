@@ -2,6 +2,7 @@
 
 #include "GameAnalytics/GATypes.h"
 #include "Server/GACustomFields.h"
+#include "GAProgressionTries.h"
 #include <chrono>
 
 namespace gameanalytics
@@ -47,11 +48,15 @@ namespace gameanalytics
             std::string manufacturer;
             std::string osVersion;
             std::string connectionType;
+            std::string gpuModel;
+            std::string cpuModel;
             CustomFields customFields;
+
+            ProgressionTries progressionTries;
             
             Player();
             Player(std::string const& jsonData);
-            Player(std::string const& userId, std::string const& abId, std::string const& abVariantId);
+            Player(std::string const& userId, std::string const& extUserId);
             
             std::string getUserId() const;
             std::string getABId() const;
@@ -103,8 +108,13 @@ namespace gameanalytics
 
     struct PlayerCallbacks
     {
+        // called when a new player joins the first session
         virtual void onNewPlayer(Player& player)  = 0;
+        
+        // called when a player starts a session (e.g: logs in)
         virtual void onPlayerJoin(Player& player) = 0;
+        
+        // called when a player ends a session (e.g: logs off)
         virtual void onPlayerExit(Player& player) = 0;
     };
 

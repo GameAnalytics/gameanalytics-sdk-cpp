@@ -724,6 +724,14 @@ namespace gameanalytics
                     {
                         json sessionEndEvent = json::parse(session["event"].get<std::string>());
 
+                        std::string userId = sessionEndEvent["user_id"];
+
+                        // workaround for server based implementation, we want to skip player events
+                        if(userId != state::GAState::getUserId())
+                        {
+                            continue;
+                        }
+
                         int64_t event_ts = utilities::getOptionalValue<int64_t>(sessionEndEvent, "client_ts", 0);
                         int64_t start_ts = std::stoll(utilities::getOptionalValue<std::string>(session, "timestamp", "0"));
 

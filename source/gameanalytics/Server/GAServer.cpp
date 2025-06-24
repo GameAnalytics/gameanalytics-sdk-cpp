@@ -384,6 +384,91 @@ namespace gameanalytics
             }
     }
     
+    void GameAnalyticsServer::addPlayerProgressionEventInternal(Player& player, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, std::string const& customFields)
+    {
+            try
+            {
+                if(!state::GAState::isEventSubmissionEnabled())
+                {
+                    return;
+                }
+
+                // Validate event params
+                validators::ValidationResult validationResult;
+                validators::GAValidator::validateProgressionEvent(progressionStatus, progression01, progression02, progression03, validationResult);
+                if (!validationResult.result)
+                {
+                    http::GAHTTPApi& httpInstance = http::GAHTTPApi::getInstance();
+                    httpInstance.sendSdkErrorEvent(validationResult.category, validationResult.area, validationResult.action, validationResult.parameter, validationResult.reason, state::GAState::getGameKey(), state::GAState::getGameSecret());
+                    return;
+                }
+
+                // Create empty eventData
+                json eventDict = PlayerDatabase::getPlayerAnnotations(player);
+
+                // Progression identifier
+                std::string progressionIdentifier = progression01;
+
+                if(!progression02.empty())
+                {
+                    progressionIdentifier += ':';
+                    progressionIdentifier += progression02;
+
+                    if(!progression03.empty())
+                    {
+                        progressionIdentifier += ':';
+                        progressionIdentifier += progression03;
+                    }
+                }
+
+                const std::string statusString = events::GAEvents::progressionStatusString(progressionStatus);
+
+                eventDict["category"] = events::GAEvents::CategoryProgression;
+                eventDict["event_id"] = statusString + ':' + progressionIdentifier;
+
+                // Attempt
+                int attempt_num = 0;
+
+                // Add score if specified and status is not start
+                if (sendScore && progressionStatus != EGAProgressionStatus::Start)
+                {
+                    eventDict["score"] = score;
+                }
+
+                // Count attempts on each progression fail and persist
+                if (progressionStatus == EGAProgressionStatus::Fail)
+                {
+                    // Increment attempt number
+                    player.progressionTries.incrementTries(progressionIdentifier);
+                }
+
+                // increment and add attempt_num on complete and delete persisted
+                if (progressionStatus == EGAProgressionStatus::Complete)
+                {
+                    // Increment attempt number
+                    player.progressionTries.incrementTries(progressionIdentifier);
+
+                    // Add to event
+                    attempt_num = player.progressionTries.getTries(progressionIdentifier);
+                    eventDict["attempt_num"] = attempt_num;
+
+                    // Clear
+                    state::GAState::clearProgressionTries(progressionIdentifier);
+                }
+
+                // Log
+                logging::GALogger::i("Add PROGRESSION event: {status:%s, progression01:%s, progression02:%s, progression03:%s, score:%d, attempt:%d, fields:%s}", 
+                    statusString.c_str(), progression01.c_str(), progression02.c_str(), progression03.c_str(), score, attempt_num, customFields.c_str());
+
+                // Send to store
+                events::GAEvents::getInstance().addEventToStore(eventDict);
+            }
+            catch(std::exception& e)
+            {
+                logging::GALogger::e("addProgressionEvent - Exception thrown: %s", e.what());
+            }
+    }
+
     void GameAnalyticsServer::addPlayerDesignEvent(Player& player, std::string const& eventId, double value, std::string const& customFields)
     {
         threading::GAThreading::performTaskOnGAThread(
@@ -420,6 +505,16 @@ namespace gameanalytics
             [this, &player, severity, message, customFields]()
             {
                 addPlayerErrorEventInternal(player, severity, message, customFields);
+            }
+        );
+    }
+
+    void GameAnalyticsServer::addPlayerProgressionEvent(Player& player, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, std::string const& customFields)
+    {
+        threading::GAThreading::performTaskOnGAThread(
+            [this, &player, progressionStatus, progression01, progression02, progression03, sendScore, score, customFields]()
+            {
+                addPlayerProgressionEventInternal(player, progressionStatus, progression01, progression02, progression03, sendScore, score, customFields);
             }
         );
     }
@@ -465,6 +560,18 @@ namespace gameanalytics
         if(isExistingPlayer(userId))
         {
             return addPlayerErrorEvent(getPlayer(userId), severity, message, customFields);
+        }
+        else
+        {
+            logging::GALogger::w("Invalid user id: %s", userId.c_str());
+        }
+    }
+
+    void GameAnalyticsServer::addPlayerProgressionEvent(std::string const& userId, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, std::string const& customFields)
+    {
+        if(isExistingPlayer(userId))
+        {
+            return addPlayerProgressionEvent(getPlayer(userId), progressionStatus, progression01, progression02, progression03, sendScore, score, customFields);
         }
         else
         {

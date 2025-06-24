@@ -21,56 +21,12 @@
 #include "GAHTTPApi.h"
 #include "GADevice.h"
 
+#include "GAProgressionTries.h"
+
 namespace gameanalytics
 {
     namespace state
     {
-        struct ProgressionTries
-        {
-            public:
-
-                inline void addOrUpdate(std::string const& s, int tries)
-                {
-                    _tries[s] = tries;
-                }
-
-                inline void remove(std::string const& s)
-                {
-                    if (_tries.count(s))
-                    {
-                        _tries.erase(s);
-                    }
-                }
-
-                inline int getTries(std::string const& s) const
-                {
-                    if (_tries.count(s))
-                    {
-                        return _tries.at(s);
-                    }
-
-                    return 0;
-                }
-
-                inline int incrementTries(std::string const& s)
-                {
-                    if (_tries.count(s))
-                    {
-                        _tries[s]++;
-                    }
-                    else
-                    {
-                        _tries[s] = 1;
-                    }
-
-                    return _tries[s];
-                }
-
-            private:
-            
-                std::unordered_map<std::string, int> _tries;
-        };
-
         class GAState
         {
             friend class threading::GAThreading;

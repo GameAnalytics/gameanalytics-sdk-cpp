@@ -14,20 +14,18 @@ namespace gameanalytics
         device         = "unknown";
         manufacturer   = "unknown";
         platform       = "windows";
-        connectionType = "wifi";
+        connectionType = "lan";
     }
 
-    Player::Player(std::string const& userId, std::string const& abId, std::string const& abVariantId)
+    Player::Player(std::string const& userId, std::string const& externalId):
+        _userId(userId),
+        extUserId(externalId)
     {
-        _userId = userId;
-        _abId = abId;
-        _abVariantId = abVariantId;
-
         osVersion      = "windows 10";
         device         = "unknown";
         manufacturer   = "unknown";
         platform       = "windows";
-        connectionType = "wifi";
+        connectionType = "lan";
     }
 
     Player::Player(std::string const& jsonData)

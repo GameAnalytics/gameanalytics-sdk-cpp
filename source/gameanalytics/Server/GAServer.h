@@ -18,6 +18,7 @@ namespace gameanalytics
         void addPlayerBusinessEventInternal(Player& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields = "");
         void addPlayerResourceEventInternal(Player& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& customFields = "");
         void addPlayerErrorEventInternal(Player& player, EGAErrorSeverity severity, std::string const& message, std::string const& customFields = "");
+        void addPlayerProgressionEventInternal(Player& player, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, std::string const& customFields = "");
 
         public:
 
@@ -42,11 +43,13 @@ namespace gameanalytics
             void addPlayerBusinessEvent(Player& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields = "");
             void addPlayerResourceEvent(Player& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& customFields = "");
             void addPlayerErrorEvent(Player& player, EGAErrorSeverity severity, std::string const& message, std::string const& customFields = "");
+            void addPlayerProgressionEvent(Player& player, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, std::string const& customFields = "");
 
             void addPlayerDesignEvent(std::string const& userId, std::string const& eventId, double value = 0.0, std::string const& customFields = "");
             void addPlayerBusinessEvent(std::string const& userId, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields = "");
             void addPlayerResourceEvent(std::string const& userId, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& customFields = "");
             void addPlayerErrorEvent(std::string const& userId, EGAErrorSeverity severity, std::string const& message, std::string const& customFields = "");
+            void addPlayerProgressionEvent(std::string const& userId, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, std::string const& customFields = "");
     };
 
 } // namespace gameanalytics
