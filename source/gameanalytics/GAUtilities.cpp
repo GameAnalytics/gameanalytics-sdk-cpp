@@ -73,10 +73,9 @@ namespace gameanalytics
             return defValue;
         }
 
-        std::pair<std::string, int32_t> getRelevantFunctionFromCallStack()
+        FunctionInfo getRelevantFunctionFromCallStack()
         {
-            std::string function;
-            int32_t line = -1;
+            FunctionInfo funcInfo;
 
             try
             {
@@ -89,19 +88,19 @@ namespace gameanalytics
                        f.find("call_stack") == std::string::npos && 
                        f.find("getRelevantFunctionFromCallStack") == std::string::npos)
                     {
-                        function = f;
-                        line = entry.line;
+                        funcInfo.functionName = f;
+                        funcInfo.lineNumber = entry.line;
                         break;
                     }
                 }
             }
             catch(...)
             {
-                function = "";
-                line = -1;
+                funcInfo.functionName = "";
+                funcInfo.lineNumber   = -1;
             }
 
-            return std::make_pair(function, line);
+            return funcInfo;
         }
 
         // Compress a STL string using zlib with given compression level and return the binary data.
@@ -388,6 +387,7 @@ namespace gameanalytics
                     return true;
                 #endif
             }
+
         }
 
         std::vector<uint8_t> GAUtilities::gzipCompress(const char* data)

@@ -539,13 +539,7 @@ namespace gameanalytics
 
         const std::string message = utilities::trimString(message_, maxErrMsgSize);
 
-        std::string function;
-        int32_t line = -1;
-
-        std::pair<std::string, int32_t> inFunction = utilities::getRelevantFunctionFromCallStack();
-        
-        function = inFunction.first;
-        line     = inFunction.second;
+        utilities::FunctionInfo finfo = utilities::getRelevantFunctionFromCallStack();
         
         if(fields.size() > maxFieldsSize)
         {
@@ -563,7 +557,7 @@ namespace gameanalytics
             try
             {
                 json fieldsJson = utilities::parseFields(fields);
-                events::GAEvents::addErrorEvent(severity, message, function, line, fieldsJson, mergeFields);
+                events::GAEvents::addErrorEvent(severity, message, finfo.functionName, finfo.lineNumber, fieldsJson, mergeFields);
             }
             catch(std::exception& e)
             {
