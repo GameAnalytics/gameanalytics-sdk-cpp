@@ -43,43 +43,7 @@ namespace gameanalytics
         {
             return defaultValue;
         }
-
-        template<>
-        std::string getValue<std::string>(std::string const& key, std::string const& defaultValue)
-        {
-            return getValueById<std::string>(key, Value::value_str, defaultValue);
-        }
-
-        template<>
-        int64_t getValue<int64_t>(std::string const& key, int64_t const& defaultValue)
-        {
-            return getValueById<int64_t>(key, Value::value_int, defaultValue);
-        }
-
-        template<>
-        double getValue<double>(std::string const& key, double const& defaultValue)
-        {
-            return getValueById<double>(key, Value::value_float, defaultValue);
-        }
-
-        template<>
-        bool getValue<bool>(std::string const& key, bool const& defaultValue)
-        {
-            return getValueById<bool>(key, Value::value_bool, defaultValue);
-        }
-
-        template<>
-        int getValue<int>(std::string const& key, int const& defaultValue)
-        {
-            return static_cast<int>(getValue<int64_t>(key, defaultValue));
-        }
-
-        template<>
-        float getValue<float>(std::string const& key, float const& defaultValue)
-        {
-            return static_cast<float>(getValue<double>(key, defaultValue));
-        }
-
+        
         private:
 
         template<typename T>
@@ -88,4 +52,44 @@ namespace gameanalytics
             return (fields.count(key) && fields[key].value.index() == id) ? std::get<T>(fields[key].value) : defaultValue;
         }
     };
+
+    #pragma region get_value_specialization
+
+        template<>
+        inline std::string CustomFields::getValue<std::string>(std::string const& key, std::string const& defaultValue)
+        {
+            return getValueById<std::string>(key, Value::value_str, defaultValue);
+        }
+
+        template<>
+        inline int64_t CustomFields::getValue<int64_t>(std::string const& key, int64_t const& defaultValue)
+        {
+            return getValueById<int64_t>(key, Value::value_int, defaultValue);
+        }
+
+        template<>
+        inline double CustomFields::getValue<double>(std::string const& key, double const& defaultValue)
+        {
+            return getValueById<double>(key, Value::value_float, defaultValue);
+        }
+
+        template<>
+        inline bool CustomFields::getValue<bool>(std::string const& key, bool const& defaultValue)
+        {
+            return getValueById<bool>(key, Value::value_bool, defaultValue);
+        }
+
+        template<>
+        inline int CustomFields::getValue<int>(std::string const& key, int const& defaultValue)
+        {
+            return static_cast<int>(getValue<int64_t>(key, defaultValue));
+        }
+
+        template<>
+        inline float CustomFields::getValue<float>(std::string const& key, float const& defaultValue)
+        {
+            return static_cast<float>(getValue<double>(key, defaultValue));
+        }
+
+    #pragma endregion
 }

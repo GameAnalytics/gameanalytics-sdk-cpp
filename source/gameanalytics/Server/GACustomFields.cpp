@@ -54,8 +54,8 @@ namespace gameanalytics
         }
     }
 
-    bool CustomFields::checkSize()
+    bool CustomFields::checkSize() const
     {
-        
+        return fields.size() <= NUM_MAX_CUSTOM_FIELDS;
     }
 }
