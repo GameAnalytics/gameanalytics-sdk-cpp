@@ -5,13 +5,6 @@
 
 namespace gameanalytics
 {
-    struct PlayerCallbacks
-    {
-        virtual void onNewPlayer(Player& player)  = 0;
-        virtual void onPlayerJoin(Player& player) = 0;
-        virtual void onPlayerExit(Player& player) = 0;
-    };
-
     class Player
     {
         friend class GameAnalyticsServer;
@@ -32,13 +25,15 @@ namespace gameanalytics
         std::string _sessionId;
 
         int      _sessionNum = 0;
-        uint64_t _sessionLength = 0;
-        uint64_t _totalSessionLength = 0;
+        int64_t _sessionLength = 0;
+        int64_t _totalSessionLength = 0;
+
+        int _transactionNum = 0;
 
         bool _isActive    = false;
         bool _isNewPlayer = false;
 
-        std::chrono::time_point _lastSessionTimestamp = 0;
+        std::chrono::steady_clock::time_point _lastSessionTimestamp;
 
         void generateRandomId();
 
@@ -71,6 +66,8 @@ namespace gameanalytics
             std::string getCustomDimension2() const;
             std::string getCustomDimension3() const;
 
+            int getTransactionNum();
+
             bool isNewUser() const;
 
             bool isActive() const;
@@ -87,11 +84,20 @@ namespace gameanalytics
             // playtime during the current session
             int64_t currentSessionPlaytime() const;
 
+            int64_t getLastSessionLength() const;
+
             // total session playtime
             int  totalPlaytime() const;
 
             // total session count
             int  getSessionCount() const;
+    };
+
+    struct PlayerCallbacks
+    {
+        virtual void onNewPlayer(Player& player)  = 0;
+        virtual void onPlayerJoin(Player& player) = 0;
+        virtual void onPlayerExit(Player& player) = 0;
     };
 
 } // namespace gameanalytics

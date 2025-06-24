@@ -1,12 +1,11 @@
 #include "Server/GAPlayerDatabase.h"
 #include "GAUtilities.h"
 #include "GALogger.h"
+#include "GADevice.h"
+#include "GASerialize.h"
 
 namespace gameanalytics
 {
-    extern json         serializeCustomFields(CustomFields const& customFields);
-    extern CustomFields deserializeCustomFields(json const& jsonFields);
-
     PlayerNotFound::PlayerNotFound(std::string const& userId):
         std::runtime_error(utilities::printString("User does not exist: %s", userId.c_str())),
         userId(userId)
@@ -15,8 +14,6 @@ namespace gameanalytics
 
     PlayerDatabase::PlayerDatabase(int sizeHint)
     {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
-
         if(sizeHint > 0)
         {
             _players.reserve(sizeHint);
@@ -29,9 +26,9 @@ namespace gameanalytics
 
         const std::string uid = player.getUserId();
 
-        if(PlayerExists(uid))
+        if(playerExists(uid))
         {
-            logging::GALogger::w("User id is already in use: %s", userId.c_str());
+            logging::GALogger::w("User id is already in use: %s", uid.c_str());
             return false;
         }
 
@@ -43,9 +40,9 @@ namespace gameanalytics
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
 
-        if(!PlayerExists(uid))
+        if(!playerExists(uid))
         {
-            logging::GALogger::w("Invalid user id: %s", userId.c_str());
+            logging::GALogger::w("Invalid user id: %s", uid.c_str());
             return false;
         }
 
@@ -53,24 +50,24 @@ namespace gameanalytics
         return true;
     }
 
-    bool PlayerDatabase::changePlayerId(std::string const& oldUserId, std::string const& newUserId)
+    bool PlayerDatabase::changePlayerId(std::string const& uid, std::string const& newUserId)
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
 
-        if(!playerExists(oldUserId))
+        if(!playerExists(uid))
         {
-            logging::GALogger::w("Invalid user id: %s", userId.c_str());
+            logging::GALogger::w("Invalid user id: %s", uid.c_str());
             return false;
         }
 
         if(playerExists(newUserId))
         {
-            logging::GALogger::w("User id is already in use: %s", userId.c_str());
+            logging::GALogger::w("User id is already in use: %s", uid.c_str());
             return false;
         }
 
-        Player player = getPlayer(oldUserId);
-        player.userId = newUserId;
+        Player player = getPlayer(uid);
+        player._userId = newUserId;
 
         _players[newUserId] = std::move(player);
         
@@ -81,7 +78,7 @@ namespace gameanalytics
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
         
-        if(!playerExits(userId))
+        if(!playerExists(userId))
         {
             logging::GALogger::e("Invalid user id: %s", userId.c_str());
             throw PlayerNotFound(userId);
@@ -95,7 +92,7 @@ namespace gameanalytics
         return _players.size();
     }
 
-    bool PlayerDatabase::playerExists(std::string const& userId)
+    bool PlayerDatabase::playerExists(std::string const& userId) const
     {
         return _players.count(userId);
     }
@@ -104,19 +101,19 @@ namespace gameanalytics
     {
         json data;
 
-        data["user_id"]      = id;
+        data["user_id"]      = p.getUserId();
         data["sdk_version"]  = device::GADevice::getRelevantSdkVersion();
         data["os_version"]   = p.osVersion;
         data["device"]       = p.device;
         data["manufacturer"] = p.manufacturer;
         data["platform"]     = p.platform;
         data["session_id"]   = p._sessionId;
-        data["session_num"]  = out["random_salt"] = p._sessionNum;
+        data["session_num"]  = data["random_salt"] = p._sessionNum;
 
         utilities::addIfNotEmpty(data, "build", device::GADevice::getBuildPlatform());
         utilities::addIfNotEmpty(data, "engine_version", device::GADevice::getGameEngineVersion());
 
-        return out;
+        return data;
     }
 
     json PlayerDatabase::getPlayerAnnotations(Player const& p)
@@ -139,6 +136,7 @@ namespace gameanalytics
         data["device"]                  = p.device;
         data["manufacturer"]            = p.manufacturer;
         data["platform"]                = p.platform;
+        data["connection_type"]         = p.connectionType;
 
         utilities::addIfNotEmpty(data, "ab_id", p._abId);
         utilities::addIfNotEmpty(data, "ab_variant_id", p._abVariantId); 
@@ -148,7 +146,7 @@ namespace gameanalytics
         utilities::addIfNotEmpty(data, "custom_02", p._customDimension2);
         utilities::addIfNotEmpty(data, "custom_03", p._customDimension3);
 
-        if(!p.customFields.IsEmpty())
+        if(!p.customFields.isEmpty())
         {
             json fields = serializeCustomFields(p.customFields);
             data["custom_fields"] = fields;

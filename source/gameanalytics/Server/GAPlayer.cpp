@@ -2,12 +2,32 @@
 #include "GAUtilities.h"
 #include "GALogger.h"
 #include "GAValidator.h"
+#include "GASerialize.h"
 
 namespace gameanalytics
 {
     Player::Player()
     {
         generateRandomId();
+
+        osVersion      = "windows 10";
+        device         = "unknown";
+        manufacturer   = "unknown";
+        platform       = "windows";
+        connectionType = "wifi";
+    }
+
+    Player::Player(std::string const& userId, std::string const& abId, std::string const& abVariantId)
+    {
+        _userId = userId;
+        _abId = abId;
+        _abVariantId = abVariantId;
+
+        osVersion      = "windows 10";
+        device         = "unknown";
+        manufacturer   = "unknown";
+        platform       = "windows";
+        connectionType = "wifi";
     }
 
     Player::Player(std::string const& jsonData)
@@ -18,6 +38,11 @@ namespace gameanalytics
     int64_t Player::currentSessionPlaytime() const
     {
         return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - _lastSessionTimestamp).count();
+    }
+
+    int64_t Player::getLastSessionLength() const
+    {
+        return _sessionLength;
     }
 
     void Player::onJoin()
@@ -142,6 +167,7 @@ namespace gameanalytics
             data["device"]                  = device;
             data["manufacturer"]            = manufacturer;
             data["platform"]                = platform;
+            data["connection_type"]         = connectionType;
 
             utilities::addIfNotEmpty(data, "ab_id", _abId);
             utilities::addIfNotEmpty(data, "ab_variant_id", _abVariantId); 
@@ -190,15 +216,14 @@ namespace gameanalytics
             manufacturer = utilities::getOptionalValue<std::string>(data, "manufacturer", "");
             platform     = utilities::getOptionalValue<std::string>(data, "platform", "");
 
-            customDimension1 = utilities::getOptionalValue<std::string>(data, "custom_01", "");
-            customDimension2 = utilities::getOptionalValue<std::string>(data, "custom_02", "");
-            customDimension3 = utilities::getOptionalValue<std::string>(data, "custom_03", "");
+            _customDimension1 = utilities::getOptionalValue<std::string>(data, "custom_01", "");
+            _customDimension2 = utilities::getOptionalValue<std::string>(data, "custom_02", "");
+            _customDimension3 = utilities::getOptionalValue<std::string>(data, "custom_03", "");
 
             if(data.contains("custom_fields"))
             {
                 customFields = deserializeCustomFields(data["custom_fields"]);
             }
-            
         }
         catch(const std::exception& e)
         {

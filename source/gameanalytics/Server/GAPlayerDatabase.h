@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GAPlayer.h"
+#include "GACommon.h"
 
 namespace gameanalytics
 {
@@ -10,14 +11,14 @@ namespace gameanalytics
         PlayerNotFound(std::string const& userId);
     };
 
-    class PlayerDatabse
+    class PlayerDatabase
     {
         std::unordered_map<std::string, Player> _players;
         std::recursive_mutex _mutex;
 
         public:
 
-            PlayerDatabse(int sizeHint = -1);
+            PlayerDatabase(int sizeHint = -1);
 
             size_t  countPlayers() const;
 

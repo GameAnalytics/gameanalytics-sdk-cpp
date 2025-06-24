@@ -78,7 +78,7 @@ namespace gameanalytics
         template<typename T>
         T getValueById(std::string const& key, int id, T const& defaultValue)
         {
-            return (_customFields.count(key) && _customFields[key].value.index() == id) ? std::get<T>(_customFields[key]) : defaultValue;
+            return (fields.count(key) && fields[key].value.index() == id) ? std::get<T>(fields[key].value) : defaultValue;
         }
     };
 }

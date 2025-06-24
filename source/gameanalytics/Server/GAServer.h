@@ -4,11 +4,11 @@
 
 namespace gameanalytics
 {
-    class  PlayerDatabase;
+    class PlayerDatabase;
 
     class GameAnalyticsServer
     {
-        std::unique_ptr<PlayerDatabase>  _playerDatabase;
+        std::shared_ptr<PlayerDatabase>  _playerDatabase;
         std::shared_ptr<PlayerCallbacks> _playerCallbacks;
 
         bool startPlayerSessionInternal(std::string const& userId);

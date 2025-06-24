@@ -8,11 +8,12 @@
 #include "GAThreading.h"
 #include "GAState.h"
 #include "GAValidator.h"
+#include "GASerialize.h"
 
 namespace gameanalytics
 {
     GameAnalyticsServer::GameAnalyticsServer(std::string const& serverId, std::string const& extServerId, std::string const& build):
-        _playerDatabase(std::make_unique<PlayerDatabase>())
+        _playerDatabase(std::make_shared<PlayerDatabase>())
     {
         GameAnalytics::configureUserId(serverId);
         GameAnalytics::configureBuild(build);
@@ -29,12 +30,12 @@ namespace gameanalytics
         return _playerDatabase->addPlayer(std::forward<Player>(player));
     }
 
-    bool GameAnalyticsServer::removePlayer(std::string const& uid) const
+    bool GameAnalyticsServer::removePlayer(std::string const& uid)
     {
         return _playerDatabase->removePlayer(uid);
     }
 
-    Player& GameAnalyticsServer::getPlayer(std::string const& uid) const
+    Player& GameAnalyticsServer::getPlayer(std::string const& uid)
     {
         return _playerDatabase->getPlayer(uid);
     }
@@ -100,15 +101,14 @@ namespace gameanalytics
         }
 
         const bool isNewPlayer = player.isNewUser();
-        player.onJoin();
 
-        json initAnnotations = PlayerDatabse::getInitAnnotations(player);
+        json initAnnotations = PlayerDatabase::getInitAnnotations(player);
 
         // call the init call
         http::GAHTTPApi& httpApi = http::GAHTTPApi::getInstance();
 
         json initResponseDict;
-        http::EGAHTTPApiResponse initResponse = httpApi.requestInitReturningDict(initResponseDict, initAnnotations, player.GetConfigsHash());
+        http::EGAHTTPApiResponse initResponse = httpApi.requestInitReturningDict(initResponseDict, initAnnotations, player.getConfigsHash());
 
         // init is ok
         if ((initResponse == http::Ok || initResponse == http::Created) && !initResponseDict.empty())
@@ -125,6 +125,29 @@ namespace gameanalytics
                 }
 
                 _playerCallbacks->onPlayerJoin(player);
+            }
+
+            try
+            {
+                player.onJoin();
+
+                if(!state::GAState::isEventSubmissionEnabled())
+                {
+                    return false;
+                }
+
+                // Event specific data
+                json eventDict = PlayerDatabase::getPlayerAnnotations(player);
+                eventDict["category"] = events::GAEvents::CategorySessionStart;
+
+                events::GAEvents::getInstance().addEventToStore(eventDict);
+
+                // Log
+                logging::GALogger::i("Add SESSION START event");
+            }
+            catch(const std::exception& e)
+            {
+                logging::GALogger::e("addSessionStartEvent - Exception thrown: %s", e.what());
             }
 
             return true;
@@ -144,6 +167,15 @@ namespace gameanalytics
         }
 
         Player& player = getPlayer(userId);
+        player.onExit();
+
+        if(_playerCallbacks)
+            _playerCallbacks->onPlayerExit(player);
+
+        if(!state::GAState::isEventSubmissionEnabled())
+        {
+            return false;
+        }
         
         // Event specific data
         json eventDict = PlayerDatabase::getPlayerAnnotations(player);
@@ -152,11 +184,6 @@ namespace gameanalytics
         eventDict["length"]     = player.currentSessionPlaytime();
 
         events::GAEvents::getInstance().addEventToStore(eventDict);
-
-        if(_playerCallbacks)
-            _playerCallbacks->onPlayerExit(player);
-        
-        player.onExit();
 
         return true;
     }
@@ -188,7 +215,7 @@ namespace gameanalytics
             eventData["value"]    = value;
 
             // Log
-            logging::GALogger::i("Add DESIGN event: {eventId:%s, value:%f, fields:%s}", eventId.c_str(), value, cleanedFields.dump(JSON_PRINT_INDENT).c_str());
+            logging::GALogger::i("Add DESIGN event: {eventId:%s, value:%f, fields:%s}", eventId.c_str(), value, customFields.c_str());
 
             // Send to store
             events::GAEvents::getInstance().addEventToStore(eventData);
@@ -203,7 +230,7 @@ namespace gameanalytics
         }
     }
 
-    void GameAnalyticsServer::addPlayerErrorEventInternal(Player& player, EGAErrorSeverity severity, std::string const& message, std::string const& function, int32_t line, const json& fields)
+    void GameAnalyticsServer::addPlayerErrorEventInternal(Player& player, EGAErrorSeverity severity, std::string const& message, std::string const& fields)
     {
         try
         {
@@ -229,23 +256,25 @@ namespace gameanalytics
             eventData["severity"] = events::GAEvents::errorSeverityString(severity);
             eventData["message"]  = message;
 
-            constexpr int MAX_FUNCTION_LEN = 256;
-            if(!function.empty())
-            {
-                eventData["function_name"] = utilities::trimString(function, MAX_FUNCTION_LEN);
+            utilities::FunctionInfo f = utilities::getRelevantFunctionFromCallStack();
 
-                if(line >= 0)
+            constexpr int MAX_FUNCTION_LEN = 256;
+            if(!f.functionName.empty())
+            {
+                eventData["function_name"] = utilities::trimString(f.functionName, MAX_FUNCTION_LEN);
+
+                if(f.lineNumber >= 0)
                 {
-                    eventData["line_number"] = line;
+                    eventData["line_number"] = f.lineNumber;
                 }
             }
 
-                // Log
-                logging::GALogger::i("Add ERROR event: {severity:%s, message:%s, fields:%s}", 
-                    events::GAEvents::errorSeverityString(severity).c_str(), message.c_str(), cleanedFields.dump(JSON_PRINT_INDENT).c_str());
+            // Log
+            logging::GALogger::i("Add ERROR event: {severity:%s, message:%s, fields:%s}", 
+                events::GAEvents::errorSeverityString(severity).c_str(), message.c_str(), fields.c_str());
 
-                // Send to store
-                events::GAEvents::getInstance().addEventToStore(eventData);
+            // Send to store
+            events::GAEvents::getInstance().addEventToStore(eventData);
         }
         catch(std::exception& e)
         {
@@ -253,7 +282,7 @@ namespace gameanalytics
         }
     }
 
-    void GameAnalyticsServer::addPlayerBusinessEventInternal(Player& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields = "")
+    void GameAnalyticsServer::addPlayerBusinessEventInternal(Player& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields)
     {
             if(!state::GAState::isEventSubmissionEnabled())
             {
@@ -287,7 +316,7 @@ namespace gameanalytics
                 
                 // Log
                 logging::GALogger::i("Add BUSINESS event: {currency:%s, amount:%d, itemType:%s, itemId:%s, cartType:%s, fields:%s}",
-                    currency.c_str(), amount, itemType.c_str(), itemId.c_str(), cartType.c_str(), cleanedFields.dump(JSON_PRINT_INDENT).c_str());
+                    currency.c_str(), amount, itemType.c_str(), itemId.c_str(), cartType.c_str(), customFields.c_str());
 
                 // Send to store
                 events::GAEvents::getInstance().getInstance().addEventToStore(eventDict);
@@ -296,5 +325,145 @@ namespace gameanalytics
             {
                 logging::GALogger::e("addBusinessEvent - Exception thrown: %s", e.what());
             }
+    }
+
+    void GameAnalyticsServer::addPlayerResourceEventInternal(Player& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& customFields)
+    {
+            try
+            {
+                if(!state::GAState::isEventSubmissionEnabled())
+                {
+                    return;
+                }
+
+                // Validate event params
+                validators::ValidationResult validationResult;
+                validators::GAValidator::validateResourceEvent(flowType, currency, amount, itemType, itemId, validationResult);
+                if (!validationResult.result)
+                {
+                    http::GAHTTPApi& httpInstance = http::GAHTTPApi::getInstance();
+                    httpInstance.sendSdkErrorEvent(validationResult.category, validationResult.area, validationResult.action, validationResult.parameter, validationResult.reason, state::GAState::getGameKey(), state::GAState::getGameSecret());
+                    return;
+                }
+
+                // If flow type is sink reverse amount
+                if (flowType == Sink)
+                {
+                    amount *= -1;
+                }
+
+                // Create empty eventData
+                json eventDict = PlayerDatabase::getPlayerAnnotations(player);
+                
+                const std::string flowStr = events::GAEvents::resourceFlowTypeString(flowType);
+
+                // insert event specific values
+                eventDict["event_id"] = flowStr + ':' + currency + ':' + itemType + ':' + itemId;
+                eventDict["category"] = events::GAEvents::CategoryResource;
+                eventDict["amount"]   = amount;
+
+                // Log
+                logging::GALogger::i("Add RESOURCE event: {currency:%s, amount: %f, itemType:%s, itemId:%s, fields:%s}", 
+                    currency.c_str(), amount, itemType.c_str(), itemId.c_str(), customFields.c_str());
+
+                // Send to store
+                events::GAEvents::getInstance().addEventToStore(eventDict);
+            }
+            catch(const json::exception& e)
+            {
+                logging::GALogger::e("addResourceEvent - Failed to parse json: %s", e.what());
+            }
+            catch(const std::exception& e)
+            {
+                logging::GALogger::e("addResourceEvent - Exception thrown: %s", e.what());
+            }
+    }
+    
+    void GameAnalyticsServer::addPlayerDesignEvent(Player& player, std::string const& eventId, double value, std::string const& customFields)
+    {
+        threading::GAThreading::performTaskOnGAThread(
+            [this, &player, eventId, value, customFields]()
+            {
+                addPlayerDesignEventInternal(player, eventId, value, customFields);
+            }
+        );
+    }
+
+    void GameAnalyticsServer::addPlayerBusinessEvent(Player& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields)
+    {
+        threading::GAThreading::performTaskOnGAThread(
+            [this, &player, currency, amount, cartType, itemType, itemId, customFields]()
+            {
+                addPlayerBusinessEventInternal(player, currency, amount, itemType, itemId, cartType, customFields);
+            }
+        );
+    }
+
+    void GameAnalyticsServer::addPlayerResourceEvent(Player& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& customFields)
+    {
+        threading::GAThreading::performTaskOnGAThread(
+            [this, &player, flowType, currency, amount, itemType, itemId, customFields]()
+            {
+                addPlayerResourceEventInternal(player, flowType, currency, amount, itemType, itemId, customFields);
+            }
+        );
+    }
+
+    void GameAnalyticsServer::addPlayerErrorEvent(Player& player, EGAErrorSeverity severity, std::string const& message, std::string const& customFields)
+    {
+        threading::GAThreading::performTaskOnGAThread(
+            [this, &player, severity, message, customFields]()
+            {
+                addPlayerErrorEventInternal(player, severity, message, customFields);
+            }
+        );
+    }
+
+    void GameAnalyticsServer::addPlayerDesignEvent(std::string const& userId, std::string const& eventId, double value, std::string const& customFields)
+    {
+        if(isExistingPlayer(userId))
+        {
+            return addPlayerDesignEvent(getPlayer(userId), eventId, value, customFields);
+        }
+        else
+        {
+            logging::GALogger::w("Invalid user id: %s", userId.c_str());
+        }
+    }
+
+    void GameAnalyticsServer::addPlayerBusinessEvent(std::string const& userId, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields)
+    {
+        if(isExistingPlayer(userId))
+        {
+            return addPlayerBusinessEvent(getPlayer(userId), currency, amount, itemType, itemId, cartType, customFields);
+        }
+        else
+        {
+            logging::GALogger::w("Invalid user id: %s", userId.c_str());
+        }
+    }
+
+    void GameAnalyticsServer::addPlayerResourceEvent(std::string const& userId, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& customFields)
+    {
+        if(isExistingPlayer(userId))
+        {
+            return addPlayerResourceEvent(getPlayer(userId), flowType, currency, amount, itemType, itemId, customFields);
+        }
+        else
+        {
+            logging::GALogger::w("Invalid user id: %s", userId.c_str());
+        }
+    }
+
+    void GameAnalyticsServer::addPlayerErrorEvent(std::string const& userId, EGAErrorSeverity severity, std::string const& message, std::string const& customFields)
+    {
+        if(isExistingPlayer(userId))
+        {
+            return addPlayerErrorEvent(getPlayer(userId), severity, message, customFields);
+        }
+        else
+        {
+            logging::GALogger::w("Invalid user id: %s", userId.c_str());
+        }
     }
 }
