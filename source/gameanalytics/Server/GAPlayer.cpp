@@ -168,6 +168,7 @@ namespace gameanalytics
             data["manufacturer"]            = manufacturer;
             data["platform"]                = platform;
             data["connection_type"]         = connectionType;
+            data["country_code"]            = countryCode;
 
             utilities::addIfNotEmpty(data, "ab_id", _abId);
             utilities::addIfNotEmpty(data, "ab_variant_id", _abVariantId); 
@@ -215,6 +216,7 @@ namespace gameanalytics
             device       = utilities::getOptionalValue<std::string>(data, "device", "");
             manufacturer = utilities::getOptionalValue<std::string>(data, "manufacturer", "");
             platform     = utilities::getOptionalValue<std::string>(data, "platform", "");
+            countryCode  = utilities::getOptionalValue<std::string>(data, "country_code", "");
 
             _customDimension1 = utilities::getOptionalValue<std::string>(data, "custom_01", "");
             _customDimension2 = utilities::getOptionalValue<std::string>(data, "custom_02", "");

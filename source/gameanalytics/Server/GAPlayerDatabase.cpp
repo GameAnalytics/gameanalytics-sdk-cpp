@@ -138,6 +138,8 @@ namespace gameanalytics
         data["platform"]                = p.platform;
         data["connection_type"]         = p.connectionType;
 
+        utilities::addIfNotEmpty(data, "country_code", p.countryCode);
+        
         utilities::addIfNotEmpty(data, "ab_id", p._abId);
         utilities::addIfNotEmpty(data, "ab_variant_id", p._abVariantId); 
         utilities::addIfNotEmpty(data, "user_id_ext", p.extUserId);
