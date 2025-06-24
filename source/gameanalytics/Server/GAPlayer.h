@@ -2,6 +2,7 @@
 
 #include "GameAnalytics/GATypes.h"
 #include "Server/GACustomFields.h"
+#include <chrono>
 
 namespace gameanalytics
 {
