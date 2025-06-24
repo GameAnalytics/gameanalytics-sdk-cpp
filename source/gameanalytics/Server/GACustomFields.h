@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameAnalytics/GATypes.h"
+#include <variant>
 
 namespace gameanalytics
 {
@@ -20,6 +21,8 @@ namespace gameanalytics
             std::variant<int64_t, double, std::string, bool> value;
         };
 
+        static constexpr int NUM_MAX_CUSTOM_FIELDS = 50;
+
         std::unordered_map<std::string, Value> fields;
 
         inline bool isEmpty() const { return fields.empty(); }
@@ -30,6 +33,10 @@ namespace gameanalytics
         void setValue(std::string const& key, double val);
         void setValue(std::string const& key, std::string const& val);
         void setValue(std::string const& key, bool val);
+
+        void merge(CustomFields const& other);
+
+        bool checkSize() const;
 
         template<typename T>
         T getValue(std::string const& key, T const& defaultValue)

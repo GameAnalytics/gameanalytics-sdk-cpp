@@ -21,9 +21,8 @@ namespace gameanalytics
 
         public:
 
-            GameAnalyticsServer(std::string const& serverId, std::string const& serverName, std::string const& build);
+            GameAnalyticsServer(std::string const& serverId, std::string const& serverName, std::string const& build, int numPlayersHint = -1);
 
-            void setAvailableCustomDimensions();
             void setPlayerCallbacks(std::shared_ptr<PlayerCallbacks> callbacks);
 
             bool isExistingPlayer(std::string const& userId) const;

@@ -12,12 +12,17 @@
 
 namespace gameanalytics
 {
-    GameAnalyticsServer::GameAnalyticsServer(std::string const& serverId, std::string const& extServerId, std::string const& build):
-        _playerDatabase(std::make_shared<PlayerDatabase>())
+    GameAnalyticsServer::GameAnalyticsServer(std::string const& serverId, std::string const& extServerId, std::string const& build, int numPlayersHint):
+        _playerDatabase(std::make_shared<PlayerDatabase>(numPlayersHint))
     {
         GameAnalytics::configureUserId(serverId);
         GameAnalytics::configureBuild(build);
         GameAnalytics::configureExternalUserId(extServerId);
+    }
+
+    void GameAnalyticsServer::setPlayerCallbacks(std::shared_ptr<PlayerCallbacks> callbacks)
+    {
+        _playerCallbacks = callbacks;
     }
 
     bool GameAnalyticsServer::isExistingPlayer(std::string const& uid) const
@@ -181,7 +186,7 @@ namespace gameanalytics
         json eventDict = PlayerDatabase::getPlayerAnnotations(player);
 
         eventDict["category"]   = events::GAEvents::CategorySessionEnd;
-        eventDict["length"]     = player.currentSessionPlaytime();
+        eventDict["length"]     = player.getLastSessionLength();
 
         events::GAEvents::getInstance().addEventToStore(eventDict);
 

@@ -45,4 +45,17 @@ namespace gameanalytics
         json j = serializeCustomFields(*this);
         return j.dump();
     }
+
+    void CustomFields::merge(CustomFields const& other)
+    {
+        for(auto& [key, val]: other.fields)
+        {
+            fields[key] = val;
+        }
+    }
+
+    bool CustomFields::checkSize()
+    {
+        
+    }
 }
