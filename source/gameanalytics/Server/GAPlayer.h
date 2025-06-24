@@ -25,7 +25,7 @@ namespace gameanalytics
 
         std::string _sessionId;
 
-        int      _sessionNum = 0;
+        int     _sessionNum = 0;
         int64_t _sessionLength = 0;
         int64_t _totalSessionLength = 0;
 
@@ -67,13 +67,19 @@ namespace gameanalytics
             std::string getCustomDimension2() const;
             std::string getCustomDimension3() const;
 
+            // returns the last value and increments the transaction count for this player
             int getTransactionNum();
 
+            // returns true if this is the 1st player session
             bool isNewUser() const;
 
+            // returns true if the user has an active session 
             bool isActive() const;
 
-            bool deserialize(std::string const& data);
+            // deserializes a player from the given json
+            bool deserialize(std::string const& jsonData);
+            
+            // serializes a player to a json string
             std::string serialize() const; 
 
             // called when the player joins the server
@@ -82,9 +88,10 @@ namespace gameanalytics
             // called when the player logs off
             void onExit();
             
-            // playtime during the current session
+            // get the playtime during the current session
             int64_t currentSessionPlaytime() const;
 
+            // return playtime of the last session, valid only after onExit has been called
             int64_t getLastSessionLength() const;
 
             // total session playtime

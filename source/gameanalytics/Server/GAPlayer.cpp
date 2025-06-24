@@ -228,7 +228,9 @@ namespace gameanalytics
         catch(const std::exception& e)
         {
             logging::GALogger::e("Failed to deserialize player: %s", e.what());
+            return false;
         }
         
+        return true;
     }
 }

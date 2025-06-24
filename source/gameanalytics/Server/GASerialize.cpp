@@ -15,7 +15,7 @@ namespace gameanalytics
                     break;
 
                 case CustomFields::Value::value_float:
-                    j[key] = std::get<double>(field.value);
+                    j[key] = std::get<double>(field.value); 
                     break;
 
                 case CustomFields::Value::value_str:
