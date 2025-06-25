@@ -16,8 +16,8 @@ namespace gameanalytics
         _playerDatabase(std::make_shared<PlayerDatabase>(numPlayersHint))
     {
         GameAnalytics::configureUserId(serverId);
-        GameAnalytics::configureBuild(build);
         GameAnalytics::configureExternalUserId(extServerId);
+        GameAnalytics::configureBuild(build);
     }
 
     void GameAnalyticsServer::setPlayerCallbacks(std::shared_ptr<PlayerCallbacks> callbacks)
@@ -65,24 +65,32 @@ namespace gameanalytics
         );
     }
 
-    void GameAnalyticsServer::addServerDesignEvent(std::string const& eventId, double value, std::string const& customFields)
+    void GameAnalyticsServer::addServerDesignEvent(std::string const& eventId, double value, CustomFields const& customFields)
     {
-        GameAnalytics::addDesignEvent(eventId, value, customFields);
+        GameAnalytics::addDesignEvent(eventId, value, customFields.toString());
     }
     
-    void GameAnalyticsServer::addServerBusinessEvent(std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields)
+    void GameAnalyticsServer::addServerBusinessEvent(std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields)
     {
-        GameAnalytics::addBusinessEvent(currency, amount, itemType, itemId, cartType, customFields);
+        GameAnalytics::addBusinessEvent(currency, amount, itemType, itemId, cartType, customFields.toString());
     }
     
-    void GameAnalyticsServer::addServerResourceEvent(EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& customFields)
+    void GameAnalyticsServer::addServerResourceEvent(EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, CustomFields const& customFields)
     {
-        GameAnalytics::addResourceEvent(flowType, currency, amount, itemType, itemId, customFields);
+        GameAnalytics::addResourceEvent(flowType, currency, amount, itemType, itemId, customFields.toString());
     }
     
-    void GameAnalyticsServer::addServerErrorEvent(EGAErrorSeverity severity, std::string const& message, std::string const& customFields)
+    void GameAnalyticsServer::addServerErrorEvent(EGAErrorSeverity severity, std::string const& message, CustomFields const& customFields)
     {
-        GameAnalytics::addErrorEvent(severity, message, customFields);
+        GameAnalytics::addErrorEvent(severity, message, customFields.toString());
+    }
+
+    void GameAnalyticsServer::addServerProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, CustomFields const& customFields)
+    {
+        if(sendScore)
+            GameAnalytics::addProgressionEvent(progressionStatus, score, progression01, progression02, progression03, customFields.toString());
+        else
+            GameAnalytics::addProgressionEvent(progressionStatus, score, progression01, progression02, progression03, customFields.toString());
     }
 
     bool GameAnalyticsServer::startPlayerSessionInternal(std::string const& userId)
@@ -90,7 +98,7 @@ namespace gameanalytics
         // check if it's a new player
         if(!isExistingPlayer(userId))
         {
-            Player newPlayer(userId);
+            Player newPlayer(userId, "");
             if(!addPlayer(std::move(newPlayer)))
             {
                 logging::GALogger::e("Failed to register new player: %s", userId.c_str());
@@ -193,7 +201,7 @@ namespace gameanalytics
         return true;
     }
 
-    void GameAnalyticsServer::addPlayerDesignEventInternal(Player& player, std::string const& eventId, double value, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerDesignEventInternal(Player& player, std::string const& eventId, double value, CustomFields const& customFields)
     {
         try
         {
@@ -213,17 +221,23 @@ namespace gameanalytics
             }
 
             // Create empty eventData
-            json eventData = PlayerDatabase::getPlayerAnnotations(player);
+            json eventDict = PlayerDatabase::getPlayerAnnotations(player);
             
-            eventData["category"] = events::GAEvents::CategoryDesign;
-            eventData["event_id"] = eventId;
-            eventData["value"]    = value;
+            eventDict["category"] = events::GAEvents::CategoryDesign;
+            eventDict["event_id"] = eventId;
+            eventDict["value"]    = value;
+
+            if(!customFields.isEmpty())
+            {
+                json& fields = eventDict["custom_fields"];
+                fields.merge_patch(serializeCustomFields(customFields));
+            }
 
             // Log
-            logging::GALogger::i("Add DESIGN event: {eventId:%s, value:%f, fields:%s}", eventId.c_str(), value, customFields.c_str());
+            logging::GALogger::i("Add DESIGN event: {eventId:%s, value:%f, fields:%s}", eventId.c_str(), value, customFields.toString().c_str());
 
             // Send to store
-            events::GAEvents::getInstance().addEventToStore(eventData);
+            events::GAEvents::getInstance().addEventToStore(eventDict);
         }
         catch(json::exception const& e)
         {
@@ -235,7 +249,7 @@ namespace gameanalytics
         }
     }
 
-    void GameAnalyticsServer::addPlayerErrorEventInternal(Player& player, EGAErrorSeverity severity, std::string const& message, std::string const& fields)
+    void GameAnalyticsServer::addPlayerErrorEventInternal(Player& player, EGAErrorSeverity severity, std::string const& message, CustomFields const& customFields)
     {
         try
         {
@@ -255,31 +269,37 @@ namespace gameanalytics
             }
 
             // Create empty eventData
-            json eventData = PlayerDatabase::getPlayerAnnotations(player);
+            json eventDict = PlayerDatabase::getPlayerAnnotations(player);
 
-            eventData["category"] = events::GAEvents::CategoryError;
-            eventData["severity"] = events::GAEvents::errorSeverityString(severity);
-            eventData["message"]  = message;
+            eventDict["category"] = events::GAEvents::CategoryError;
+            eventDict["severity"] = events::GAEvents::errorSeverityString(severity);
+            eventDict["message"]  = message;
 
             utilities::FunctionInfo f = utilities::getRelevantFunctionFromCallStack();
 
             constexpr int MAX_FUNCTION_LEN = 256;
             if(!f.functionName.empty())
             {
-                eventData["function_name"] = utilities::trimString(f.functionName, MAX_FUNCTION_LEN);
+                eventDict["function_name"] = utilities::trimString(f.functionName, MAX_FUNCTION_LEN);
 
                 if(f.lineNumber >= 0)
                 {
-                    eventData["line_number"] = f.lineNumber;
+                    eventDict["line_number"] = f.lineNumber;
                 }
+            }
+
+            if(!customFields.isEmpty())
+            {
+                json& fields = eventDict["custom_fields"];
+                fields.merge_patch(serializeCustomFields(customFields));
             }
 
             // Log
             logging::GALogger::i("Add ERROR event: {severity:%s, message:%s, fields:%s}", 
-                events::GAEvents::errorSeverityString(severity).c_str(), message.c_str(), fields.c_str());
+                events::GAEvents::errorSeverityString(severity).c_str(), message.c_str(), customFields.toString().c_str());
 
             // Send to store
-            events::GAEvents::getInstance().addEventToStore(eventData);
+            events::GAEvents::getInstance().addEventToStore(eventDict);
         }
         catch(std::exception& e)
         {
@@ -287,7 +307,7 @@ namespace gameanalytics
         }
     }
 
-    void GameAnalyticsServer::addPlayerBusinessEventInternal(Player& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerBusinessEventInternal(Player& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields)
     {
             if(!state::GAState::isEventSubmissionEnabled())
             {
@@ -318,10 +338,16 @@ namespace gameanalytics
                 eventDict["transaction_num"] = transactionNum;
 
                 utilities::addIfNotEmpty(eventDict, "cart_type", cartType);
+
+                if(!customFields.isEmpty())
+                {
+                    json& fields = eventDict["custom_fields"];
+                    fields.merge_patch(serializeCustomFields(customFields));
+                }
                 
                 // Log
                 logging::GALogger::i("Add BUSINESS event: {currency:%s, amount:%d, itemType:%s, itemId:%s, cartType:%s, fields:%s}",
-                    currency.c_str(), amount, itemType.c_str(), itemId.c_str(), cartType.c_str(), customFields.c_str());
+                    currency.c_str(), amount, itemType.c_str(), itemId.c_str(), cartType.c_str(), customFields.toString().c_str());
 
                 // Send to store
                 events::GAEvents::getInstance().getInstance().addEventToStore(eventDict);
@@ -332,7 +358,7 @@ namespace gameanalytics
             }
     }
 
-    void GameAnalyticsServer::addPlayerResourceEventInternal(Player& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerResourceEventInternal(Player& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, CustomFields const& customFields)
     {
             try
             {
@@ -367,9 +393,15 @@ namespace gameanalytics
                 eventDict["category"] = events::GAEvents::CategoryResource;
                 eventDict["amount"]   = amount;
 
+                if(!customFields.isEmpty())
+                {
+                    json& fields = eventDict["custom_fields"];
+                    fields.merge_patch(serializeCustomFields(customFields));
+                }
+
                 // Log
                 logging::GALogger::i("Add RESOURCE event: {currency:%s, amount: %f, itemType:%s, itemId:%s, fields:%s}", 
-                    currency.c_str(), amount, itemType.c_str(), itemId.c_str(), customFields.c_str());
+                    currency.c_str(), amount, itemType.c_str(), itemId.c_str(), customFields.toString().c_str());
 
                 // Send to store
                 events::GAEvents::getInstance().addEventToStore(eventDict);
@@ -384,7 +416,7 @@ namespace gameanalytics
             }
     }
     
-    void GameAnalyticsServer::addPlayerProgressionEventInternal(Player& player, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerProgressionEventInternal(Player& player, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, CustomFields const& customFields)
     {
             try
             {
@@ -452,13 +484,19 @@ namespace gameanalytics
                     attempt_num = player.progressionTries.getTries(progressionIdentifier);
                     eventDict["attempt_num"] = attempt_num;
 
+                    if(!customFields.isEmpty())
+                    {
+                        json& fields = eventDict["custom_fields"];
+                        fields.merge_patch(serializeCustomFields(customFields));
+                    }
+
                     // Clear
                     state::GAState::clearProgressionTries(progressionIdentifier);
                 }
 
                 // Log
                 logging::GALogger::i("Add PROGRESSION event: {status:%s, progression01:%s, progression02:%s, progression03:%s, score:%d, attempt:%d, fields:%s}", 
-                    statusString.c_str(), progression01.c_str(), progression02.c_str(), progression03.c_str(), score, attempt_num, customFields.c_str());
+                    statusString.c_str(), progression01.c_str(), progression02.c_str(), progression03.c_str(), score, attempt_num, customFields.toString().c_str());
 
                 // Send to store
                 events::GAEvents::getInstance().addEventToStore(eventDict);
@@ -469,7 +507,7 @@ namespace gameanalytics
             }
     }
 
-    void GameAnalyticsServer::addPlayerDesignEvent(Player& player, std::string const& eventId, double value, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerDesignEvent(Player& player, std::string const& eventId, double value, CustomFields const& customFields)
     {
         threading::GAThreading::performTaskOnGAThread(
             [this, &player, eventId, value, customFields]()
@@ -479,7 +517,7 @@ namespace gameanalytics
         );
     }
 
-    void GameAnalyticsServer::addPlayerBusinessEvent(Player& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerBusinessEvent(Player& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields)
     {
         threading::GAThreading::performTaskOnGAThread(
             [this, &player, currency, amount, cartType, itemType, itemId, customFields]()
@@ -489,7 +527,7 @@ namespace gameanalytics
         );
     }
 
-    void GameAnalyticsServer::addPlayerResourceEvent(Player& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerResourceEvent(Player& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, CustomFields const& customFields)
     {
         threading::GAThreading::performTaskOnGAThread(
             [this, &player, flowType, currency, amount, itemType, itemId, customFields]()
@@ -499,7 +537,7 @@ namespace gameanalytics
         );
     }
 
-    void GameAnalyticsServer::addPlayerErrorEvent(Player& player, EGAErrorSeverity severity, std::string const& message, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerErrorEvent(Player& player, EGAErrorSeverity severity, std::string const& message, CustomFields const& customFields)
     {
         threading::GAThreading::performTaskOnGAThread(
             [this, &player, severity, message, customFields]()
@@ -509,7 +547,7 @@ namespace gameanalytics
         );
     }
 
-    void GameAnalyticsServer::addPlayerProgressionEvent(Player& player, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerProgressionEvent(Player& player, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, CustomFields const& customFields)
     {
         threading::GAThreading::performTaskOnGAThread(
             [this, &player, progressionStatus, progression01, progression02, progression03, sendScore, score, customFields]()
@@ -519,7 +557,7 @@ namespace gameanalytics
         );
     }
 
-    void GameAnalyticsServer::addPlayerDesignEvent(std::string const& userId, std::string const& eventId, double value, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerDesignEvent(std::string const& userId, std::string const& eventId, double value, CustomFields const& customFields)
     {
         if(isExistingPlayer(userId))
         {
@@ -531,7 +569,7 @@ namespace gameanalytics
         }
     }
 
-    void GameAnalyticsServer::addPlayerBusinessEvent(std::string const& userId, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerBusinessEvent(std::string const& userId, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields)
     {
         if(isExistingPlayer(userId))
         {
@@ -543,7 +581,7 @@ namespace gameanalytics
         }
     }
 
-    void GameAnalyticsServer::addPlayerResourceEvent(std::string const& userId, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerResourceEvent(std::string const& userId, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, CustomFields const& customFields)
     {
         if(isExistingPlayer(userId))
         {
@@ -555,7 +593,7 @@ namespace gameanalytics
         }
     }
 
-    void GameAnalyticsServer::addPlayerErrorEvent(std::string const& userId, EGAErrorSeverity severity, std::string const& message, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerErrorEvent(std::string const& userId, EGAErrorSeverity severity, std::string const& message, CustomFields const& customFields)
     {
         if(isExistingPlayer(userId))
         {
@@ -567,7 +605,7 @@ namespace gameanalytics
         }
     }
 
-    void GameAnalyticsServer::addPlayerProgressionEvent(std::string const& userId, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, std::string const& customFields)
+    void GameAnalyticsServer::addPlayerProgressionEvent(std::string const& userId, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, CustomFields const& customFields)
     {
         if(isExistingPlayer(userId))
         {

@@ -27,16 +27,16 @@ namespace gameanalytics
 
         inline bool isEmpty() const { return fields.empty(); }
 
+        inline size_t numFields() const { return fields.size(); }
+
         std::string toString() const;
 
-        void setValue(std::string const& key, int64_t val);
-        void setValue(std::string const& key, double val);
-        void setValue(std::string const& key, std::string const& val);
-        void setValue(std::string const& key, bool val);
+        bool setValue(std::string const& key, int64_t val);
+        bool setValue(std::string const& key, double val);
+        bool setValue(std::string const& key, std::string const& val);
+        bool setValue(std::string const& key, bool val);
 
-        void merge(CustomFields const& other);
-
-        bool checkSize() const;
+        bool merge(CustomFields const& other);
 
         template<typename T>
         T getValue(std::string const& key, T const& defaultValue)
@@ -45,6 +45,21 @@ namespace gameanalytics
         }
         
         private:
+
+        bool checkCustomFieldLimit() const;
+
+        template<typename T>
+        bool setField(std::string const& key, T const& val)
+        {
+            if(checkCustomFieldLimit())
+            {
+                Value v;
+                v.key = key;
+                v.value = val;
+
+                fields[key] = v;
+            }
+        }
 
         template<typename T>
         T getValueById(std::string const& key, int id, T const& defaultValue)

@@ -46,6 +46,13 @@ namespace gameanalytics
             return false;
         }
 
+        Player& p = getPlayer(uid);
+        if(p.isActive())
+        {
+            logging::GALogger::w("Cannot remove player while the player is active, user id: %s", uid.c_str());
+            return false;
+        }
+
         _players.erase(uid);
         return true;
     }
@@ -66,12 +73,16 @@ namespace gameanalytics
             return false;
         }
 
-        Player player = getPlayer(uid);
-        player._userId = newUserId;
+        Player& player = getPlayer(uid);
+        if(player.isActive())
+        {
+            logging::GALogger::w("Cannot change user id while the user is active, user id: %s", uid.c_str());
+            return false;
+        }
 
+        player._userId = newUserId;
         _players[newUserId] = std::move(player);
-        
-        return true;
+        return removePlayer(uid);
     }
 
     Player& PlayerDatabase::getPlayer(std::string const& userId)
@@ -139,7 +150,7 @@ namespace gameanalytics
         data["connection_type"]         = p.connectionType;
 
         utilities::addIfNotEmpty(data, "country_code", p.countryCode);
-        
+
         utilities::addIfNotEmpty(data, "ab_id", p._abId);
         utilities::addIfNotEmpty(data, "ab_variant_id", p._abVariantId); 
         utilities::addIfNotEmpty(data, "user_id_ext", p.extUserId);
