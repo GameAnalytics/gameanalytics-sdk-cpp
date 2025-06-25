@@ -58,7 +58,11 @@ namespace gameanalytics
                 v.value = val;
 
                 fields[key] = v;
+
+                return true;
             }
+
+            return false;
         }
 
         template<typename T>
