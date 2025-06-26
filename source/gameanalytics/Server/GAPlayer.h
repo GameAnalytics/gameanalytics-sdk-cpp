@@ -73,7 +73,7 @@ namespace gameanalytics
             std::string getCustomDimension3() const;
 
             // returns the last value and increments the transaction count for this player
-            int getTransactionNum();
+            int getNextTransactionNum();
 
             // returns true if this is the 1st player session
             bool isNewUser() const;

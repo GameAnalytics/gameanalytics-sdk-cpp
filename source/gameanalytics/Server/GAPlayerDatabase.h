@@ -30,5 +30,7 @@ namespace gameanalytics
 
             static json getPlayerAnnotations(Player const& player);
             static json getInitAnnotations(Player const& player);
+
+            inline Player& operator[](std::string const& uid) { return getPlayer(uid); }
     };
 }

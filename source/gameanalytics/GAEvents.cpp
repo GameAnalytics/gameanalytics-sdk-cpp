@@ -804,7 +804,7 @@ namespace gameanalytics
                 json ev;
                 state::GAState::getEventAnnotations(ev);
                 
-                logging::GALogger::i(ev.dump().c_str());
+                logging::GALogger::v("Event annotations: %s", ev.dump().c_str());
                 
                 ev.merge_patch(eventData);
 

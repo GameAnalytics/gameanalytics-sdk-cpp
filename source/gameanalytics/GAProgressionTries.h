@@ -7,9 +7,7 @@ namespace gameanalytics
 
 struct ProgressionTries
 {
-    public:
-
-    inline void addOrUpdate(std::string const& s, int tries)
+    inline void setTries(std::string const& s, int tries)
     {
         _tries[s] = tries;
     }
@@ -24,12 +22,7 @@ struct ProgressionTries
 
     inline int getTries(std::string const& s) const
     {
-        if (_tries.count(s))
-        {
-            return _tries.at(s);
-        }
-
-        return 0;
+        return _tries.count(s) ? _tries.at(s) : 0;
     }
 
     inline int incrementTries(std::string const& s)
@@ -40,14 +33,14 @@ struct ProgressionTries
         }
         else
         {
-             _tries[s] = 1;
+            _tries[s] = 1;
         }
 
-            return _tries[s];
-        }
+        return _tries[s];
+    }
 
-        private:
+    private:
             
-            std::unordered_map<std::string, int> _tries;
+        std::unordered_map<std::string, int> _tries;
     };
 }

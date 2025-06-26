@@ -649,7 +649,7 @@ namespace gameanalytics
                             std::string name = node["progression"].get<std::string>();
 
                             int tries = utilities::getOptionalValue<int>(node, "tries", 0);
-                            _progressionTries.addOrUpdate(name, tries);
+                            _progressionTries.setTries(name, tries);
                         }
                     }
                 }

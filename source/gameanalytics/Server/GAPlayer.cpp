@@ -110,7 +110,7 @@ namespace gameanalytics
         return _customDimension3;
     }
 
-    int Player::getTransactionNum()
+    int Player::getNextTransactionNum()
     {
         int num = _transactionNum;
         ++_transactionNum;

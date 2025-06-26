@@ -44,13 +44,13 @@ namespace gameanalytics
             {
                 f.value = item.value().get<bool>();    
             }
-            else if(item.value().is_number_float())
-            {
-                f.value = item.value().get<double>();
-            }
             else if(item.value().is_number_integer())
             {
                 f.value = item.value().get<int64_t>();
+            }
+            else if(item.value().is_number_float())
+            {
+                f.value = item.value().get<double>();
             }
             else if(item.value().is_string())
             {

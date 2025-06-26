@@ -31,39 +31,25 @@ namespace gameanalytics
 
         std::string toString() const;
 
-        bool setValue(std::string const& key, int64_t val);
-        bool setValue(std::string const& key, double val);
-        bool setValue(std::string const& key, std::string const& val);
-        bool setValue(std::string const& key, bool val);
+        bool setInt(std::string const& key, int64_t val);
+        bool setFloat(std::string const& key, double val);
+        bool setString(std::string const& key, std::string const& val);
+        bool setBool(std::string const& key, bool val);
 
         bool merge(CustomFields const& other);
 
         template<typename T>
+        bool setValue(std::string const& key, T const& val);
+
+        template<typename T>
         T getValue(std::string const& key, T const& defaultValue)
         {
-            return defaultValue;
+            return getValueById<int64_t>(key, Value::value_int, defaultValue);
         }
         
         private:
 
         bool checkCustomFieldLimit() const;
-
-        template<typename T>
-        bool setField(std::string const& key, T const& val)
-        {
-            if(checkCustomFieldLimit())
-            {
-                Value v;
-                v.key = key;
-                v.value = val;
-
-                fields[key] = v;
-
-                return true;
-            }
-
-            return false;
-        }
 
         template<typename T>
         T getValueById(std::string const& key, int id, T const& defaultValue)
@@ -74,16 +60,27 @@ namespace gameanalytics
 
     #pragma region get_value_specialization
 
+        template<typename T>
+        bool CustomFields::setValue(std::string const& key, T const& val)
+        {
+            if(checkCustomFieldLimit())
+            {
+                Value v;
+                v.key = key;
+                v.value = val;
+
+                fields[key] = std::move(v);
+
+                return true;
+            }
+
+            return false;
+        }
+
         template<>
         inline std::string CustomFields::getValue<std::string>(std::string const& key, std::string const& defaultValue)
         {
             return getValueById<std::string>(key, Value::value_str, defaultValue);
-        }
-
-        template<>
-        inline int64_t CustomFields::getValue<int64_t>(std::string const& key, int64_t const& defaultValue)
-        {
-            return getValueById<int64_t>(key, Value::value_int, defaultValue);
         }
 
         template<>
@@ -96,12 +93,6 @@ namespace gameanalytics
         inline bool CustomFields::getValue<bool>(std::string const& key, bool const& defaultValue)
         {
             return getValueById<bool>(key, Value::value_bool, defaultValue);
-        }
-
-        template<>
-        inline int CustomFields::getValue<int>(std::string const& key, int const& defaultValue)
-        {
-            return static_cast<int>(getValue<int64_t>(key, defaultValue));
         }
 
         template<>

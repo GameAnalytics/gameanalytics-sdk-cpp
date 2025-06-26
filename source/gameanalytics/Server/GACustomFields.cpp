@@ -17,24 +17,24 @@ namespace gameanalytics
         return true;
     }
 
-    bool CustomFields::setValue(std::string const& key, int64_t val)
+    bool CustomFields::setInt(std::string const& key, int64_t val)
     {
-        return setField(key, val);
+        return setValue<int64_t>(key, val);
     }
 
-    bool CustomFields::setValue(std::string const& key, double val)
+    bool CustomFields::setFloat(std::string const& key, double val)
     {
-        return setField(key, val);
+        return setValue<double>(key, val);
     }
 
-    bool CustomFields::setValue(std::string const& key, std::string const& val)
+    bool CustomFields::setString(std::string const& key, std::string const& val)
     {
-        return setField(key, val);
+        return setValue<std::string>(key, val);
     }
 
-    bool CustomFields::setValue(std::string const& key, bool val)
+    bool CustomFields::setBool(std::string const& key, bool val)
     {
-        return setField(key, val);
+        return setValue<bool>(key, val);
     }
 
     std::string CustomFields::toString() const

@@ -408,7 +408,6 @@ namespace gameanalytics
             }
 
             // Send to events
-
             try
             {
                 json fieldsJson = utilities::parseFields(fields);
@@ -1004,6 +1003,7 @@ namespace gameanalytics
             }
             return false;
         }
+        
         return true;
     }
 

@@ -309,202 +309,202 @@ namespace gameanalytics
 
     void GameAnalyticsServer::addPlayerBusinessEventInternal(Player& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields)
     {
+        if(!state::GAState::isEventSubmissionEnabled())
+        {
+            return;
+        }
+
+        try 
+        {
+            // Validate event params
+            validators::ValidationResult validationResult;
+            validators::GAValidator::validateBusinessEvent(currency, amount, cartType, itemType, itemId, validationResult);
+            if (!validationResult.result)
+            {
+                http::GAHTTPApi& httpInstance = http::GAHTTPApi::getInstance();
+                httpInstance.sendSdkErrorEvent(validationResult.category, validationResult.area, validationResult.action, validationResult.parameter, validationResult.reason, state::GAState::getGameKey(), state::GAState::getGameSecret());
+                return;
+            }
+
+            // Create empty eventData
+            json eventDict = PlayerDatabase::getPlayerAnnotations(player);
+
+            const int64_t transactionNum = player.getNextTransactionNum();
+
+            eventDict["category"] = events::GAEvents::CategoryBusiness;
+            eventDict["event_id"] = itemType + ':' + itemId;
+            eventDict["currency"] = currency;
+            eventDict["amount"]   = amount;
+            eventDict["transaction_num"] = transactionNum;
+
+            utilities::addIfNotEmpty(eventDict, "cart_type", cartType);
+
+            if(!customFields.isEmpty())
+            {
+                json& fields = eventDict["custom_fields"];
+                fields.merge_patch(serializeCustomFields(customFields));
+            }
+                
+            // Log
+            logging::GALogger::i("Add BUSINESS event: {currency:%s, amount:%d, itemType:%s, itemId:%s, cartType:%s, fields:%s}",
+                    currency.c_str(), amount, itemType.c_str(), itemId.c_str(), cartType.c_str(), customFields.toString().c_str());
+
+            // Send to store
+            events::GAEvents::getInstance().getInstance().addEventToStore(eventDict);
+        } 
+        catch (std::exception const& e)
+        {
+            logging::GALogger::e("addBusinessEvent - Exception thrown: %s", e.what());
+        }
+    }
+
+    void GameAnalyticsServer::addPlayerResourceEventInternal(Player& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, CustomFields const& customFields)
+    {
+        try
+        {
             if(!state::GAState::isEventSubmissionEnabled())
             {
                 return;
             }
 
-            try 
+            // Validate event params
+            validators::ValidationResult validationResult;
+            validators::GAValidator::validateResourceEvent(flowType, currency, amount, itemType, itemId, validationResult);
+            if (!validationResult.result)
             {
-                // Validate event params
-                validators::ValidationResult validationResult;
-                validators::GAValidator::validateBusinessEvent(currency, amount, cartType, itemType, itemId, validationResult);
-                if (!validationResult.result)
-                {
-                    http::GAHTTPApi& httpInstance = http::GAHTTPApi::getInstance();
-                    httpInstance.sendSdkErrorEvent(validationResult.category, validationResult.area, validationResult.action, validationResult.parameter, validationResult.reason, state::GAState::getGameKey(), state::GAState::getGameSecret());
-                    return;
-                }
-
-                // Create empty eventData
-                json eventDict = PlayerDatabase::getPlayerAnnotations(player);
-
-                const int64_t transactionNum = player.getTransactionNum();
-
-                eventDict["category"] = events::GAEvents::CategoryBusiness;
-                eventDict["event_id"] = itemType + ':' + itemId;
-                eventDict["currency"] = currency;
-                eventDict["amount"]   = amount;
-                eventDict["transaction_num"] = transactionNum;
-
-                utilities::addIfNotEmpty(eventDict, "cart_type", cartType);
-
-                if(!customFields.isEmpty())
-                {
-                    json& fields = eventDict["custom_fields"];
-                    fields.merge_patch(serializeCustomFields(customFields));
-                }
-                
-                // Log
-                logging::GALogger::i("Add BUSINESS event: {currency:%s, amount:%d, itemType:%s, itemId:%s, cartType:%s, fields:%s}",
-                    currency.c_str(), amount, itemType.c_str(), itemId.c_str(), cartType.c_str(), customFields.toString().c_str());
-
-                // Send to store
-                events::GAEvents::getInstance().getInstance().addEventToStore(eventDict);
-            } 
-            catch (std::exception const& e)
-            {
-                logging::GALogger::e("addBusinessEvent - Exception thrown: %s", e.what());
+                http::GAHTTPApi& httpInstance = http::GAHTTPApi::getInstance();
+                httpInstance.sendSdkErrorEvent(validationResult.category, validationResult.area, validationResult.action, validationResult.parameter, validationResult.reason, state::GAState::getGameKey(), state::GAState::getGameSecret());
+                return;
             }
-    }
 
-    void GameAnalyticsServer::addPlayerResourceEventInternal(Player& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, CustomFields const& customFields)
-    {
-            try
+            // If flow type is sink reverse amount
+            if (flowType == Sink)
             {
-                if(!state::GAState::isEventSubmissionEnabled())
-                {
-                    return;
-                }
+                amount *= -1;
+            }
 
-                // Validate event params
-                validators::ValidationResult validationResult;
-                validators::GAValidator::validateResourceEvent(flowType, currency, amount, itemType, itemId, validationResult);
-                if (!validationResult.result)
-                {
-                    http::GAHTTPApi& httpInstance = http::GAHTTPApi::getInstance();
-                    httpInstance.sendSdkErrorEvent(validationResult.category, validationResult.area, validationResult.action, validationResult.parameter, validationResult.reason, state::GAState::getGameKey(), state::GAState::getGameSecret());
-                    return;
-                }
-
-                // If flow type is sink reverse amount
-                if (flowType == Sink)
-                {
-                    amount *= -1;
-                }
-
-                // Create empty eventData
-                json eventDict = PlayerDatabase::getPlayerAnnotations(player);
+            // Create empty eventData
+            json eventDict = PlayerDatabase::getPlayerAnnotations(player);
                 
-                const std::string flowStr = events::GAEvents::resourceFlowTypeString(flowType);
+            const std::string flowStr = events::GAEvents::resourceFlowTypeString(flowType);
 
-                // insert event specific values
-                eventDict["event_id"] = flowStr + ':' + currency + ':' + itemType + ':' + itemId;
-                eventDict["category"] = events::GAEvents::CategoryResource;
-                eventDict["amount"]   = amount;
+            // insert event specific values
+            eventDict["event_id"] = flowStr + ':' + currency + ':' + itemType + ':' + itemId;
+            eventDict["category"] = events::GAEvents::CategoryResource;
+            eventDict["amount"]   = amount;
 
-                if(!customFields.isEmpty())
-                {
-                    json& fields = eventDict["custom_fields"];
-                    fields.merge_patch(serializeCustomFields(customFields));
-                }
+            if(!customFields.isEmpty())
+            {
+                json& fields = eventDict["custom_fields"];
+                fields.merge_patch(serializeCustomFields(customFields));
+            }
 
-                // Log
-                logging::GALogger::i("Add RESOURCE event: {currency:%s, amount: %f, itemType:%s, itemId:%s, fields:%s}", 
+            // Log
+            logging::GALogger::i("Add RESOURCE event: {currency:%s, amount: %f, itemType:%s, itemId:%s, fields:%s}", 
                     currency.c_str(), amount, itemType.c_str(), itemId.c_str(), customFields.toString().c_str());
 
-                // Send to store
-                events::GAEvents::getInstance().addEventToStore(eventDict);
-            }
-            catch(const json::exception& e)
-            {
-                logging::GALogger::e("addResourceEvent - Failed to parse json: %s", e.what());
-            }
-            catch(const std::exception& e)
-            {
-                logging::GALogger::e("addResourceEvent - Exception thrown: %s", e.what());
-            }
+            // Send to store
+            events::GAEvents::getInstance().addEventToStore(eventDict);
+        }
+        catch(const json::exception& e)
+        {
+            logging::GALogger::e("addResourceEvent - Failed to parse json: %s", e.what());
+        }
+        catch(const std::exception& e)
+        {
+            logging::GALogger::e("addResourceEvent - Exception thrown: %s", e.what());
+        }
     }
     
     void GameAnalyticsServer::addPlayerProgressionEventInternal(Player& player, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, CustomFields const& customFields)
     {
-            try
+        try
+        {
+            if(!state::GAState::isEventSubmissionEnabled())
             {
-                if(!state::GAState::isEventSubmissionEnabled())
-                {
-                    return;
-                }
+                return;
+            }
 
-                // Validate event params
-                validators::ValidationResult validationResult;
-                validators::GAValidator::validateProgressionEvent(progressionStatus, progression01, progression02, progression03, validationResult);
-                if (!validationResult.result)
-                {
-                    http::GAHTTPApi& httpInstance = http::GAHTTPApi::getInstance();
-                    httpInstance.sendSdkErrorEvent(validationResult.category, validationResult.area, validationResult.action, validationResult.parameter, validationResult.reason, state::GAState::getGameKey(), state::GAState::getGameSecret());
-                    return;
-                }
+            // Validate event params
+            validators::ValidationResult validationResult;
+            validators::GAValidator::validateProgressionEvent(progressionStatus, progression01, progression02, progression03, validationResult);
+            if (!validationResult.result)
+            {
+                http::GAHTTPApi& httpInstance = http::GAHTTPApi::getInstance();
+                httpInstance.sendSdkErrorEvent(validationResult.category, validationResult.area, validationResult.action, validationResult.parameter, validationResult.reason, state::GAState::getGameKey(), state::GAState::getGameSecret());
+                return;
+            }
 
-                // Create empty eventData
-                json eventDict = PlayerDatabase::getPlayerAnnotations(player);
+            // Create empty eventData
+            json eventDict = PlayerDatabase::getPlayerAnnotations(player);
 
-                // Progression identifier
-                std::string progressionIdentifier = progression01;
+            // Progression identifier
+            std::string progressionIdentifier = progression01;
 
-                if(!progression02.empty())
+            if(!progression02.empty())
+            {
+                progressionIdentifier += ':';
+                progressionIdentifier += progression02;
+
+                if(!progression03.empty())
                 {
                     progressionIdentifier += ':';
-                    progressionIdentifier += progression02;
-
-                    if(!progression03.empty())
-                    {
-                        progressionIdentifier += ':';
-                        progressionIdentifier += progression03;
-                    }
+                    progressionIdentifier += progression03;
                 }
+            }
 
-                const std::string statusString = events::GAEvents::progressionStatusString(progressionStatus);
+            const std::string statusString = events::GAEvents::progressionStatusString(progressionStatus);
 
-                eventDict["category"] = events::GAEvents::CategoryProgression;
-                eventDict["event_id"] = statusString + ':' + progressionIdentifier;
+            eventDict["category"] = events::GAEvents::CategoryProgression;
+            eventDict["event_id"] = statusString + ':' + progressionIdentifier;
 
-                // Attempt
-                int attempt_num = 0;
+            // Attempt
+            int attempt_num = 0;
 
-                // Add score if specified and status is not start
-                if (sendScore && progressionStatus != EGAProgressionStatus::Start)
+            // Add score if specified and status is not start
+            if (sendScore && progressionStatus != EGAProgressionStatus::Start)
+            {
+                eventDict["score"] = score;
+            }
+
+            // Count attempts on each progression fail and persist
+            if (progressionStatus == EGAProgressionStatus::Fail)
+            {
+                // Increment attempt number
+                player.progressionTries.incrementTries(progressionIdentifier);
+            }
+
+            // increment and add attempt_num on complete and delete persisted
+            if (progressionStatus == EGAProgressionStatus::Complete)
+            {
+                // Increment attempt number
+                player.progressionTries.incrementTries(progressionIdentifier);
+
+                // Add to event
+                attempt_num = player.progressionTries.getTries(progressionIdentifier);
+                eventDict["attempt_num"] = attempt_num;
+
+                if(!customFields.isEmpty())
                 {
-                    eventDict["score"] = score;
+                    json& fields = eventDict["custom_fields"];
+                    fields.merge_patch(serializeCustomFields(customFields));
                 }
-
-                // Count attempts on each progression fail and persist
-                if (progressionStatus == EGAProgressionStatus::Fail)
-                {
-                    // Increment attempt number
-                    player.progressionTries.incrementTries(progressionIdentifier);
-                }
-
-                // increment and add attempt_num on complete and delete persisted
-                if (progressionStatus == EGAProgressionStatus::Complete)
-                {
-                    // Increment attempt number
-                    player.progressionTries.incrementTries(progressionIdentifier);
-
-                    // Add to event
-                    attempt_num = player.progressionTries.getTries(progressionIdentifier);
-                    eventDict["attempt_num"] = attempt_num;
-
-                    if(!customFields.isEmpty())
-                    {
-                        json& fields = eventDict["custom_fields"];
-                        fields.merge_patch(serializeCustomFields(customFields));
-                    }
 
                     // Clear
-                    state::GAState::clearProgressionTries(progressionIdentifier);
-                }
+                state::GAState::clearProgressionTries(progressionIdentifier);
+            }
 
-                // Log
-                logging::GALogger::i("Add PROGRESSION event: {status:%s, progression01:%s, progression02:%s, progression03:%s, score:%d, attempt:%d, fields:%s}", 
+            // Log
+            logging::GALogger::i("Add PROGRESSION event: {status:%s, progression01:%s, progression02:%s, progression03:%s, score:%d, attempt:%d, fields:%s}", 
                     statusString.c_str(), progression01.c_str(), progression02.c_str(), progression03.c_str(), score, attempt_num, customFields.toString().c_str());
 
-                // Send to store
-                events::GAEvents::getInstance().addEventToStore(eventDict);
-            }
-            catch(std::exception& e)
-            {
-                logging::GALogger::e("addProgressionEvent - Exception thrown: %s", e.what());
-            }
+            // Send to store
+            events::GAEvents::getInstance().addEventToStore(eventDict);
+        }
+        catch(std::exception& e)
+        {
+            logging::GALogger::e("addProgressionEvent - Exception thrown: %s", e.what());
+        }
     }
 
     void GameAnalyticsServer::addPlayerDesignEvent(Player& player, std::string const& eventId, double value, CustomFields const& customFields)
