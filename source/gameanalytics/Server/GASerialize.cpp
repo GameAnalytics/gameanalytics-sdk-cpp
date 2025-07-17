@@ -42,7 +42,7 @@ namespace gameanalytics
 
             if(item.value().is_boolean())
             {
-                f.value = item.value().get<bool>();    
+                f.value = item.value().get<bool>();
             }
             else if(item.value().is_number_integer())
             {

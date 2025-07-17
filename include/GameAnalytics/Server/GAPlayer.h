@@ -1,8 +1,8 @@
 #pragma once
 
 #include "GameAnalytics/GATypes.h"
-#include "Server/GACustomFields.h"
-#include "GAProgressionTries.h"
+#include "GameAnalytics/Server/GACustomFields.h"
+#include "GameAnalytics/GAProgressionTries.h"
 #include <chrono>
 
 namespace gameanalytics

@@ -1,12 +1,14 @@
 #pragma once
 
-#include "Server/GAPlayer.h"
+#include "GameAnalytics/GameAnalytics.h"
+#include "GameAnalytics/Server/GAPlayer.h"
 
 namespace gameanalytics
 {
     class PlayerDatabase;
 
-    class GameAnalyticsServer
+    class GameAnalyticsServer:
+        public GameAnalytics
     {
         std::shared_ptr<PlayerDatabase>  _playerDatabase;
         std::shared_ptr<PlayerCallbacks> _playerCallbacks;
@@ -24,6 +26,11 @@ namespace gameanalytics
 
             GameAnalyticsServer(std::string const& serverId, std::string const& serverName, std::string const& build, int numPlayersHint = -1);
 
+            void initialize(std::string const& gameKey, std::string const& secretKey);
+
+            void configureAvailableCurrencyTypes(StringVector const& validCurrencies);
+            void configureAvailableResourceItemTypes(const StringVector &validResourceTypes);
+
             void setPlayerCallbacks(std::shared_ptr<PlayerCallbacks> callbacks);
 
             bool isExistingPlayer(std::string const& userId) const;
@@ -33,6 +40,9 @@ namespace gameanalytics
 
             void startPlayerSession(std::string const& userId);
             void endPlayerSession(std::string const& userId);
+
+            void startPlayerSession(Player& player);
+            void endPlayerSession(Player& player);
 
             void addServerDesignEvent(std::string const& eventId, double value = 0.0, CustomFields const& customFields = {});
             void addServerBusinessEvent(std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields = {});

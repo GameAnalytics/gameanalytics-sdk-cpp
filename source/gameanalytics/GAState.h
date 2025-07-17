@@ -21,7 +21,7 @@
 #include "GAHTTPApi.h"
 #include "GADevice.h"
 
-#include "GAProgressionTries.h"
+#include "GameAnalytics/GAProgressionTries.h"
 
 namespace gameanalytics
 {

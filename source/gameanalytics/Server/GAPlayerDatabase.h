@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GAPlayer.h"
+#include "GameAnalytics/Server/GAPlayer.h"
 #include "GACommon.h"
 
 namespace gameanalytics

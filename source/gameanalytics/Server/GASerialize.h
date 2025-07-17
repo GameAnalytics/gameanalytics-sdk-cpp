@@ -1,7 +1,7 @@
 #pragma once
 
 #include "GACommon.h"
-#include "Server/GACustomFields.h"
+#include "GameAnalytics/Server/GACustomFields.h"
 
 namespace gameanalytics
 {

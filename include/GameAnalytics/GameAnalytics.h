@@ -101,11 +101,6 @@ namespace gameanalytics
 
          static void startSession();
          static void endSession();
-
-        /*
-         template<typename T>
-         static T getRemoteConfigsValue(std::string const& key, T const& defaultValue);
-         */
         
          static std::string getRemoteConfigsValueAsString(std::string const& key, std::string const& defaultValue = "");
          static int64_t     getRemoteConfigsValueAsInt(std::string const& key, int64_t defaultValue = 0);

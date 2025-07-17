@@ -1,4 +1,4 @@
-#include "GAServer.h"
+#include "GameAnalytics/Server/GAServer.h"
 #include "Server/GAPlayerDatabase.h"
 #include "GALogger.h"
 #include "GameAnalytics/GameAnalytics.h"
@@ -18,6 +18,21 @@ namespace gameanalytics
         GameAnalytics::configureUserId(serverId);
         GameAnalytics::configureExternalUserId(extServerId);
         GameAnalytics::configureBuild(build);
+    }
+
+    void GameAnalyticsServer::initialize(std::string const& gameKey, std::string const& secretKey)
+    {
+        GameAnalytics::initialize(gameKey, secretKey);
+    }
+
+    void GameAnalyticsServer::configureAvailableCurrencyTypes(StringVector const& validTypes)
+    {
+        GameAnalytics::configureAvailableResourceCurrencies(validTypes);
+    }
+
+    void GameAnalyticsServer::configureAvailableResourceItemTypes(StringVector const& validTypes)
+    {
+        GameAnalytics::configureAvailableResourceItemTypes(validTypes);
     }
 
     void GameAnalyticsServer::setPlayerCallbacks(std::shared_ptr<PlayerCallbacks> callbacks)
@@ -156,7 +171,7 @@ namespace gameanalytics
                 events::GAEvents::getInstance().addEventToStore(eventDict);
 
                 // Log
-                logging::GALogger::i("Add SESSION START event");
+                logging::GALogger::i("Add SESSION START event: userId = %s", userId.c_str());
             }
             catch(const std::exception& e)
             {
@@ -197,6 +212,9 @@ namespace gameanalytics
         eventDict["length"]     = player.getLastSessionLength();
 
         events::GAEvents::getInstance().addEventToStore(eventDict);
+
+        // Log
+        logging::GALogger::i("Add SESSION END event: userId = %s", userId.c_str());
 
         return true;
     }
@@ -490,7 +508,7 @@ namespace gameanalytics
                     fields.merge_patch(serializeCustomFields(customFields));
                 }
 
-                    // Clear
+                // Clear
                 state::GAState::clearProgressionTries(progressionIdentifier);
             }
 

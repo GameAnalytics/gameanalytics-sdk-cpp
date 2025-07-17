@@ -8,100 +8,90 @@ extern "C" {
 
 #if GA_SHARED_LIB
 	#if defined(_WIN32)
-		#define EXPORT __declspec(dllexport)
+		#define GA_EXPORT __declspec(dllexport)
 	#else
-		#define EXPORT __attribute__((visibility("default")))
+		#define GA_EXPORT __attribute__((visibility("default")))
 	#endif
 #else
-	#define EXPORT
+	#define GA_EXPORT
 #endif
 
-typedef struct GAString_
+enum GAErrorCode
 {
-    const char* str = 0;
-    unsigned int size = 0;
+	EGANoError = 0,
+	EGAFailure,
+	EGABufferError
+};
 
-} GAString;
+enum GAStatus: char
+{
+	EGADisabled = 0,
+	EGAEnabled
+};
 
-#ifdef __cplusplus
-	#define GA_BOOL  bool
-	#define GA_TRUE  true
-	#define GA_FALSE false
-#else
-	#define GA_BOOL  char
-	#define GA_TRUE  ((char)1)
-	#define GA_FALSE ((char)0)
-#endif
-
-EXPORT void ga_string_alloc(GAString* s, unsigned int size);
-EXPORT void ga_string_free(GAString* s);
-
-EXPORT void configureAvailableCustomDimensions01(const char **customDimensions, int size);
-EXPORT void configureAvailableCustomDimensions02(const char **customDimensions, int size);
-EXPORT void configureAvailableCustomDimensions03(const char **customDimensions, int size);
-EXPORT void configureAvailableResourceCurrencies(const char **resourceCurrencies, int size);
-EXPORT void configureAvailableResourceItemTypes(const char **resourceItemTypes, int size);
-EXPORT void configureBuild(const char *build);
-EXPORT void configureWritablePath(const char *writablePath);
-EXPORT void configureDeviceModel(const char *deviceModel);
-EXPORT void configureDeviceManufacturer(const char *deviceManufacturer);
+GA_EXPORT void gameAnalytics_configureAvailableCustomDimensions01(const char **customDimensions, int size);
+GA_EXPORT void gameAnalytics_configureAvailableCustomDimensions02(const char **customDimensions, int size);
+GA_EXPORT void gameAnalytics_configureAvailableCustomDimensions03(const char **customDimensions, int size);
+GA_EXPORT void gameAnalytics_configureAvailableResourceCurrencies(const char **resourceCurrencies, int size);
+GA_EXPORT void gameAnalytics_configureAvailableResourceItemTypes(const char **resourceItemTypes, int size);
+GA_EXPORT void gameAnalytics_configureBuild(const char *build);
+GA_EXPORT void gameAnalytics_configureWritablePath(const char *writablePath);
+GA_EXPORT void gameAnalytics_configureDeviceModel(const char *deviceModel);
+GA_EXPORT void gameAnalytics_configureDeviceManufacturer(const char *deviceManufacturer);
 
 // the version of SDK code used in an engine. Used for sdk_version field.
 // !! if set then it will override the SdkWrapperVersion.
 // example "unity 4.6.9"
-EXPORT void configureSdkGameEngineVersion(const char *sdkGameEngineVersion);
+GA_EXPORT void gameAnalytics_configureSdkGameEngineVersion(const char *sdkGameEngineVersion);
+
 // the version of the game engine (if used and version is available)
-EXPORT void configureGameEngineVersion(const char *engineVersion);
+GA_EXPORT void gameAnalytics_configureGameEngineVersion(const char *engineVersion);
 
-EXPORT void configureUserId(const char *uId);
+GA_EXPORT void gameAnalytics_configureUserId(const char *uId);
 
-EXPORT void configureExternalUserId(const char* extId);
+GA_EXPORT void gameAnalytics_configureExternalUserId(const char* extId);
 
 // initialize - starting SDK (need configuration before starting)
-EXPORT void initialize(const char *gameKey, const char *gameSecret);
+GA_EXPORT void gameAnalytics_initialize(const char *gameKey, const char *gameSecret);
 
 // add events
-EXPORT void addBusinessEvent(const char *currency, double amount, const char *itemType, const char *itemId, const char *cartType, const char *customFields, GA_BOOL mergeFields);
-
-EXPORT void addResourceEvent(int flowType, const char *currency, double amount, const char *itemType, const char *itemId, const char *customFields, GA_BOOL mergeFields);
-
-EXPORT void addProgressionEvent(int progressionStatus, const char *progression01, const char *progression02, const char *progression03, const char *customFields, GA_BOOL mergeFields);
-
-EXPORT void addProgressionEventWithScore(int progressionStatus, const char *progression01, const char *progression02, const char *progression03, double score, const char *customFields, GA_BOOL mergeFields);
-
-EXPORT void addDesignEvent(const char *eventId, const char *customFields, GA_BOOL mergeFields);
-EXPORT void addDesignEventWithValue(const char *eventId, double value, const char *customFields, GA_BOOL mergeFields);
-EXPORT void addErrorEvent(int severity, const char *message, const char *customFields, GA_BOOL mergeFields);
+GA_EXPORT void gameAnalytics_addBusinessEvent(const char *currency, double amount, const char *itemType, const char *itemId, const char *cartType, const char *customFields, GAStatus mergeFields);
+GA_EXPORT void gameAnalytics_addResourceEvent(int flowType, const char *currency, double amount, const char *itemType, const char *itemId, const char *customFields, GAStatus mergeFields);
+GA_EXPORT void gameAnalytics_addProgressionEvent(int progressionStatus, const char *progression01, const char *progression02, const char *progression03, const char *customFields, GAStatus mergeFields);
+GA_EXPORT void gameAnalytics_addProgressionEventWithScore(int progressionStatus, const char *progression01, const char *progression02, const char *progression03, double score, const char *customFields, GAStatus mergeFields);
+GA_EXPORT void gameAnalytics_addDesignEvent(const char *eventId, const char *customFields, GAStatus mergeFields);
+GA_EXPORT void gameAnalytics_addDesignEventWithValue(const char *eventId, double value, const char *customFields, GAStatus mergeFields);
+GA_EXPORT void gameAnalytics_addErrorEvent(int severity, const char *message, const char *customFields, GAStatus mergeFields);
 
 // set calls can be changed at any time (pre- and post-initialize)
 // some calls only work after a configure is called (setCustomDimension)
-EXPORT void setEnabledInfoLog(GA_BOOL flag);
-EXPORT void setEnabledVerboseLog(GA_BOOL flag);
-EXPORT void setEnabledManualSessionHandling(GA_BOOL flag);
-EXPORT void setEnabledErrorReporting(GA_BOOL flag);
-EXPORT void setEnabledEventSubmission(GA_BOOL flag);
-EXPORT void setCustomDimension01(const char *dimension01);
-EXPORT void setCustomDimension02(const char *dimension02);
-EXPORT void setCustomDimension03(const char *dimension03);
+GA_EXPORT void gameAnalytics_setEnabledInfoLog(GAStatus flag);
+GA_EXPORT void gameAnalytics_setEnabledVerboseLog(GAStatus flag);
+GA_EXPORT void gameAnalytics_setEnabledManualSessionHandling(GAStatus flag);
+GA_EXPORT void gameAnalytics_setEnabledErrorReporting(GAStatus flag);
+GA_EXPORT void gameAnalytics_setEnabledEventSubmission(GAStatus flag);
+GA_EXPORT void gameAnalytics_setCustomDimension01(const char *dimension01);
+GA_EXPORT void gameAnalytics_setCustomDimension02(const char *dimension02);
+GA_EXPORT void gameAnalytics_setCustomDimension03(const char *dimension03);
 
-EXPORT void setGlobalCustomEventFields(const char *customFields);
+GA_EXPORT void gameAnalytics_setGlobalCustomEventFields(const char *customFields);
 
-EXPORT void gameAnalyticsStartSession();
-EXPORT void gameAnalyticsEndSession();
+GA_EXPORT void gameAnalytics_startSession();
+GA_EXPORT void gameAnalytics_endSession();
 
 // game state changes
 // will affect how session is started / ended
-EXPORT void onResume();
-EXPORT void onSuspend();
-EXPORT void onQuit();
+GA_EXPORT void gameAnalytics_onResume();
+GA_EXPORT void gameAnalytics_onSuspend();
+GA_EXPORT void gameAnalytics_onQuit();
 
-EXPORT GAString getRemoteConfigsValueAsString(const char *key);
-EXPORT GAString getRemoteConfigsValueAsStringWithDefaultValue(const char *key, const char *defaultValue);
-EXPORT GA_BOOL isRemoteConfigsReady();
-EXPORT GA_BOOL getRemoteConfigsContentAsString(char* out, int size);
+GA_EXPORT GAErrorCode gameAnalytics_getRemoteConfigsValueAsString(const char *key, char* out, int* bufferSize);
+GA_EXPORT GAErrorCode gameAnalytics_getRemoteConfigsValueAsStringWithDefaultValue(const char *key, const char *defaultValue, char* out, int* bufferSize);
+GA_EXPORT GAStatus    gameAnalytics_isRemoteConfigsReady();
+GA_EXPORT GAErrorCode gameAnalytics_getRemoteConfigsContentAsString(char* out, int* size);
 
-EXPORT GAString getABTestingId();
-EXPORT GAString getABTestingVariantId();
+GA_EXPORT GAErrorCode gameAnalytics_getABTestingId(char* out, int* size);
+GA_EXPORT GAErrorCode gameAnalytics_getABTestingVariantId(char* out, int* size);
 
 #ifdef __cplusplus
 }
