@@ -41,9 +41,6 @@ namespace gameanalytics
             void startPlayerSession(std::string const& userId);
             void endPlayerSession(std::string const& userId);
 
-            void startPlayerSession(Player& player);
-            void endPlayerSession(Player& player);
-
             void addServerDesignEvent(std::string const& eventId, double value = 0.0, CustomFields const& customFields = {});
             void addServerBusinessEvent(std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields = {});
             void addServerResourceEvent(EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, CustomFields const& customFields = {});

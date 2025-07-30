@@ -39,6 +39,7 @@ namespace gameanalytics
 
             bool enableSDKInitEvent{false};
             bool enableHealthEvent{false};
+            bool doFixMissingSessionEnd{false};
 
             void addEventToStore(json& eventData);
 

@@ -2,7 +2,7 @@
 
 namespace gameanalytics
 {
-  json serializeCustomFields(CustomFields const& customFields)
+    json serializeCustomFields(CustomFields const& customFields)
     {
         json j;
 

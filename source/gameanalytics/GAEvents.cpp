@@ -695,7 +695,7 @@ namespace gameanalytics
 
         void GAEvents::fixMissingSessionEndEvents()
         {
-            if(!state::GAState::isEventSubmissionEnabled())
+            if(!state::GAState::isEventSubmissionEnabled() || !getInstance().doFixMissingSessionEnd)
             {
                 return;
             }
