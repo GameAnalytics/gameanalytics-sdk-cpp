@@ -12,5 +12,5 @@ jobs:
   build:
     uses: ./.github/workflows/cmake.yml
     with:
-      build_type: ${{ (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') && '"Debug","Release"' || '"Debug"' }}
-      upload_artifacts: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' }}
+      build_type: "Release"
+      upload_artifacts: true
