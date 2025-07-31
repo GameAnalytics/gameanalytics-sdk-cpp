@@ -12,5 +12,5 @@ jobs:
   build:
     uses: ./.github/workflows/cmake.yml
     with:
-      build_type: '"Release"'
+      build_type: "Release"
       upload_artifacts: true
