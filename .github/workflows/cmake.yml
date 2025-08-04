@@ -18,7 +18,7 @@ on:
 
 jobs:
   cmake_build:
-    runs-on: ubuntu-22.04
+    runs-on: debian-11
 
     strategy:
       # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
@@ -31,7 +31,7 @@ jobs:
       #
       # To add more build types (Release, Debug, RelWithDebInfo, etc.) customize the build_type list.
       matrix:
-        os: [ubuntu-22.04]
+        os: [debian-11]
         build_type: ${{ fromJSON(format('[{0}]', inputs.build_type || '"Debug","Release"')) }}
         c_compiler: [clang]
         cpp_compiler: [clang++]
@@ -94,48 +94,5 @@ jobs:
       with:
         name: ga-cpp-sdk-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}
         path: ${{ steps.strings.outputs.build-output-dir }}/package/
-        retention-days: 3
-
-  cmake_build_centos:
-    runs-on: ubuntu-22.04
-
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-
-    - name: Set reusable strings
-      id: strings
-      shell: bash
-      run: |
-        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-
-    - name: Build and Test in CentOS 7 (glibc 2.17)
-      env:
-        BUILD_TYPE: ${{ inputs.build_type || 'Release' }}
-      run: |
-        docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace centos:7 bash -c '
-          sed -i "s|mirrorlist=|#mirrorlist=|g" /etc/yum.repos.d/CentOS-Base.repo && \
-          sed -i "s|#baseurl=|baseurl=|g" /etc/yum.repos.d/CentOS-Base.repo && \
-          sed -i "s|http://mirror.centos.org|http://vault.centos.org|g" /etc/yum.repos.d/CentOS-Base.repo && \
-          yum -y update && \
-          yum -y groupinstall "Development Tools" && \
-          yum -y install epel-release && \
-          yum -y install clang cmake make which && \
-          export CC=clang && export CXX=clang++ && \
-          mkdir -p build && \
-          cmake -B build -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=$BUILD_TYPE -S . && \
-          cmake --build build --config $BUILD_TYPE --verbose && \
-          cd build && ctest --build-config $BUILD_TYPE --verbose --output-on-failure && cd .. && \
-          mkdir -p build/package && \
-          cp build/$BUILD_TYPE/*GameAnalytics.* build/package/ 2>/dev/null || true && \
-          cp -r include build/package/ 2>/dev/null || true
-        '
-
-    - name: Upload Build Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ga-cpp-sdk-centos7-clang-${{ inputs.build_type || 'Release' }}
-        path: ${{ github.workspace }}/build/package/
         retention-days: 3
 
