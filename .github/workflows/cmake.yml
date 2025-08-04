@@ -43,6 +43,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install Clang and Dependencies
+      run: |
+        yum -y update
+        yum -y install epel-release
+        yum -y install clang llvm-toolset-7 cmake make gcc-c++ git which tar
+        ln -sf /usr/bin/clang /usr/local/bin/clang
+        ln -sf /usr/bin/clang++ /usr/local/bin/clang++
+        ln -sf /usr/bin/cmake /usr/local/bin/cmake
+
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
