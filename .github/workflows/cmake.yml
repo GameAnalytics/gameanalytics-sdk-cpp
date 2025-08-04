@@ -116,7 +116,6 @@ jobs:
       run: ctest --build-config ${{ matrix.build_type }} --verbose --output-on-failure
 
     - name: Package Build Artifacts
-      if: ${{ inputs.upload_artifacts && success() }}
       run: |
         mkdir -p ${{ steps.strings.outputs.build-output-dir }}/package
         # Adjust the path to your built library files
@@ -124,7 +123,6 @@ jobs:
         cp -r ${{ github.workspace }}/include ${{ steps.strings.outputs.build-output-dir }}/package/
         
     - name: Upload Build Artifact
-      if: ${{ inputs.upload_artifacts && success() }}
       uses: actions/upload-artifact@v4
       with:
         name: ga-cpp-sdk-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}
