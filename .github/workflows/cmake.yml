@@ -18,11 +18,7 @@ on:
 
 jobs:
   cmake_build:
-    runs-on: ubuntu-latest
-
-    container:
-      image: centos:8
-      options: --privileged
+    runs-on: ubuntu-18.04
 
     strategy:
       # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
@@ -35,22 +31,15 @@ jobs:
       #
       # To add more build types (Release, Debug, RelWithDebInfo, etc.) customize the build_type list.
       matrix:
-        os: [centos-8]
+        os: [ubuntu-18.04]
         build_type: ${{ fromJSON(format('[{0}]', inputs.build_type || '"Debug","Release"')) }}
         c_compiler: [clang]
         cpp_compiler: [clang++]
 
     steps:
     - uses: actions/checkout@v4
-
-    - name: Install Clang and Dependencies
-      run: |
-        yum -y update
-        yum -y install epel-release
-        yum -y install clang llvm-toolset-7 cmake make gcc-c++ git which tar
-        ln -sf /usr/bin/clang /usr/local/bin/clang
-        ln -sf /usr/bin/clang++ /usr/local/bin/clang++
-        ln -sf /usr/bin/cmake /usr/local/bin/cmake
+      with:
+        submodules: true
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
@@ -58,6 +47,11 @@ jobs:
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+
+    - name: Install Clang and Libraries
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang libc++-dev libc++abi-dev
 
     - name: Check Clang Settings
       run: |
@@ -81,6 +75,12 @@ jobs:
     - name: Build
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} --verbose
+
+    - name: Test
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+      run: ctest --build-config ${{ matrix.build_type }} --verbose --output-on-failure
 
     - name: Package Build Artifacts
       run: |
