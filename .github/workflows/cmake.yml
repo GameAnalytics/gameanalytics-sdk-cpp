@@ -18,7 +18,7 @@ on:
 
 jobs:
   cmake_build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     strategy:
       # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
@@ -31,7 +31,7 @@ jobs:
       #
       # To add more build types (Release, Debug, RelWithDebInfo, etc.) customize the build_type list.
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-22.04]
         build_type: ${{ fromJSON(format('[{0}]', inputs.build_type || '"Debug","Release"')) }}
         c_compiler: [clang]
         cpp_compiler: [clang++]
