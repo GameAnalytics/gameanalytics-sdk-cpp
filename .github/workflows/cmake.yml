@@ -18,7 +18,11 @@ on:
 
 jobs:
   cmake_build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
+
+    container:
+      image: centos:8
+      options: --privileged
 
     strategy:
       # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
@@ -31,33 +35,10 @@ jobs:
       #
       # To add more build types (Release, Debug, RelWithDebInfo, etc.) customize the build_type list.
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest] 
+        os: [centos-8]
         build_type: ${{ fromJSON(format('[{0}]', inputs.build_type || '"Debug","Release"')) }}
-        c_compiler: [gcc, clang, cl]
-        include:
-          - os: windows-latest
-            c_compiler: cl
-            cpp_compiler: cl
-          - os: ubuntu-latest
-            c_compiler: gcc
-            cpp_compiler: g++
-          - os: ubuntu-latest
-            c_compiler: clang
-            cpp_compiler: clang++
-          - os: macOS-latest
-            c_compiler: clang
-            cpp_compiler: clang++
-        exclude:
-          - os: windows-latest
-            c_compiler: gcc
-          - os: windows-latest
-            c_compiler: clang
-          - os: ubuntu-latest
-            c_compiler: cl
-          - os: macOS-latest
-            c_compiler: cl
-          - os: macOS-latest
-            c_compiler: gcc
+        c_compiler: [clang]
+        cpp_compiler: [clang++]
 
     steps:
     - uses: actions/checkout@v4
@@ -71,22 +52,7 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    - name: Install Clang and Libraries
-      if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'clang'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libc++-dev libc++abi-dev
-
-    - name: Set Clang 16 as Default
-      if: matrix.os == 'ubuntu-24.04' && matrix.c_compiler == 'clang'
-      run: |
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100
-        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100
-        sudo update-alternatives --set clang /usr/bin/clang-16
-        sudo update-alternatives --set clang++ /usr/bin/clang++-16
-
     - name: Check Clang Settings
-      if: matrix.os == 'ubuntu-latest' && matrix.c_compiler == 'clang'
       run: |
         clang --version
         clang++ --version
@@ -128,4 +94,4 @@ jobs:
         name: ga-cpp-sdk-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}
         path: ${{ steps.strings.outputs.build-output-dir }}/package/
         retention-days: 3
-    
+
