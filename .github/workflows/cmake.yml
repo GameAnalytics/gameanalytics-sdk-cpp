@@ -96,3 +96,41 @@ jobs:
         path: ${{ steps.strings.outputs.build-output-dir }}/package/
         retention-days: 3
 
+  cmake_build_centos:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Set reusable strings
+      id: strings
+      shell: bash
+      run: |
+        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+
+    - name: Build and Test in CentOS 7 (glibc 2.17)
+      run: |
+        docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace centos:7 bash -c '
+          yum -y update && \
+          yum -y groupinstall "Development Tools" && \
+          yum -y install epel-release && \
+          yum -y install clang cmake make which && \
+          export CC=clang && export CXX=clang++ && \
+          mkdir -p build && \
+          cmake -B build -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S . && \
+          cmake --build build --config ${{ matrix.build_type }} --verbose && \
+          cd build && ctest --build-config ${{ matrix.build_type }} --verbose --output-on-failure && cd .. && \
+          mkdir -p build/package && \
+          cp build/${{ matrix.build_type }}/*GameAnalytics.* build/package/ 2>/dev/null || true && \
+          cp -r include build/package/ 2>/dev/null || true
+        '
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ga-cpp-sdk-centos7-clang-${{ matrix.build_type }}
+        path: ${{ github.workspace }}/build/package/
+        retention-days: 3
+
