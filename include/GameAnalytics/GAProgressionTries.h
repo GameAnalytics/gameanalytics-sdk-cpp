@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameAnalytics/GATypes.h"
+#include <unordered_map>
 
 namespace gameanalytics
 {
