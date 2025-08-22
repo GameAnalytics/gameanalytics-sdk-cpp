@@ -411,7 +411,7 @@ namespace gameanalytics
                 out["user_id"] = getUserId();
                 
                 // remote configs configurations
-                if(getInstance()._configurations.is_object() && !getInstance()._configurations.empty())
+                if(getInstance()._trackingRemoteConfigsJson.is_array() && !getInstance()._trackingRemoteConfigsJson.empty())
                 {
                     out["configurations_v3"] = getInstance().getRemoteConfigAnnotations();
                 }
@@ -895,7 +895,7 @@ namespace gameanalytics
 
             json contents;
 
-            for(auto& obj : getInstance()._configurations)
+            for(auto& obj : getInstance()._gameRemoteConfigsJson)
             {
                 if(obj.contains("key") && obj.contains("value"))
                 {
@@ -910,10 +910,34 @@ namespace gameanalytics
             return contents.dump(JSON_PRINT_INDENT);
         }
 
+        void GAState::buildRemoteConfigsJsons(const json& remoteCfgs)
+        {
+            _gameRemoteConfigsJson = json::array();
+            _trackingRemoteConfigsJson = json::array();
+
+            for (const auto& configuration : remoteCfgs)
+            {
+                _gameRemoteConfigsJson.push_back({
+                        {"key", configuration["key"]},
+                        {"value", configuration["value"]}
+                });
+
+                _trackingRemoteConfigsJson.push_back({
+                    {"key", configuration["key"]},
+                    {"id", configuration["id"]},
+                    {"vsn", configuration["vsn"]}
+                });
+            }
+
+            logging::GALogger::d("Remote configs: %s", _gameRemoteConfigsJson.dump(JSON_PRINT_INDENT).c_str());
+            logging::GALogger::d("Remote configs for tracking: %s", _trackingRemoteConfigsJson.dump(JSON_PRINT_INDENT).c_str());
+            logging::GALogger::i("Remote configs ready with %zu configurations", _gameRemoteConfigsJson.size());
+        }
+
         void GAState::populateConfigurations(json& sdkConfig)
         {
-            std::lock_guard<std::recursive_mutex> guard(_mtx);
-            _configurations = {};
+    
+            json _tempRemoteConfigsJson = {};
 
             try
             {
@@ -933,16 +957,18 @@ namespace gameanalytics
 
                             if (!key.empty() && configuration.contains("value") && client_ts_adjusted > start_ts && client_ts_adjusted < end_ts)
                             {
-                                _configurations[key] = configuration;
+                                _tempRemoteConfigsJson[key] = configuration;
                                 logging::GALogger::d("configuration added: %s", configuration.dump(JSON_PRINT_INDENT).c_str());
                             }
                         }
                     }
                 }
 
+                buildRemoteConfigsJsons(_tempRemoteConfigsJson);
+
                 _remoteConfigsIsReady = true;
                 
-                std::string const configStr = _configurations.dump();
+                std::string const configStr = _gameRemoteConfigsJson.dump();
                 for (auto& listener : _remoteConfigsListeners)
                 {
                     listener->onRemoteConfigsUpdated(configStr);
@@ -1160,18 +1186,7 @@ namespace gameanalytics
 
         json GAState::getRemoteConfigAnnotations()
         {
-            json configs;
-            for(json& obj : _configurations)
-            {
-                json cfg;
-                cfg["vsn"] = utilities::getOptionalValue<int>(obj, "vsn", 0);
-                cfg["key"] = utilities::getOptionalValue<std::string>(obj, "key", "");
-                cfg["id"] = utilities::getOptionalValue<std::string>(obj, "id", "");
-
-                configs.push_back(cfg);
-            }
-
-            return configs;
+            return _trackingRemoteConfigsJson;
         }
     }
 }
