@@ -411,7 +411,7 @@ namespace gameanalytics
                 out["user_id"] = getUserId();
                 
                 // remote configs configurations
-                if(getInstance()._configurations.is_object() && !getInstance()._configurations.empty())
+                if(getInstance()._gameRemoteConfigsJson.is_object() && !getInstance()._gameRemoteConfigsJson.empty())
                 {
                     out["configurations_v3"] = getInstance().getRemoteConfigAnnotations();
                 }
@@ -895,7 +895,7 @@ namespace gameanalytics
 
             json contents;
 
-            for(auto& obj : getInstance()._configurations)
+            for(auto& obj : getInstance()._gameRemoteConfigsJson)
             {
                 if(obj.contains("key") && obj.contains("value"))
                 {
@@ -913,7 +913,7 @@ namespace gameanalytics
         void GAState::populateConfigurations(json& sdkConfig)
         {
             std::lock_guard<std::recursive_mutex> guard(_mtx);
-            _configurations = {};
+            _gameRemoteConfigsJson = {};
 
             try
             {
@@ -933,7 +933,7 @@ namespace gameanalytics
 
                             if (!key.empty() && configuration.contains("value") && client_ts_adjusted > start_ts && client_ts_adjusted < end_ts)
                             {
-                                _configurations[key] = configuration;
+                                _gameRemoteConfigsJson[key] = configuration;
                                 logging::GALogger::d("configuration added: %s", configuration.dump(JSON_PRINT_INDENT).c_str());
                             }
                         }
@@ -942,7 +942,7 @@ namespace gameanalytics
 
                 _remoteConfigsIsReady = true;
                 
-                std::string const configStr = _configurations.dump();
+                std::string const configStr = _gameRemoteConfigsJson.dump();
                 for (auto& listener : _remoteConfigsListeners)
                 {
                     listener->onRemoteConfigsUpdated(configStr);
@@ -1161,7 +1161,7 @@ namespace gameanalytics
         json GAState::getRemoteConfigAnnotations()
         {
             json configs;
-            for(json& obj : _configurations)
+            for(json& obj : _gameRemoteConfigsJson)
             {
                 json cfg;
                 cfg["vsn"] = utilities::getOptionalValue<int>(obj, "vsn", 0);

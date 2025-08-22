@@ -150,9 +150,9 @@ namespace gameanalytics
                 inline static T getRemoteConfigsValue(std::string const& key, T const& defaultValue)
                 {
                     std::lock_guard<std::recursive_mutex> lg(getInstance()._mtx);
-                    if(getInstance()._configurations.contains(key))
+                    if(getInstance()._gameRemoteConfigsJson.contains(key))
                     {
-                        json& config = getInstance()._configurations[key];
+                        json& config = getInstance()._gameRemoteConfigsJson[key];
                         T value = utilities::getOptionalValue<T>(config, "value", defaultValue);
                         return value;
                     }
@@ -271,7 +271,9 @@ namespace gameanalytics
 
             bool _enableIdTracking = true;
             
-            json _configurations;
+            json _gameRemoteConfigsJson;
+            json _trackingRemoteConfigsJson;
+            
             bool _remoteConfigsIsReady;
             std::vector<std::shared_ptr<IRemoteConfigsListener>> _remoteConfigsListeners;
             std::recursive_mutex _mtx;
