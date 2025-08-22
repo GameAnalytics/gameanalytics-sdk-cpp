@@ -210,6 +210,8 @@ namespace gameanalytics
 
             void addErrorEvent(EGAErrorSeverity severity, std::string const& message);
 
+            void buildRemoteConfigsJsons(const json& remoteCfgs);
+            
             threading::GAThreading  _gaThread;
             events::GAEvents        _gaEvents;
             device::GADevice        _gaDevice;
