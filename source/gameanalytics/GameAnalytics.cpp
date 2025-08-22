@@ -761,48 +761,6 @@ namespace gameanalytics
         return defaultValue;
     }
 
-    uint64_t GameAnalytics::getRemoteConfigsValueAsUInt(std::string const& key, uint64_t defaultValue)
-    {
-        try
-        {
-            std::string s = getRemoteConfigsValueAsString(key);
-            if(!s.empty())
-            {
-                return std::stoull(s);
-            }
-        }
-        catch(std::exception& e)
-        {
-            (void)e;
-        }
-
-        return defaultValue;
-    }
-
-    double GameAnalytics::getRemoteConfigsValueAsFloat(std::string const& key, double defaultValue)
-    {
-        try
-        {
-            std::string s = getRemoteConfigsValueAsString(key);
-            if(!s.empty())
-            {
-                return std::stod(s);
-            }
-        }
-        catch(std::exception& e)
-        {
-            (void)e;
-        }
-
-        return defaultValue;
-    }
-
-    bool GameAnalytics::getRemoteConfigsValueAsBool(std::string const& key, bool defaultValue)
-    {
-        std::string s = getRemoteConfigsValueAsString(key, "false");
-        return utilities::toLowerCase(s) == "true";
-    }
-
     std::string GameAnalytics::getRemoteConfigsValueAsJson(std::string const& key)
     {
         std::string jsonString = getRemoteConfigsValueAsString(key);

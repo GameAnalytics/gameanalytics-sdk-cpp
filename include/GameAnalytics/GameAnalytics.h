@@ -108,10 +108,6 @@ namespace gameanalytics
          */
         
          static std::string getRemoteConfigsValueAsString(std::string const& key, std::string const& defaultValue = "");
-         static int64_t     getRemoteConfigsValueAsInt(std::string const& key, int64_t defaultValue = 0);
-         static uint64_t    getRemoteConfigsValueAsUInt(std::string const& key, uint64_t defaultValue = 0);
-         static bool        getRemoteConfigsValueAsBool(std::string const& key, bool defaultValue = false);
-         static double      getRemoteConfigsValueAsFloat(std::string const& key, double defaultValue = 0.0);
          static std::string getRemoteConfigsValueAsJson(std::string const& key);
 
          static bool        isRemoteConfigsReady();
