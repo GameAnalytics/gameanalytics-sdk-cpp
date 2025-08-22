@@ -7,6 +7,17 @@
 - **Remote Configs With JSON**: Remote Configs now support JSON values, allowing for more complex configurations.
 - **Playtime Metrics API**: Introduced new API to get total playtime and playtime in the current session.
 
+## 4.1.1
+
+### Added
+
+- added `getUserId()` and `getExternalUserId()` functions.
+
+### Fixed
+
+- fixed linux compilations issues with clang 18.X version
+- fixed progression event will now correctly send value
+
 ## 4.1.0
 
 ### Added
