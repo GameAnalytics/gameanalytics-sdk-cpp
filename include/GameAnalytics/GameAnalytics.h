@@ -138,11 +138,9 @@ namespace gameanalytics
          static bool isThreadEnding();
 
      private:
-         static bool _endThread;
 
-        static bool isSdkReady(bool needsInitialized);
-        static bool isSdkReady(bool needsInitialized, bool warn);
-        static bool isSdkReady(bool needsInitialized, bool warn, std::string const& message);
+        static bool _endThread;
+        static bool isSdkReady(bool needsInitialized, bool warn = true, std::string const& message = "");
     };
 
 } // namespace gameanalytics

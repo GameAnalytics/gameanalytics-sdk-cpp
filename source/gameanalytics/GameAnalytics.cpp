@@ -956,18 +956,6 @@ namespace gameanalytics
         return _endThread || threading::GAThreading::isThreadFinished();
     }
 
-    // --------------PRIVATE HELPERS -------------- //
-
-    bool GameAnalytics::isSdkReady(bool needsInitialized)
-    {
-        return isSdkReady(needsInitialized, true);
-    }
-
-    bool GameAnalytics::isSdkReady(bool needsInitialized, bool warn)
-    {
-        return isSdkReady(needsInitialized, warn, "");
-    }
-
     bool GameAnalytics::isSdkReady(bool needsInitialized, bool warn, std::string const& message)
     {
         constexpr std::size_t maxMsgLen = 64u;
