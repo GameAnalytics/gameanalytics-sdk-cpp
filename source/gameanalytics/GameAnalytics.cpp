@@ -743,24 +743,6 @@ namespace gameanalytics
         return state::GAState::getRemoteConfigsValue<std::string>(key, defaultValue);
     }
 
-    int64_t GameAnalytics::getRemoteConfigsValueAsInt(std::string const& key, int64_t defaultValue)
-    {
-        try
-        {
-            std::string s = getRemoteConfigsValueAsString(key);
-            if(!s.empty())
-            {
-                return std::stoll(s);
-            }
-        }
-        catch(std::exception& e)
-        {
-            (void)e;
-        }
-
-        return defaultValue;
-    }
-
     std::string GameAnalytics::getRemoteConfigsValueAsJson(std::string const& key)
     {
         std::string jsonString = getRemoteConfigsValueAsString(key);
