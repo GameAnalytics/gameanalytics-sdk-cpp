@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.0.0
+
+### Added
+
+- **Remote Configs With JSON**: Remote Configs now support JSON values, allowing for more complex configurations.
+- **Playtime Metrics API**: Introduced new API to get total playtime and playtime in the current session.
+
 ## 4.1.0
 
 ### Added
