@@ -1037,7 +1037,7 @@ namespace gameanalytics
                             {
                                 const json& value = fields[key];
 
-                                if(value.is_number())
+                                if(value.is_number() || value.is_boolean())
                                 {
                                     result[key] = value;
                                     ++count;
