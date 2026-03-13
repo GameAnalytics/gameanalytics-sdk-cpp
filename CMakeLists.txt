@@ -169,11 +169,9 @@ endif()
 if(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGUID_WINDOWS")
     if(${GA_SHARED_LIB})
-        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
     else()
-        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
 
     if(${GA_UWP_BUILD})
@@ -207,7 +205,11 @@ elseif(LINUX)
 endif()
 
 if(${GA_BUILD_SAMPLE})
-    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/sample")
+    if(${GA_SHARED_LIB})
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/sample_shared")
+    else()
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/sample")
+    endif()
 endif()
 
 add_library(GameAnalytics ${LIB_TYPE} ${CPP_SOURCES})
@@ -217,43 +219,52 @@ message(STATUS "CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
 message(STATUS "CMAKE_SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
 # --------------------------- Google Test Setup --------------------------- #
 
-# Set Project Name
-set(UT_PROJECT_NAME "${PROJECT_NAME}UnitTests")
+# Only build tests for static library builds
+# Shared library builds don't export internal symbols needed by tests
+if(NOT GA_SHARED_LIB)
+    message(STATUS "Building unit tests (tests are only available for static library builds)")
+    
+    # Set Project Name
+    set(UT_PROJECT_NAME "${PROJECT_NAME}UnitTests")
 
-# Add Google Test
-set(GTEST_DIR "${EXTERNALS_DIR}/googletest")
-add_subdirectory(${GTEST_DIR} ${PROJECT_SOURCE_DIR}/gtest_build)
+    # Add Google Test
+    set(GTEST_DIR "${EXTERNALS_DIR}/googletest")
+    add_subdirectory(${GTEST_DIR} ${PROJECT_SOURCE_DIR}/gtest_build)
 
-# Add tests
-enable_testing()
+    # Add tests
+    enable_testing()
 
-########################################
-# Test files
-########################################
+    ########################################
+    # Test files
+    ########################################
 
-file(GLOB_RECURSE TEST_SRC_FILES "${PROJECT_SOURCE_DIR}/test/*.cpp")
+    file(GLOB_RECURSE TEST_SRC_FILES "${PROJECT_SOURCE_DIR}/test/*.cpp")
 
-########################################
-# Unit Tests
-#######################################
-add_executable(${UT_PROJECT_NAME} ${TEST_SRC_FILES})
+    ########################################
+    # Unit Tests
+    #######################################
+    add_executable(${UT_PROJECT_NAME} ${TEST_SRC_FILES})
 
-########################################
-# Standard linking to gtest and gmock components
-########################################
-target_link_libraries(${UT_PROJECT_NAME} gtest gtest_main gmock_main)
+    ########################################
+    # Standard linking to gtest and gmock components
+    ########################################
+    target_link_libraries(${UT_PROJECT_NAME} gtest gtest_main gmock_main)
 
-########################################
-# Linking to GA SDK
-########################################
-target_link_libraries(${UT_PROJECT_NAME} ${PROJECT_NAME})
+    ########################################
+    # Linking to GA SDK
+    ########################################
+    target_link_libraries(${UT_PROJECT_NAME} ${PROJECT_NAME})
 
-########################################
-add_test(NAME ${UT_PROJECT_NAME} COMMAND GameAnalyticsUnitTests)
+    ########################################
+    add_test(NAME ${UT_PROJECT_NAME} COMMAND GameAnalyticsUnitTests)
+else()
+    message(STATUS "Skipping unit tests (not available for shared library builds)")
+endif()
 
 # --------------------------- Code Coverage Setup --------------------------- #
 
-if (ENABLE_COVERAGE)
+# Coverage requires tests, which are only available for static library builds
+if (ENABLE_COVERAGE AND NOT GA_SHARED_LIB)
     find_program(GCOV_PATH gcov)
     if (NOT GCOV_PATH)
         message(WARNING "program gcov not found")

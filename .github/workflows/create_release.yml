@@ -44,31 +44,65 @@ jobs:
 
       - name: Organize release files
         run: |
-          # Create the base include directory in the final release
-          mkdir -p ./final-release/include
+          # Create separate directories for static and shared libraries
+          mkdir -p ./static-release/include
+          mkdir -p ./shared-release/include
       
-          # Copy the entire include directory from one of the platform folders (assuming they are the same across platforms)
-          cp -r ./release-artifacts/ga-cpp-sdk-macOS-latest-clang-Release/include/* ./final-release/include/
+          # Copy include directory from any artifact (they're all identical)
+          FIRST_ARTIFACT=$(find ./release-artifacts -mindepth 1 -maxdepth 1 -type d | head -n 1)
+          cp -r $FIRST_ARTIFACT/include/* ./static-release/include/
+          cp -r $FIRST_ARTIFACT/include/* ./shared-release/include/
+          
+          # Copy GameAnalyticsExtern.h for shared library release
+          cp ./source/gameanalytics/GameAnalyticsExtern.h ./shared-release/include/GameAnalytics/
       
-          # Dynamically find all platform directories
-          platform_dirs=$(find ./release-artifacts -mindepth 1 -maxdepth 1 -type d)
-      
-          # Iterate over each platform directory and copy the respective binaries
-          for platform in $platform_dirs; do
-            platform_name=$(basename $platform)
-            mkdir -p ./final-release/$platform_name
-            if [[ $platform_name == *"windows"* ]]; then
-              cp $platform/*.lib ./final-release/$platform_name/
+          # Process static library artifacts
+          for artifact_dir in ./release-artifacts/*-static; do
+            artifact_name=$(basename $artifact_dir)
+            # Extract platform info (remove ga-cpp-sdk- prefix and -static suffix)
+            platform_info=${artifact_name#ga-cpp-sdk-}
+            platform_info=${platform_info%-static}
+            
+            mkdir -p ./static-release/$platform_info
+            
+            # Copy static libraries
+            if [[ $artifact_name == *"windows"* ]]; then
+              cp $artifact_dir/*.lib ./static-release/$platform_info/ 2>/dev/null || true
             else
-              cp $platform/*.a ./final-release/$platform_name/
+              cp $artifact_dir/*.a ./static-release/$platform_info/ 2>/dev/null || true
+            fi
+          done
+          
+          # Process shared library artifacts
+          for artifact_dir in ./release-artifacts/*-shared; do
+            artifact_name=$(basename $artifact_dir)
+            # Extract platform info (remove ga-cpp-sdk- prefix and -shared suffix)
+            platform_info=${artifact_name#ga-cpp-sdk-}
+            platform_info=${platform_info%-shared}
+            
+            mkdir -p ./shared-release/$platform_info
+            
+            # Copy shared libraries
+            if [[ $artifact_name == *"windows"* ]]; then
+              cp $artifact_dir/*.dll ./shared-release/$platform_info/ 2>/dev/null || true
+            elif [[ $artifact_name == *"macOS"* ]]; then
+              cp $artifact_dir/*.dylib ./shared-release/$platform_info/ 2>/dev/null || true
+            else
+              cp $artifact_dir/*.so ./shared-release/$platform_info/ 2>/dev/null || true
             fi
           done
 
-          # Create a zip archive of the final-release directory
-          zip -r ga-sdk-release-${{ inputs.tag_name }}.zip ./final-release
+          # Create zip archives
+          zip -r ga-sdk-static-${{ inputs.tag_name }}.zip ./static-release
+          zip -r ga-sdk-shared-${{ inputs.tag_name }}.zip ./shared-release
 
       - name: Show organized release files
-        run: tree ./final-release
+        run: |
+          echo "=== Static Libraries ==="
+          tree ./static-release || ls -R ./static-release
+          echo ""
+          echo "=== Shared Libraries ==="
+          tree ./shared-release || ls -R ./shared-release
 
       - name: Create release
         uses: softprops/action-gh-release@v2.0.8
@@ -77,4 +111,6 @@ jobs:
           name: Release GA-CPP-SDK ${{ inputs.tag_name }}
           generate_release_notes: true
           make_latest: true
-          files: ga-sdk-release-${{ inputs.tag_name }}.zip
+          files: |
+            ga-sdk-static-${{ inputs.tag_name }}.zip
+            ga-sdk-shared-${{ inputs.tag_name }}.zip

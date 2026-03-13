@@ -40,7 +40,6 @@ namespace gameanalytics
 		private:
 
 			static void signalHandler(int sig, siginfo_t* info, void* context);
-			static struct sigaction prevSigAction;
 	};
 }
 

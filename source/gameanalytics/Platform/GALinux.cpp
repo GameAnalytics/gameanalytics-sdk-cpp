@@ -17,8 +17,10 @@
 #include <sys/socket.h>
 #include <linux/wireless.h>
 #include <ifaddrs.h>
+#include <array>
 
-struct sigaction gameanalytics::GAPlatformLinux::prevSigAction;
+static std::array<struct sigaction, NSIG> prevSigActions = {};
+static std::array<bool, NSIG> hasPrevSigAction = {};
 
 struct ProcessStat 
 {
@@ -130,73 +132,32 @@ void gameanalytics::GAPlatformLinux::setupUncaughtExceptionHandler()
     mySigAction.sa_flags = SA_SIGINFO;
     
     sigemptyset(&mySigAction.sa_mask);
-    sigaction(SIGQUIT, NULL, &prevSigAction);
-    if (prevSigAction.sa_handler != SIG_IGN)
+    constexpr int signalsToHandle[] = {
+        SIGQUIT, SIGILL, SIGTRAP, SIGABRT,
+        SIGFPE, SIGBUS, SIGSEGV, SIGSYS,
+        SIGPIPE, SIGALRM, SIGXCPU, SIGXFSZ
+    };
+
+    for (int signalNumber : signalsToHandle)
     {
-        sigaction(SIGQUIT, &mySigAction, NULL);
-    }
-    sigaction(SIGILL, NULL, &prevSigAction);
-    if (prevSigAction.sa_handler != SIG_IGN)
-    {
-        sigaction(SIGILL, &mySigAction, NULL);
-    }
-    sigaction(SIGTRAP, NULL, &prevSigAction);
-    if (prevSigAction.sa_handler != SIG_IGN)
-    {
-        sigaction(SIGTRAP, &mySigAction, NULL);
-    }
-    sigaction(SIGABRT, NULL, &prevSigAction);
-    if (prevSigAction.sa_handler != SIG_IGN)
-    {
-        sigaction(SIGABRT, &mySigAction, NULL);
-    }
-    
-    sigaction(SIGFPE, NULL, &prevSigAction);
-    if (prevSigAction.sa_handler != SIG_IGN)
-    {
-        sigaction(SIGFPE, &mySigAction, NULL);
-    }
-    sigaction(SIGBUS, NULL, &prevSigAction);
-    if (prevSigAction.sa_handler != SIG_IGN)
-    {
-        sigaction(SIGBUS, &mySigAction, NULL);
-    }
-    sigaction(SIGSEGV, NULL, &prevSigAction);
-    if (prevSigAction.sa_handler != SIG_IGN)
-    {
-        sigaction(SIGSEGV, &mySigAction, NULL);
-    }
-    sigaction(SIGSYS, NULL, &prevSigAction);
-    if (prevSigAction.sa_handler != SIG_IGN)
-    {
-        sigaction(SIGSYS, &mySigAction, NULL);
-    }
-    sigaction(SIGPIPE, NULL, &prevSigAction);
-    if (prevSigAction.sa_handler != SIG_IGN)
-    {
-        sigaction(SIGPIPE, &mySigAction, NULL);
-    }
-    sigaction(SIGALRM, NULL, &prevSigAction);
-    if (prevSigAction.sa_handler != SIG_IGN)
-    {
-        sigaction(SIGALRM, &mySigAction, NULL);
-    }
-    sigaction(SIGXCPU, NULL, &prevSigAction);
-    if (prevSigAction.sa_handler != SIG_IGN)
-    {
-        sigaction(SIGXCPU, &mySigAction, NULL);
-    }
-    sigaction(SIGXFSZ, NULL, &prevSigAction);
-    if (prevSigAction.sa_handler != SIG_IGN)
-    {
-        sigaction(SIGXFSZ, &mySigAction, NULL);
+        struct sigaction previous = {};
+        if (sigaction(signalNumber, NULL, &previous) == 0)
+        {
+            prevSigActions[signalNumber] = previous;
+            hasPrevSigAction[signalNumber] = true;
+
+            if (previous.sa_handler != SIG_IGN)
+            {
+                sigaction(signalNumber, &mySigAction, NULL);
+            }
+        }
     }
 }
 
 void gameanalytics::GAPlatformLinux::signalHandler(int sig, siginfo_t* info, void* context)
 {
     constexpr int NUM_MAX_FRAMES = 128;
-    static int errorCount = 0;
+    static volatile sig_atomic_t errorCount = 0;
 
     if (state::GAState::useErrorReporting())
     {
@@ -208,7 +169,7 @@ void gameanalytics::GAPlatformLinux::signalHandler(int sig, siginfo_t* info, voi
          *    Now format into a message for sending to the user
          */
         std::string stackTrace = "Stack trace:\n";
-        for (int i = 0; i < len; ++i)
+        for (int i = 0; symbols != NULL && i < len; ++i)
         {
             stackTrace += symbols[i];
             stackTrace += '\n';
@@ -221,16 +182,42 @@ void gameanalytics::GAPlatformLinux::signalHandler(int sig, siginfo_t* info, voi
             events::GAEvents::processEvents("error", false);
         }
 
+        if (symbols != NULL)
+        {
+            free(symbols);
+        }
+
         struct sigaction newact;
         newact.sa_flags = 0;
         sigemptyset(&newact.sa_mask);
         newact.sa_handler = SIG_DFL;
+        sigaction(sig, &newact, NULL);
     }
 
-    if (*prevSigAction.sa_handler != NULL)
+    if (sig >= 0 && sig < NSIG && hasPrevSigAction[sig])
     {
-        (*prevSigAction.sa_handler)(sig);
+        const struct sigaction& previous = prevSigActions[sig];
+
+        if ((previous.sa_flags & SA_SIGINFO) && previous.sa_sigaction != NULL)
+        {
+            previous.sa_sigaction(sig, info, context);
+            return;
+        }
+
+        if (previous.sa_handler == SIG_IGN)
+        {
+            return;
+        }
+
+        if (previous.sa_handler != NULL && previous.sa_handler != SIG_DFL)
+        {
+            previous.sa_handler(sig);
+            return;
+        }
     }
+
+    signal(sig, SIG_DFL);
+    raise(sig);
 }
 
 std::string gameanalytics::GAPlatformLinux::getCpuModel() const
