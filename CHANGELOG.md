@@ -1,5 +1,24 @@
 # Changelog
 
+## 5.2.0
+
+### Added
+
+- **Shared library support** — The SDK can now be built as a shared library (`.dll`/`.so`/`.dylib`) via `-DGA_SHARED_LIB=ON` (or `--shared` in `setup.py`). Primarily aimed at Unity native plugin usage.
+- **Fully exported C extern API** — All `GameAnalyticsExtern` functions now carry the correct `GA_API` export/import macro (`__declspec(dllexport)` on Windows, `__attribute__((visibility("default")))` on Linux/macOS).
+- **New exported C API functions**: `gameAnalytics_configureBuildPlatform`, `gameAnalytics_configureCustomLogHandler` (with `GALogHandler` callback and `GALoggerMessageType` enum), `gameAnalytics_disableDeviceInfo`.
+- **Shared library sample** — New `sample_shared/` project demonstrating shared lib integration.
+- **`setup.py` `--shared` and `--compiler` flags** — Linux builds can now select `gcc` or `clang`; all platforms support `--shared` to produce a shared library.
+- **Null-safe C string handling** — All extern functions guard against null `const char*` inputs via a `safeString()` helper, preventing crashes from managed runtimes (e.g. Unity P/Invoke).
+- **Cross-platform `ga_strndup`** — Replaced POSIX-only `strndup` with a portable implementation, fixing MSVC/Windows compilation.
+
+### Fixed
+
+- **Linux: infinite signal loop freeze** — Signal handlers now store per-signal previous handlers in a per-signal array instead of a single shared variable, preventing re-entrant signal delivery from looping infinitely when an exception is raised.
+- **macOS: equivalent signal handler isolation** — Same signal handler fix applied to the macOS platform layer.
+- **Windows MSVC runtime library** — Switched to the `CMAKE_MSVC_RUNTIME_LIBRARY` CMake abstraction (replaces manual `/MD`/`/MT` flags), correctly handling Debug/Release and static/shared runtime selection.
+
+
 # 5.1.0
 
 ### Added
