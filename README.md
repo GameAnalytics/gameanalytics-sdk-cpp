@@ -28,21 +28,38 @@ See the full [CHANGELOG](./CHANGELOG) for detailed version history.
 How to build
 ------------
 
-Run `setup.py` with the required argument for your platform:
+Run `setup.py` with the required arguments for your platform:
 
 ```sh
-python setup.py --platform {linux_x64,linux_x86,osx,win32,win64,uwp} [--cfg {Release,Debug}] [--build] [--test] [--coverage]
+python setup.py --platform {linux_x64,linux_x86,osx,win32,win64,uwp} [--cfg {Release,Debug}] [--compiler {gcc,clang}] [--shared] [--build] [--test] [--coverage]
 ```
 
-The following arguments are supported:
+| Argument | Values | Description |
+|---|---|---|
+| `--platform` | `linux_x64`, `linux_x86`, `osx`, `win32`, `win64`, `uwp` | Target platform (**required**) |
+| `--cfg` | `Release`, `Debug` | Build configuration (default: `Debug`) |
+| `--compiler` | `gcc`, `clang` | Compiler selection — **Linux only** (default: `clang`) |
+| `--shared` | — | Build a shared library (`.dll`/`.so`/`.dylib`) instead of a static library |
+| `--build` | — | Execute the build step |
+| `--test` | — | Execute the test step (not available with `--shared`) |
+| `--coverage` | — | Generate code coverage report (not available with `--shared`) |
 
-* `linux_x64`
-* `linux_x86`
-* `osx`
-* `win32`
-* `win64`
+#### Examples
 
-The generated project can be found inside the `build` folder.
+Static library (default):
+```sh
+python setup.py --platform osx --cfg Release --build --test
+```
+
+Shared library (e.g. for Unity native plugin):
+```sh
+python setup.py --platform win64 --cfg Release --shared --build
+python setup.py --platform osx --cfg Release --shared --build
+python setup.py --platform linux_x64 --cfg Release --shared --build
+python setup.py --platform linux_x64 --compiler gcc --cfg Release --shared --build
+```
+
+The generated project and build artifacts can be found inside the `build` folder. Packaged output (library + headers) is placed in `build/package/`.
 
 Lib Dependencies
 ----------------
@@ -59,21 +76,52 @@ Lib Dependencies
 Usage of the SDK
 ----------------
 
-Remember to include the GameAnalytics header file wherever you are using the SDK:
+### Static library (C++ API)
+
+Include the GameAnalytics header file wherever you are using the SDK:
 
 ``` c++
  #include "GameAnalytics/GameAnalytics.h"
 ```
 
+### Shared library / Unity native plugin (C API)
+
+When building with `--shared` / `-DGA_SHARED_LIB=ON`, the SDK exposes a C API via `GameAnalyticsExtern.h`. This is the intended integration path for Unity (P/Invoke) and other managed runtimes.
+
+Include the header in your native wrapper:
+```c
+#include "GameAnalytics/GameAnalyticsExtern.h"
+```
+
+From Unity C#, import via `[DllImport]`:
+```csharp
+[DllImport("GameAnalytics")]
+private static extern void gameAnalytics_initialize(string gameKey, string gameSecret);
+```
+
+> **Note:** Always call `gameAnalytics_freeString(ptr)` on any `const char*` returned by the C API to avoid memory leaks.
+
 ### Custom log handler
 If you want to use your own custom log handler here is how it is done:
+
+**C++ API:**
 ``` c++
-void logHandler(const char *message, gameanalytics::EGALoggerMessageType type)
+void logHandler(std::string const& message, gameanalytics::EGALoggerMessageType type)
 {
     // add your logging in here
 }
 
 gameanalytics::GameAnalytics::configureCustomLogHandler(logHandler);
+```
+
+**C API (shared lib):**
+```c
+void myLogHandler(const char* message, GALoggerMessageType type)
+{
+    // add your logging in here
+}
+
+gameAnalytics_configureCustomLogHandler(myLogHandler);
 ```
 
 ### Configuration
