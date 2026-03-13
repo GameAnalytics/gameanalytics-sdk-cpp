@@ -98,6 +98,31 @@ GA_API void gameAnalytics_configureWritablePath(const char *writablePath)
     gameanalytics::GameAnalytics::configureWritablePath(safeString(writablePath));
 }
 
+GA_API void gameAnalytics_configureBuildPlatform(const char *platform)
+{
+    gameanalytics::GameAnalytics::configureBuildPlatform(safeString(platform));
+}
+
+GA_API void gameAnalytics_configureCustomLogHandler(GALogHandler handler)
+{
+    if (!handler)
+    {
+        gameanalytics::GameAnalytics::configureCustomLogHandler(nullptr);
+        return;
+    }
+    gameanalytics::GameAnalytics::configureCustomLogHandler(
+        [=](std::string const& message, gameanalytics::EGALoggerMessageType messageType)
+        {
+            handler(message.c_str(), (GALoggerMessageType)messageType);
+        }
+    );
+}
+
+GA_API void gameAnalytics_disableDeviceInfo()
+{
+    gameanalytics::GameAnalytics::disableDeviceInfo();
+}
+
 GA_API void gameAnalytics_configureDeviceModel(const char *deviceModel)
 {
     gameanalytics::GameAnalytics::configureDeviceModel(safeString(deviceModel));

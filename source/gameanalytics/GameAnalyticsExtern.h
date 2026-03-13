@@ -55,7 +55,17 @@ enum GAErrorSeverity
     EGACritical    = 5
 };
 
+enum GALoggerMessageType
+{
+    EGALogError   = 0,
+    EGALogWarning = 1,
+    EGALogInfo    = 2,
+    EGALogDebug   = 3,
+    EGALogVerbose = 4
+};
+
 typedef float(*GAFpsTracker)(void);
+typedef void(*GALogHandler)(const char* message, GALoggerMessageType messageType);
 
 GA_API void gameAnalytics_freeString(const char* ptr);
 
@@ -66,6 +76,9 @@ GA_API void gameAnalytics_configureAvailableResourceCurrencies(const char **reso
 GA_API void gameAnalytics_configureAvailableResourceItemTypes(const char **resourceItemTypes, int size);
 GA_API void gameAnalytics_configureBuild(const char *build);
 GA_API void gameAnalytics_configureWritablePath(const char *writablePath);
+GA_API void gameAnalytics_configureBuildPlatform(const char *platform);
+GA_API void gameAnalytics_configureCustomLogHandler(GALogHandler handler);
+GA_API void gameAnalytics_disableDeviceInfo();
 GA_API void gameAnalytics_configureDeviceModel(const char *deviceModel);
 GA_API void gameAnalytics_configureDeviceManufacturer(const char *deviceManufacturer);
 
