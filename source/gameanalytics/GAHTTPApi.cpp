@@ -199,7 +199,7 @@ namespace gameanalytics
                 res = curl_easy_perform(curl);
                 if (res != CURLE_OK)
                 {
-                    logging::GALogger::d(curl_easy_strerror(res));
+                    logging::GALogger::d("%s", curl_easy_strerror(res));
                     return NoResponse;
                 }
 
@@ -211,10 +211,18 @@ namespace gameanalytics
 
                 EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.packet.data(), "Events");
 
+                const bool isValidResponse = 
+                    requestResponseEnum == Ok || requestResponseEnum == Created || requestResponseEnum == NoContent;
+
                 // if not 200 result
-                if (requestResponseEnum != Ok && requestResponseEnum != Created && requestResponseEnum != BadRequest)
+                if (!isValidResponse && requestResponseEnum != BadRequest)
                 {
                     logging::GALogger::d("Failed Events Call. URL: %s, JSONString: %s, Authorization: %s", url.c_str(), jsonString.c_str(), authorization.data());
+                    return requestResponseEnum;
+                }
+
+                if(requestResponseEnum == NoContent)
+                {
                     return requestResponseEnum;
                 }
 
@@ -437,6 +445,10 @@ namespace gameanalytics
             if (statusCode == 201)
             {
                 return Created;
+            }
+            if(statusCode == 204)
+            {
+                return NoContent;
             }
 
             // 401 can return 0 status
