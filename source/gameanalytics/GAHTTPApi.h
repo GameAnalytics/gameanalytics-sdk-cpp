@@ -32,8 +32,9 @@ namespace gameanalytics
             BadRequest = 6, // 400
             Unauthorized = 7, // 401
             UnknownResponseCode = 8,
-            Ok = 9,
+            Ok = 9, // 200
             Created = 10,
+            NoContent = 11, // 204
             InternalError
         };
 
