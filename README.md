@@ -106,7 +106,7 @@ If you want to use your own custom log handler here is how it is done:
 
 **C++ API:**
 ``` c++
-void logHandler(const char *message, gameanalytics::EGALoggerMessageType type)
+void logHandler(std::string const& message, gameanalytics::EGALoggerMessageType type)
 {
     // add your logging in here
 }
