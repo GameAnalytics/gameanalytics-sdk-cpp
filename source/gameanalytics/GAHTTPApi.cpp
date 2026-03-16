@@ -364,9 +364,9 @@ namespace gameanalytics
                 logging::GALogger::d("sdk error content : %s", s.toString().c_str());;
 
                 // if not 200 result
-                if (statusCode != 200)
+                if (statusCode != 200 && statusCode != 204)
                 {
-                    logging::GALogger::d("sdk error failed. response code not 200. status code: %u", CURLE_OK);
+                    logging::GALogger::d("sdk error failed. response code not 200 or 204. status code: %u", CURLE_OK);
                     return;
                 }
 
