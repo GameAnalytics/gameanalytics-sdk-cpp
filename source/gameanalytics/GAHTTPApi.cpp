@@ -14,6 +14,13 @@ namespace gameanalytics
 {
     namespace http
     {
+        constexpr int HTTP_RESPONSE_OK = 200;
+        constexpr int HTTP_RESPONSE_CREATED = 201;
+        constexpr int HTTP_RESPONSE_NO_CONTENT = 204;
+        constexpr int HTTP_RESPONSE_BAD_REQUEST = 400;
+        constexpr int HTTP_RESPONSE_UNAUTHORIZED = 401;
+        constexpr int HTTP_RESPONSE_INTERNAL_ERROR = 500;
+
         size_t writefunc(void *ptr, size_t size, size_t nmemb, ResponseData *s)
         {
             const size_t new_len = s->packet.size() + size * nmemb + 1;
@@ -364,7 +371,7 @@ namespace gameanalytics
                 logging::GALogger::d("sdk error content : %s", s.toString().c_str());;
 
                 // if not 200 result
-                if (statusCode != 200 && statusCode != 204)
+                if (statusCode != HTTP_RESPONSE_OK && statusCode != HTTP_RESPONSE_NO_CONTENT)
                 {
                     logging::GALogger::d("sdk error failed. response code not 200 or 204. status code: %u", CURLE_OK);
                     return;
@@ -438,21 +445,21 @@ namespace gameanalytics
             }
 
             // ok
-            if (statusCode == 200)
+            if (statusCode == HTTP_RESPONSE_OK)
             {
                 return Ok;
             }
-            if (statusCode == 201)
+            if (statusCode == HTTP_RESPONSE_CREATED)
             {
                 return Created;
             }
-            if(statusCode == 204)
+            if(statusCode == HTTP_RESPONSE_NO_CONTENT)
             {
                 return NoContent;
             }
 
             // 401 can return 0 status
-            if (statusCode == 0 || statusCode == 401)
+            if (statusCode == 0 || statusCode == HTTP_RESPONSE_UNAUTHORIZED)
             {
                 logging::GALogger::d("%s request. 401 - Unauthorized.", requestId);
                 return Unauthorized;
@@ -464,7 +471,7 @@ namespace gameanalytics
                 return BadRequest;
             }
 
-            if (statusCode == 500)
+            if (statusCode == HTTP_RESPONSE_INTERNAL_ERROR)
             {
                 logging::GALogger::d("%s request. 500 - Internal Server Error.", requestId);
                 return InternalServerError;
