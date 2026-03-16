@@ -373,7 +373,7 @@ namespace gameanalytics
                 // if not 200 result
                 if (statusCode != HTTP_RESPONSE_OK && statusCode != HTTP_RESPONSE_NO_CONTENT)
                 {
-                    logging::GALogger::d("sdk error failed. response code not 200 or 204. status code: %u", CURLE_OK);
+                    logging::GALogger::d("sdk error failed. response code not 200 or 204. status code: %u", statusCode);
                     return;
                 }
 
@@ -465,7 +465,7 @@ namespace gameanalytics
                 return Unauthorized;
             }
 
-            if (statusCode == 400)
+            if (statusCode == HTTP_RESPONSE_BAD_REQUEST)
             {
                 logging::GALogger::d("%s request. 400 - Bad Request.", requestId);
                 return BadRequest;
