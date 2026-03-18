@@ -10,6 +10,8 @@
 #include "GAUtilities.h"
 #include "GAValidator.h"
 
+#include "Http/GAHttpCurl.h"
+
 namespace gameanalytics
 {
     namespace http
@@ -21,21 +23,11 @@ namespace gameanalytics
         constexpr int HTTP_RESPONSE_UNAUTHORIZED = 401;
         constexpr int HTTP_RESPONSE_INTERNAL_ERROR = 500;
 
-        size_t writefunc(void *ptr, size_t size, size_t nmemb, ResponseData *s)
-        {
-            const size_t new_len = s->packet.size() + size * nmemb + 1;
-            s->packet.reserve(new_len);
-
-            s->packet.insert(s->packet.end(), reinterpret_cast<char*>(ptr), reinterpret_cast<char*>(ptr) + size * nmemb);
-            s->packet.push_back('\0');
-
-            return size*nmemb;
-        }
-
         // Constructor - setup the basic information for HTTP
-        GAHTTPApi::GAHTTPApi()
+        GAHTTPApi::GAHTTPApi():
+            impl(std::make_unique<GAHttpCurl>())
         {
-            curl_global_init(CURL_GLOBAL_DEFAULT);
+            impl->initialize();
 
             baseUrl              = protocol + "://" + hostName + "/" + version;
             remoteConfigsBaseUrl = protocol + "://" + hostName + "/remote_configs/" + remoteConfigsVersion;
@@ -50,7 +42,7 @@ namespace gameanalytics
 
         GAHTTPApi::~GAHTTPApi()
         {
-            curl_global_cleanup();
+            impl->cleanup();
         }
 
         GAHTTPApi& GAHTTPApi::getInstance()
@@ -80,45 +72,22 @@ namespace gameanalytics
 
                 std::vector<uint8_t> payloadData = createPayloadData(jsonString, useGzip);
 
-                CURL* curl = nullptr;
-                CURLcode res;
-                curl = curl_easy_init();
-                if (!curl)
-                {
-                    return NoResponse;
-                }
+                std::string const auth = createAuth(payloadData);
+                GAHttpWrapper::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
 
-                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-
-                ResponseData s;
-
-                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
-                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
-
-                std::vector<uint8_t> authorization = createRequest(curl, url, payloadData, useGzip);
-
-                res = curl_easy_perform(curl);
-                if (res != CURLE_OK)
-                {
-                    logging::GALogger::d(curl_easy_strerror(res));
-                    return NoResponse;
-                }
-
-                long response_code{};
-                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-                curl_easy_cleanup(curl);
+                std::string_view content = response.toString();
 
                 // process the response
-                logging::GALogger::d("init request content: %s, json: %s", s.toString().c_str(), jsonString.c_str());
+                logging::GALogger::d("init request content: %.*s, json: %s", (int)content.size(), content.data(), jsonString.c_str());
 
-                json requestJsonDict = json::parse(s.toString());
+                json requestJsonDict = json::parse(content);
 
-                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.packet.data(), "Init");
+                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response.code, (const char*)response.packet.data(), "Init");
 
                 // if not 200 result
                 if (requestResponseEnum != Ok && requestResponseEnum != Created && requestResponseEnum != BadRequest)
                 {
-                    logging::GALogger::d("Failed Init Call. URL: %s, JSONString: %s, Authorization: %s", url.c_str(), jsonString.c_str(), authorization.data());
+                    logging::GALogger::d("Failed Init Call. URL: %s, JSONString: %s, Authorization: %s", url.c_str(), jsonString.c_str(), auth.c_str());
 
                     return requestResponseEnum;
                 }
@@ -161,6 +130,17 @@ namespace gameanalytics
             }
         }
 
+        std::string GAHTTPApi::createAuth(std::vector<uint8_t> const& payloadData)
+        {        
+            const std::string key = state::GAState::getGameSecret();
+
+            std::vector<uint8_t> authorization;
+            utilities::GAUtilities::hmacWithKey(key.c_str(), payloadData, authorization);
+            std::string auth = "Authorization: " + std::string(reinterpret_cast<char*>(authorization.data()), authorization.size());
+
+            return auth;
+        }
+
         EGAHTTPApiResponse GAHTTPApi::sendEventsInArray(json& json_out, const json& eventArray)
         {
             if (eventArray.empty())
@@ -169,10 +149,10 @@ namespace gameanalytics
                 return JsonEncodeFailed;
             }
 
-            const std::string gameKey = state::GAState::getGameKey();
-
             try
             {
+                const std::string gameKey = state::GAState::getGameKey();
+
                 // Generate URL
                 const std::string url = baseUrl + '/' + gameKey + '/' + eventsUrlPath;
                 logging::GALogger::d("Sending 'events' URL: %s", url.c_str());
@@ -186,37 +166,13 @@ namespace gameanalytics
 
                 std::vector<uint8_t> payloadData = createPayloadData(jsonString, useGzip);
 
-                CURL* curl = nullptr;
-                CURLcode res{};
-                curl = curl_easy_init();
-                if (!curl)
-                {
-                    return NoResponse;
-                }
+                std::string const auth = createAuth(payloadData);
+                GAHttpWrapper::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
 
-                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+                std::string_view content = response.toString();
+                logging::GALogger::d("body: %.*s", (int)content.size(), content.data());
 
-                ResponseData s = {};
-
-                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
-                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
-
-                std::vector<uint8_t> authorization = createRequest(curl, url, payloadData, useGzip);
-
-                res = curl_easy_perform(curl);
-                if (res != CURLE_OK)
-                {
-                    logging::GALogger::d("%s", curl_easy_strerror(res));
-                    return NoResponse;
-                }
-
-                long response_code{};
-                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-                curl_easy_cleanup(curl);
-
-                logging::GALogger::d("body: %s", s.toString().c_str());
-
-                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response_code, s.packet.data(), "Events");
+                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response.code, (const char*)response.packet.data(), "Events");
 
                 const bool isValidResponse = 
                     requestResponseEnum == Ok || requestResponseEnum == Created || requestResponseEnum == NoContent;
@@ -224,7 +180,7 @@ namespace gameanalytics
                 // if not 200 result
                 if (!isValidResponse && requestResponseEnum != BadRequest)
                 {
-                    logging::GALogger::d("Failed Events Call. URL: %s, JSONString: %s, Authorization: %s", url.c_str(), jsonString.c_str(), authorization.data());
+                    logging::GALogger::d("Failed Events Call. URL: %s, JSONString: %s, Authorization: %s", url.c_str(), jsonString.c_str(), auth.c_str());
                     return requestResponseEnum;
                 }
 
@@ -234,7 +190,7 @@ namespace gameanalytics
                 }
 
                 // decode JSON
-                json requestJsonDict = json::parse(s.toString());
+                json requestJsonDict = json::parse(response.toString());
                 if (requestJsonDict.is_null())
                 {
                     return JsonDecodeFailed;
@@ -306,7 +262,6 @@ namespace gameanalytics
 
             logging::GALogger::d("sendSdkErrorEvent json: %s", payloadJSONString.c_str());
 
-#if !NO_ASYNC
             ErrorType errorType = std::make_tuple(category, area);
 
             bool useGzip = this->useGzip;
@@ -339,47 +294,23 @@ namespace gameanalytics
 
                 std::vector<uint8_t> payloadData = getInstance().createPayloadData(payloadJSONString, useGzip);
 
-                CURL *curl = nullptr;
-                CURLcode res;
-                curl = curl_easy_init();
-                if(!curl)
-                {
-                    return;
-                }
+                std::string auth = createAuth(payloadData);
+                GAHttpWrapper::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
 
-                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-
-                ResponseData s = {};
-
-                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
-                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
-
-                getInstance().createRequest(curl, url.data(), payloadData, useGzip);
-
-                res = curl_easy_perform(curl);
-                if(res != CURLE_OK)
-                {
-                    logging::GALogger::d(curl_easy_strerror(res));
-                    return;
-                }
-
-                long statusCode{};
-                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &statusCode);
-                curl_easy_cleanup(curl);
+                std::string_view content = response.toString();
 
                 // process the response
-                logging::GALogger::d("sdk error content : %s", s.toString().c_str());;
+                logging::GALogger::d("sdk error content : %.*s", (int)content.size(), content.data());
 
                 // if not 200 result
-                if (statusCode != HTTP_RESPONSE_OK && statusCode != HTTP_RESPONSE_NO_CONTENT)
+                if (response.code != HTTP_RESPONSE_OK && response.code != HTTP_RESPONSE_NO_CONTENT)
                 {
-                    logging::GALogger::d("sdk error failed. response code not 200 or 204. status code: %u", statusCode);
+                    logging::GALogger::d("sdk error failed. response code not 200 or 204. status code: %l", response.code);
                     return;
                 }
 
                 countMap[errorType] = countMap[errorType] + 1;
             });
-#endif
         }
 
         std::vector<uint8_t> GAHTTPApi::createPayloadData(std::string const& payload, bool gzip)
@@ -402,37 +333,6 @@ namespace gameanalytics
             }
 
             return payloadData;
-        }
-
-        std::vector<uint8_t> GAHTTPApi::createRequest(CURL *curl, std::string const& url, const std::vector<uint8_t>& payloadData, bool gzip)
-        {
-            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-            curl_easy_setopt(curl, CURLOPT_POST, 1L);
-            struct curl_slist *header = NULL;
-
-            if (gzip)
-            {
-                header = curl_slist_append(header, "Content-Encoding: gzip");
-            }
-
-            // create authorization hash
-            std::string const key = state::GAState::getGameSecret();
-
-            std::vector<uint8_t> authorization;
-            utilities::GAUtilities::hmacWithKey(key.c_str(), payloadData, authorization);
-            std::string auth = "Authorization: " + std::string(reinterpret_cast<char*>(authorization.data()), authorization.size());
-
-            header = curl_slist_append(header, auth.c_str());
-
-            // always JSON
-            header = curl_slist_append(header, "Content-Type: application/json");
-
-            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header);
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadData.data());
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payloadData.size());
-
-            return authorization;
         }
 
         EGAHTTPApiResponse GAHTTPApi::processRequestResponse(long statusCode, const char* body, const char* requestId)
@@ -477,11 +377,6 @@ namespace gameanalytics
                 return InternalServerError;
             }
             return UnknownResponseCode;
-        }
-
-        std::string ResponseData::toString() const
-        {
-            return std::string(packet.begin(), packet.end());
         }
 }
 }

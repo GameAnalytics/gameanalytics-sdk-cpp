@@ -6,7 +6,7 @@
 #pragma once
 
 #include "GACommon.h"
-#include <curl/curl.h>
+#include "Http/GAHttpWrapper.h"
 
 #include <vector>
 #include <map>
@@ -18,7 +18,6 @@ namespace gameanalytics
 {
     namespace http
     {
-
         enum EGAHTTPApiResponse
         {
             // client
@@ -28,12 +27,12 @@ namespace gameanalytics
             JsonEncodeFailed = 3,
             JsonDecodeFailed = 4,
             // server
-            InternalServerError = 5,
+            InternalServerError = 5, // 500
             BadRequest = 6, // 400
             Unauthorized = 7, // 401
             UnknownResponseCode = 8,
             Ok = 9, // 200
-            Created = 10,
+            Created = 10, // 201
             NoContent = 11, // 204
             InternalError
         };
@@ -103,12 +102,6 @@ namespace gameanalytics
             Message = 14
         };
 
-        struct ResponseData
-        {
-            std::vector<char> packet;
-            std::string toString() const;
-        };
-
         typedef std::tuple<EGASdkErrorCategory, EGASdkErrorArea> ErrorType;
 
         class GAHTTPApi
@@ -142,9 +135,10 @@ namespace gameanalytics
             GAHTTPApi(const GAHTTPApi&) = delete;
             GAHTTPApi& operator=(const GAHTTPApi&) = delete;
             std::vector<uint8_t> createPayloadData(std::string const& payload, bool gzip);
-
-            std::vector<uint8_t> createRequest(CURL *curl, std::string const& url, const std::vector<uint8_t>& payloadData, bool gzip);
+            std::string createAuth(std::vector<uint8_t> const& payload);
             EGAHTTPApiResponse processRequestResponse(long statusCode, const char* body, const char* requestId);
+
+            std::unique_ptr<GAHttpWrapper> impl;
 
             std::string protocol                = PROTOCOL;
             std::string hostName                = HOST_NAME;
@@ -162,21 +156,7 @@ namespace gameanalytics
             static constexpr int MaxCount = 10;
             std::map<ErrorType, int> countMap;
             std::map<ErrorType, int64_t> timestampMap;
-
-#if USE_UWP && defined(USE_UWP_HTTP)
-            Windows::Web::Http::HttpClient^ httpClient;
-#endif
         };
-
-#if USE_UWP && defined(USE_UWP_HTTP)
-        ref class GANetworkStatus sealed
-        {
-        internal:
-            static void NetworkInformationOnNetworkStatusChanged(Platform::Object^ sender);
-            static void CheckInternetAccess();
-            static bool hasInternetAccess;
-        };
-#endif
 
         constexpr const char* GAHTTPApi::sdkErrorCategoryString(EGASdkErrorCategory value)
         {
