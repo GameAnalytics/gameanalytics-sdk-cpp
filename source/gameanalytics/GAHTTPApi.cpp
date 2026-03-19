@@ -361,19 +361,19 @@ namespace gameanalytics
             // 401 can return 0 status
             if (response.code == 0 || response.code == HTTP_RESPONSE_UNAUTHORIZED)
             {
-                logging::GALogger::d("%s request. 401 - Unauthorized.", requestId);
+                logging::GALogger::d("%s request. 401 - Unauthorized.", requestId.c_str());
                 return Unauthorized;
             }
 
             if (response.code == HTTP_RESPONSE_BAD_REQUEST)
             {
-                logging::GALogger::d("%s request. 400 - Bad Request.", requestId);
+                logging::GALogger::d("%s request. 400 - Bad Request.", requestId.c_str());
                 return BadRequest;
             }
 
             if (response.code == HTTP_RESPONSE_INTERNAL_ERROR)
             {
-                logging::GALogger::d("%s request. 500 - Internal Server Error.", requestId);
+                logging::GALogger::d("%s request. 500 - Internal Server Error.", requestId.c_str());
                 return InternalServerError;
             }
 
