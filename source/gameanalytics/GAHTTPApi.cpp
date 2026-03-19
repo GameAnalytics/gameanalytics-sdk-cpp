@@ -82,7 +82,7 @@ namespace gameanalytics
 
                 json requestJsonDict = json::parse(content);
 
-                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response.code, (const char*)response.packet.data(), "Init");
+                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response, "Init");
 
                 // if not 200 result
                 if (requestResponseEnum != Ok && requestResponseEnum != Created && requestResponseEnum != BadRequest)
@@ -172,7 +172,7 @@ namespace gameanalytics
                 std::string_view content = response.toString();
                 logging::GALogger::d("body: %.*s", (int)content.size(), content.data());
 
-                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response.code, (const char*)response.packet.data(), "Events");
+                EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response, "Events");
 
                 const bool isValidResponse = 
                     requestResponseEnum == Ok || requestResponseEnum == Created || requestResponseEnum == NoContent;
@@ -335,47 +335,48 @@ namespace gameanalytics
             return payloadData;
         }
 
-        EGAHTTPApiResponse GAHTTPApi::processRequestResponse(long statusCode, const char* body, const char* requestId)
+        EGAHTTPApiResponse GAHTTPApi::processRequestResponse(GAHttpWrapper::Response const& response, std::string const& requestId)
         {
             // if no result - often no connection
-            if (utilities::GAUtilities::isStringNullOrEmpty(body))
+            if (response.packet.empty() && response.code != HTTP_RESPONSE_NO_CONTENT)
             {
-                logging::GALogger::d("%s request. failed. Might be no connection. Status code: %ld", requestId, statusCode);
+                logging::GALogger::d("%s request. failed. Might be no connection. Status code: %ld", requestId.c_str(), response.code);
                 return NoResponse;
             }
 
             // ok
-            if (statusCode == HTTP_RESPONSE_OK)
+            if (response.code == HTTP_RESPONSE_OK)
             {
                 return Ok;
             }
-            if (statusCode == HTTP_RESPONSE_CREATED)
+            if (response.code == HTTP_RESPONSE_CREATED)
             {
                 return Created;
             }
-            if(statusCode == HTTP_RESPONSE_NO_CONTENT)
+            if(response.code == HTTP_RESPONSE_NO_CONTENT)
             {
                 return NoContent;
             }
 
             // 401 can return 0 status
-            if (statusCode == 0 || statusCode == HTTP_RESPONSE_UNAUTHORIZED)
+            if (response.code == 0 || response.code == HTTP_RESPONSE_UNAUTHORIZED)
             {
                 logging::GALogger::d("%s request. 401 - Unauthorized.", requestId);
                 return Unauthorized;
             }
 
-            if (statusCode == HTTP_RESPONSE_BAD_REQUEST)
+            if (response.code == HTTP_RESPONSE_BAD_REQUEST)
             {
                 logging::GALogger::d("%s request. 400 - Bad Request.", requestId);
                 return BadRequest;
             }
 
-            if (statusCode == HTTP_RESPONSE_INTERNAL_ERROR)
+            if (response.code == HTTP_RESPONSE_INTERNAL_ERROR)
             {
                 logging::GALogger::d("%s request. 500 - Internal Server Error.", requestId);
                 return InternalServerError;
             }
+
             return UnknownResponseCode;
         }
 }

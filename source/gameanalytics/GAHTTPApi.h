@@ -136,7 +136,7 @@ namespace gameanalytics
             GAHTTPApi& operator=(const GAHTTPApi&) = delete;
             std::vector<uint8_t> createPayloadData(std::string const& payload, bool gzip);
             std::string createAuth(std::vector<uint8_t> const& payload);
-            EGAHTTPApiResponse processRequestResponse(long statusCode, const char* body, const char* requestId);
+            EGAHTTPApiResponse processRequestResponse(GAHttpWrapper::Response const& response, std::string const& requestId);
 
             std::unique_ptr<GAHttpWrapper> impl;
 
