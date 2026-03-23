@@ -13,9 +13,7 @@ namespace gameanalytics
 
         const size_t new_len = s->packet.size() + size * nmemb + 1;
         s->packet.reserve(new_len);
-
         s->packet.insert(s->packet.end(), reinterpret_cast<char*>(ptr), reinterpret_cast<char*>(ptr) + size * nmemb);
-        s->packet.push_back('\0');
 
         return size*nmemb;
     }
@@ -32,9 +30,7 @@ namespace gameanalytics
 
     GAHttpWrapper::Response GAHttpCurl::sendRequest(std::string const& url, std::string const& auth, std::vector<uint8_t> const& payloadData, bool useGzip, void* userData)
     {
-        CURL* curl = nullptr;
-        CURLcode res{};
-        curl = curl_easy_init();
+        CURL* curl = curl_easy_init();
         if (!curl)
         {
             return {};
@@ -42,24 +38,24 @@ namespace gameanalytics
 
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
 
-        GAHttpWrapper::Response s = {};
+        GAHttpWrapper::Response response = {};
 
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
         createRequest(curl, url, auth, payloadData, useGzip);
 
-        res = curl_easy_perform(curl);
+        CURLcode res = curl_easy_perform(curl);
         if (res != CURLE_OK)
         {
             logging::GALogger::d("%s", curl_easy_strerror(res));
             return {};
         }
 
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &s.code);
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response.code);
         curl_easy_cleanup(curl);
 
-        return s;
+        return response;
     }
 
     void GAHttpCurl::createRequest(CURL *curl, std::string const& url, std::string const& auth, const std::vector<uint8_t>& payloadData, bool gzip)
