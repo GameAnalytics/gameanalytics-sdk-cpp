@@ -20,6 +20,9 @@ namespace gameanalytics
     {
         enum EGAHTTPApiResponse
         {
+            // sdk is misconfigured
+            SdkError = -1,
+
             // client
             NoResponse = 0,
             BadResponse = 1,
