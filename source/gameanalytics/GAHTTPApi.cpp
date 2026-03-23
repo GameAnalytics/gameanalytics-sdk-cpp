@@ -27,7 +27,10 @@ namespace gameanalytics
         GAHTTPApi::GAHTTPApi():
             impl(std::make_unique<GAHttpCurl>())
         {
-            impl->initialize();
+            if(impl)
+            {
+                impl->initialize();
+            }
 
             baseUrl              = protocol + "://" + hostName + "/" + version;
             remoteConfigsBaseUrl = protocol + "://" + hostName + "/remote_configs/" + remoteConfigsVersion;
@@ -42,7 +45,10 @@ namespace gameanalytics
 
         GAHTTPApi::~GAHTTPApi()
         {
-            impl->cleanup();
+            if(impl)
+            {
+                impl->cleanup();
+            }
         }
 
         GAHTTPApi& GAHTTPApi::getInstance()
@@ -52,6 +58,12 @@ namespace gameanalytics
 
         EGAHTTPApiResponse GAHTTPApi::requestInitReturningDict(json& json_out, std::string const& configsHash)
         {
+            if(!impl)
+            {
+                logging::GALogger::e("Invalid http implmentation");
+                return SdkError;
+            }
+
             std::string gameKey = state::GAState::getGameKey();
 
             // Generate URL
@@ -74,6 +86,12 @@ namespace gameanalytics
 
                 std::string const auth = createAuth(payloadData);
                 GAHttpWrapper::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
+
+                if(response.code < 0)
+                {
+                    logging::GALogger::e("Request failed: %s", url.c_str());
+                    return;
+                }
 
                 std::string_view content = response.toString();
 
@@ -143,6 +161,12 @@ namespace gameanalytics
 
         EGAHTTPApiResponse GAHTTPApi::sendEventsInArray(json& json_out, const json& eventArray)
         {
+            if(!impl)
+            {
+                logging::GALogger::e("Invalid http implmentation");
+                return SdkError;
+            }
+
             if (eventArray.empty())
             {
                 logging::GALogger::d("sendEventsInArray called with missing eventArray");
@@ -168,6 +192,12 @@ namespace gameanalytics
 
                 std::string const auth = createAuth(payloadData);
                 GAHttpWrapper::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
+
+                if(response.code < 0)
+                {
+                    logging::GALogger::e("Request failed: %s", url.c_str());
+                    return;
+                }
 
                 std::string_view content = response.toString();
                 logging::GALogger::d("body: %.*s", (int)content.size(), content.data());
@@ -224,6 +254,12 @@ namespace gameanalytics
 
         void GAHTTPApi::sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string const& reason, std::string const& gameKey, const std::string& secretKey)
         {
+            if(!impl)
+            {
+                logging::GALogger::e("Invalid http implmentation");
+                return;
+            }
+
             if(!state::GAState::isEventSubmissionEnabled())
             {
                 return;
@@ -250,7 +286,7 @@ namespace gameanalytics
             utilities::addIfNotEmpty(jsonObject, "error_parameter", sdkErrorParameterString(parameter));
             utilities::addIfNotEmpty(jsonObject, "reason", reason);
 
-            json eventArray;
+            json eventArray = json::array();
             eventArray.push_back(jsonObject);
 
             std::string payloadJSONString = eventArray.dump();
@@ -296,6 +332,12 @@ namespace gameanalytics
 
                 std::string auth = createAuth(payloadData);
                 GAHttpWrapper::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
+
+                if(response.code < 0)
+                {
+                    logging::GALogger::e("Request failed: %s", url.c_str());
+                    return;
+                }
 
                 std::string_view content = response.toString();
 
