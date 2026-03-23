@@ -19,6 +19,8 @@ namespace gameanalytics
                 }
             };
 
+            virtual ~GAHttpWrapper() {};
+
             virtual void initialize() = 0;
 
             virtual void cleanup() = 0;
