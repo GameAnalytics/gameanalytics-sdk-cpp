@@ -196,7 +196,7 @@ namespace gameanalytics
                 if(response.code < 0)
                 {
                     logging::GALogger::e("Request failed: %s", url.c_str());
-                    return;
+                    return EGAHTTPApiResponse::SdkError;
                 }
 
                 std::string_view content = response.toString();
