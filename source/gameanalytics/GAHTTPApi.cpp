@@ -98,8 +98,6 @@ namespace gameanalytics
                 // process the response
                 logging::GALogger::d("init request content: %.*s, json: %s", (int)content.size(), content.data(), jsonString.c_str());
 
-                json requestJsonDict = json::parse(content);
-
                 EGAHTTPApiResponse requestResponseEnum = processRequestResponse(response, "Init");
 
                 // if not 200 result
@@ -110,6 +108,7 @@ namespace gameanalytics
                     return requestResponseEnum;
                 }
 
+                json requestJsonDict = json::parse(content);
                 if (requestJsonDict.is_null())
                 {
                     logging::GALogger::d("Failed Init Call. Json decoding failed");
