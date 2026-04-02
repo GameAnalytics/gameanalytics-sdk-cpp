@@ -74,7 +74,7 @@ namespace gameanalytics
 
         inline std::string trimString(std::string const& str, std::size_t size)
         {
-            return str.substr(0, std::min(size, str.size()));
+            return str.substr(0, (std::min)(size, str.size()));
         }
 
         inline json parseFields(std::string const& fields)
