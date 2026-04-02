@@ -15,6 +15,7 @@ namespace gameanalytics
                 
                 inline std::string_view toString() const
                 {
+                    if(packet.empty()) return {};
                     return std::string_view((const char*)packet.data(), packet.size());
                 }
             };
