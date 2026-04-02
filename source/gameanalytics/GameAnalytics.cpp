@@ -350,6 +350,22 @@ namespace gameanalytics
 
     // ----------------------- INITIALIZE ---------------------- //
 
+    void GameAnalytics::configureHttpClient(std::unique_ptr<GAHttpWrapper> httpClient)
+    {
+        if(_endThread)
+        {
+            return;
+        }
+
+        if (isSdkReady(true, false))
+        {
+            logging::GALogger::w("HTTP client must be set before SDK is initialized.");
+            return;
+        }
+
+        http::GAHTTPApi::setCustomHttpImpl(std::move(httpClient));
+    }
+
     void GameAnalytics::initialize(std::string const& gameKey, std::string const& gameSecret)
     {
         if(_endThread)

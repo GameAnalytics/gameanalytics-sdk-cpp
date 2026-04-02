@@ -6,7 +6,7 @@
 #pragma once
 
 #include "GACommon.h"
-#include "Http/GAHttpWrapper.h"
+#include "GameAnalytics/GAHttpWrapper.h"
 
 #include <vector>
 #include <map>
@@ -127,6 +127,8 @@ namespace gameanalytics
 
             static GAHTTPApi& getInstance();
 
+            static void setCustomHttpImpl(std::unique_ptr<GAHttpWrapper> customImpl);
+
             EGAHTTPApiResponse requestInitReturningDict(json& json_out, std::string const& configsHash);
             EGAHTTPApiResponse sendEventsInArray(json& json_out, const json& eventArray);
             void sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string const& reason, std::string const& gameKey, std::string const& secretKey);            
@@ -159,6 +161,8 @@ namespace gameanalytics
             static constexpr int MaxCount = 10;
             std::map<ErrorType, int> countMap;
             std::map<ErrorType, int64_t> timestampMap;
+
+            static std::unique_ptr<GAHttpWrapper> pendingCustomImpl;
         };
 
         constexpr const char* GAHTTPApi::sdkErrorCategoryString(EGASdkErrorCategory value)

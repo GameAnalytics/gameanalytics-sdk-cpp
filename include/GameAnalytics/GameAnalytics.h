@@ -6,9 +6,11 @@
 #pragma once
 
 #include "GameAnalytics/GATypes.h"
+#include "GameAnalytics/GAHttpWrapper.h"
 
 namespace gameanalytics
 {
+
     class GameAnalytics
     {
      public:
@@ -60,6 +62,10 @@ namespace gameanalytics
          static void configureUserId(std::string const& uId);
         
          static void configureExternalUserId(std::string const& extId);
+
+         // Set a custom HTTP implementation. Must be called before initialize().
+         // If not called, the default cURL implementation is used.
+         static void configureHttpClient(std::unique_ptr<GAHttpWrapper> httpClient);
 
          // initialize - starting SDK (need configuration before starting)
          static void initialize(std::string const& gameKey, std::string const& gameSecret);

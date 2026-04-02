@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Http/GAHttpWrapper.h"
+#include "GameAnalytics/GAHttpWrapper.h"
 #include <curl/curl.h>
 
 namespace gameanalytics
