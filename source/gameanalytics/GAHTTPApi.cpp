@@ -97,7 +97,7 @@ namespace gameanalytics
                 if(response.code < 0)
                 {
                     logging::GALogger::e("Request failed: %s", url.c_str());
-                    return EGAHTTPApiResponse::SdkError;
+                    return EGAHTTPApiResponse::NoResponse;
                 }
 
                 std::string_view content = response.toString();
@@ -202,7 +202,7 @@ namespace gameanalytics
                 if(response.code < 0)
                 {
                     logging::GALogger::e("Request failed: %s", url.c_str());
-                    return EGAHTTPApiResponse::SdkError;
+                    return EGAHTTPApiResponse::NoResponse;
                 }
 
                 std::string_view content = response.toString();
