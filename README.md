@@ -126,12 +126,12 @@ gameAnalytics_configureCustomLogHandler(myLogHandler);
 
 ### Custom HTTP client
 
-By default, the SDK uses cURL for HTTP requests. If you need to use a different HTTP library (e.g. on consoles or custom platforms), you can provide your own implementation by subclassing `GAHttpWrapper`:
+By default, the SDK uses cURL for HTTP requests. If you need to use a different HTTP library (e.g. on consoles or custom platforms), you can provide your own implementation by subclassing `GAHttpClient`:
 
 ``` c++
-#include "GameAnalytics/GAHttpWrapper.h"
+#include "GameAnalytics/GAHttpClient.h"
 
-class MyHttpClient : public gameanalytics::GAHttpWrapper
+class MyHttpClient : public gameanalytics::GAHttpClient
 {
 public:
     void initialize() override

@@ -4,7 +4,7 @@
 
 namespace gameanalytics
 {
-    size_t writefunc(void *ptr, size_t size, size_t nmemb, GAHttpWrapper::Response *s)
+    size_t writefunc(void *ptr, size_t size, size_t nmemb, GAHttpClient::Response *s)
     {
         if(!s || !ptr)
         {
@@ -28,7 +28,7 @@ namespace gameanalytics
         curl_global_cleanup();
     }
 
-    GAHttpWrapper::Response GAHttpCurl::sendRequest(std::string const& url, std::string const& auth, std::vector<uint8_t> const& payloadData, bool useGzip, void* userData)
+    GAHttpClient::Response GAHttpCurl::sendRequest(std::string const& url, std::string const& auth, std::vector<uint8_t> const& payloadData, bool useGzip, void* userData)
     {
         CURL* curl = curl_easy_init();
         if (!curl)
@@ -38,7 +38,7 @@ namespace gameanalytics
 
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
 
-        GAHttpWrapper::Response response = {};
+        GAHttpClient::Response response = {};
 
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);

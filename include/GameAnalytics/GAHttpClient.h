@@ -7,7 +7,7 @@
 
 namespace gameanalytics
 { 
-    class GAHttpWrapper
+    class GAHttpClient
     {
         public:
 
@@ -23,7 +23,7 @@ namespace gameanalytics
                 }
             };
 
-            virtual ~GAHttpWrapper() {};
+            virtual ~GAHttpClient() {};
 
             virtual void initialize() = 0;
 

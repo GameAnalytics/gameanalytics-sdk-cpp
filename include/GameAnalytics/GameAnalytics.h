@@ -6,7 +6,7 @@
 #pragma once
 
 #include "GameAnalytics/GATypes.h"
-#include "GameAnalytics/GAHttpWrapper.h"
+#include "GameAnalytics/GAHttpClient.h"
 
 namespace gameanalytics
 {
@@ -65,7 +65,7 @@ namespace gameanalytics
 
          // Set a custom HTTP implementation. Must be called before initialize().
          // If not called, the default cURL implementation is used.
-         static void configureHttpClient(std::unique_ptr<GAHttpWrapper> httpClient);
+         static void configureHttpClient(std::unique_ptr<GAHttpClient> httpClient);
 
          // initialize - starting SDK (need configuration before starting)
          static void initialize(std::string const& gameKey, std::string const& gameSecret);

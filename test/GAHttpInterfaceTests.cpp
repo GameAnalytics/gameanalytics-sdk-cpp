@@ -7,14 +7,14 @@
 #include <gtest/gtest.h>
 
 #include "GameAnalytics/GameAnalytics.h"
-#include "GameAnalytics/GAHttpWrapper.h"
+#include "GameAnalytics/GAHttpClient.h"
 #include "GAHTTPApi.h"
 
 namespace
 {
 
 // A mock HTTP implementation for testing
-class MockHttpClient : public gameanalytics::GAHttpWrapper
+class MockHttpClient : public gameanalytics::GAHttpClient
 {
 public:
     void initialize() override
@@ -58,22 +58,22 @@ public:
 
 // -------- Response struct tests --------
 
-TEST(GAHttpWrapperResponse, DefaultResponseHasNegativeCode)
+TEST(GAHttpClientResponse, DefaultResponseHasNegativeCode)
 {
-    gameanalytics::GAHttpWrapper::Response response;
+    gameanalytics::GAHttpClient::Response response;
     EXPECT_EQ(response.code, -1);
     EXPECT_TRUE(response.packet.empty());
 }
 
-TEST(GAHttpWrapperResponse, ToStringReturnsEmptyForEmptyPacket)
+TEST(GAHttpClientResponse, ToStringReturnsEmptyForEmptyPacket)
 {
-    gameanalytics::GAHttpWrapper::Response response;
+    gameanalytics::GAHttpClient::Response response;
     EXPECT_TRUE(response.toString().empty());
 }
 
-TEST(GAHttpWrapperResponse, ToStringReturnsPacketContent)
+TEST(GAHttpClientResponse, ToStringReturnsPacketContent)
 {
-    gameanalytics::GAHttpWrapper::Response response;
+    gameanalytics::GAHttpClient::Response response;
     std::string body = R"({"status":"ok"})";
     response.packet.assign(body.begin(), body.end());
     response.code = 200;
@@ -83,9 +83,9 @@ TEST(GAHttpWrapperResponse, ToStringReturnsPacketContent)
     EXPECT_EQ(result.size(), body.size());
 }
 
-TEST(GAHttpWrapperResponse, ToStringHandlesBinaryData)
+TEST(GAHttpClientResponse, ToStringHandlesBinaryData)
 {
-    gameanalytics::GAHttpWrapper::Response response;
+    gameanalytics::GAHttpClient::Response response;
     response.packet = {0x00, 0x01, 0x02, 0xFF};
     response.code = 200;
 

@@ -350,7 +350,7 @@ namespace gameanalytics
 
     // ----------------------- INITIALIZE ---------------------- //
 
-    void GameAnalytics::configureHttpClient(std::unique_ptr<GAHttpWrapper> httpClient)
+    void GameAnalytics::configureHttpClient(std::unique_ptr<GAHttpClient> httpClient)
     {
         if(_endThread)
         {

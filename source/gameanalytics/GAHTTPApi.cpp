@@ -23,7 +23,7 @@ namespace gameanalytics
         constexpr int HTTP_RESPONSE_UNAUTHORIZED = 401;
         constexpr int HTTP_RESPONSE_INTERNAL_ERROR = 500;
 
-        std::unique_ptr<GAHttpWrapper> GAHTTPApi::pendingCustomImpl = nullptr;
+        std::unique_ptr<GAHttpClient> GAHTTPApi::pendingCustomImpl = nullptr;
 
         // Constructor - setup the basic information for HTTP
         GAHTTPApi::GAHTTPApi():
@@ -58,7 +58,7 @@ namespace gameanalytics
             return state::GAState::getInstance()._gaHttp;
         }
 
-        void GAHTTPApi::setCustomHttpImpl(std::unique_ptr<GAHttpWrapper> customImpl)
+        void GAHTTPApi::setCustomHttpImpl(std::unique_ptr<GAHttpClient> customImpl)
         {
             pendingCustomImpl = std::move(customImpl);
         }
@@ -92,7 +92,7 @@ namespace gameanalytics
                 std::vector<uint8_t> payloadData = createPayloadData(jsonString, useGzip);
 
                 std::string const auth = createAuth(payloadData);
-                GAHttpWrapper::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
+                GAHttpClient::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
 
                 if(response.code < 0)
                 {
@@ -197,7 +197,7 @@ namespace gameanalytics
                 std::vector<uint8_t> payloadData = createPayloadData(jsonString, useGzip);
 
                 std::string const auth = createAuth(payloadData);
-                GAHttpWrapper::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
+                GAHttpClient::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
 
                 if(response.code < 0)
                 {
@@ -337,7 +337,7 @@ namespace gameanalytics
                 std::vector<uint8_t> payloadData = getInstance().createPayloadData(payloadJSONString, useGzip);
 
                 std::string auth = createAuth(payloadData);
-                GAHttpWrapper::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
+                GAHttpClient::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
 
                 if(response.code < 0)
                 {
@@ -383,7 +383,7 @@ namespace gameanalytics
             return payloadData;
         }
 
-        EGAHTTPApiResponse GAHTTPApi::processRequestResponse(GAHttpWrapper::Response const& response, std::string const& requestId)
+        EGAHTTPApiResponse GAHTTPApi::processRequestResponse(GAHttpClient::Response const& response, std::string const& requestId)
         {
             // if no result - often no connection
             if (response.packet.empty() && response.code != HTTP_RESPONSE_NO_CONTENT)

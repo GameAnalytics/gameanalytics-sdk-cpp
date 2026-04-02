@@ -1,11 +1,11 @@
 #pragma once
 
-#include "GameAnalytics/GAHttpWrapper.h"
+#include "GameAnalytics/GAHttpClient.h"
 #include <curl/curl.h>
 
 namespace gameanalytics
 {
-    class GAHttpCurl: public GAHttpWrapper
+    class GAHttpCurl: public GAHttpClient
     {
         virtual void initialize() override;
         

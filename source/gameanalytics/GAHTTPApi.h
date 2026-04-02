@@ -6,7 +6,7 @@
 #pragma once
 
 #include "GACommon.h"
-#include "GameAnalytics/GAHttpWrapper.h"
+#include "GameAnalytics/GAHttpClient.h"
 
 #include <vector>
 #include <map>
@@ -127,7 +127,7 @@ namespace gameanalytics
 
             static GAHTTPApi& getInstance();
 
-            static void setCustomHttpImpl(std::unique_ptr<GAHttpWrapper> customImpl);
+            static void setCustomHttpImpl(std::unique_ptr<GAHttpClient> customImpl);
 
             EGAHTTPApiResponse requestInitReturningDict(json& json_out, std::string const& configsHash);
             EGAHTTPApiResponse sendEventsInArray(json& json_out, const json& eventArray);
@@ -141,9 +141,9 @@ namespace gameanalytics
             GAHTTPApi& operator=(const GAHTTPApi&) = delete;
             std::vector<uint8_t> createPayloadData(std::string const& payload, bool gzip);
             std::string createAuth(std::vector<uint8_t> const& payload);
-            EGAHTTPApiResponse processRequestResponse(GAHttpWrapper::Response const& response, std::string const& requestId);
+            EGAHTTPApiResponse processRequestResponse(GAHttpClient::Response const& response, std::string const& requestId);
 
-            std::unique_ptr<GAHttpWrapper> impl;
+            std::unique_ptr<GAHttpClient> impl;
 
             std::string protocol                = PROTOCOL;
             std::string hostName                = HOST_NAME;
@@ -162,7 +162,7 @@ namespace gameanalytics
             std::map<ErrorType, int> countMap;
             std::map<ErrorType, int64_t> timestampMap;
 
-            static std::unique_ptr<GAHttpWrapper> pendingCustomImpl;
+            static std::unique_ptr<GAHttpClient> pendingCustomImpl;
         };
 
         constexpr const char* GAHTTPApi::sdkErrorCategoryString(EGASdkErrorCategory value)
