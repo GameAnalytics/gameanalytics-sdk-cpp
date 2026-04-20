@@ -65,7 +65,11 @@ namespace gameanalytics
 
          // Set a custom HTTP implementation. Must be called before initialize().
          // If not called, the default cURL implementation is used.
-         static void configureHttpClient(std::unique_ptr<GAHttpClient> httpClient);
+         template<typename T, typename ...args_t>
+         static void configureHttpClient(args_t&&... args)
+         {
+            return setHttpClient(std::make_unique<T>(std::forward<args_t>(args)...));
+         }
 
          // initialize - starting SDK (need configuration before starting)
          static void initialize(std::string const& gameKey, std::string const& gameSecret);
@@ -137,6 +141,8 @@ namespace gameanalytics
          static bool isThreadEnding();
 
      private:
+
+        static void setHttpClient(std::unique_ptr<GAHttpClient>&& httpClient);
 
         static bool _endThread;
         static bool isSdkReady(bool needsInitialized, bool warn = true, std::string const& message = "");

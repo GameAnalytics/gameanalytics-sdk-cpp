@@ -350,7 +350,7 @@ namespace gameanalytics
 
     // ----------------------- INITIALIZE ---------------------- //
 
-    void GameAnalytics::configureHttpClient(std::unique_ptr<GAHttpClient> httpClient)
+    void GameAnalytics::setHttpClient(std::unique_ptr<GAHttpClient>&& httpClient)
     {
         if(_endThread)
         {
@@ -363,7 +363,7 @@ namespace gameanalytics
             return;
         }
 
-        http::GAHTTPApi::setCustomHttpImpl(std::move(httpClient));
+        http::GAHTTPApi::setCustomHttpImpl(std::forward<std::unique_ptr<GAHttpClient>>(httpClient));
     }
 
     void GameAnalytics::initialize(std::string const& gameKey, std::string const& gameSecret)
