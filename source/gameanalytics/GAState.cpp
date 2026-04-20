@@ -20,7 +20,6 @@
 #include <string.h>
 #include <stdio.h>
 
-
 namespace gameanalytics
 {
     constexpr int MAX_COUNT = 10;
@@ -346,6 +345,9 @@ namespace gameanalytics
             {
                 return;
             }
+
+            // initialize http client (allow support for custom implementations)
+            getInstance()._gaHttp.initialize();
 
             // Make sure persisted states are loaded
             getInstance().ensurePersistedStates();
