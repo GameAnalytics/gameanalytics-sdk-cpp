@@ -127,7 +127,9 @@ namespace gameanalytics
 
             static GAHTTPApi& getInstance();
 
-            static void setCustomHttpImpl(std::unique_ptr<GAHttpClient> customImpl);
+            static void setCustomHttpImpl(std::unique_ptr<GAHttpClient>&& customImpl);
+
+            void initialize();
 
             EGAHTTPApiResponse requestInitReturningDict(json& json_out, std::string const& configsHash);
             EGAHTTPApiResponse sendEventsInArray(json& json_out, const json& eventArray);

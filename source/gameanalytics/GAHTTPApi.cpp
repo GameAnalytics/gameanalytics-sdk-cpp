@@ -23,11 +23,8 @@ namespace gameanalytics
         constexpr int HTTP_RESPONSE_UNAUTHORIZED = 401;
         constexpr int HTTP_RESPONSE_INTERNAL_ERROR = 500;
 
-        std::unique_ptr<GAHttpClient> GAHTTPApi::pendingCustomImpl = nullptr;
-
         // Constructor - setup the basic information for HTTP
-        GAHTTPApi::GAHTTPApi():
-            impl(pendingCustomImpl ? std::move(pendingCustomImpl) : std::make_unique<GAHttpCurl>())
+        GAHTTPApi::GAHTTPApi()
         {
             if(impl)
             {
@@ -58,9 +55,19 @@ namespace gameanalytics
             return state::GAState::getInstance()._gaHttp;
         }
 
-        void GAHTTPApi::setCustomHttpImpl(std::unique_ptr<GAHttpClient> customImpl)
+        void GAHTTPApi::setCustomHttpImpl(std::unique_ptr<GAHttpClient>&& customImpl)
         {
-            pendingCustomImpl = std::move(customImpl);
+            getInstance().impl = std::move(customImpl);
+        }
+
+        void GAHTTPApi::initialize()
+        {
+            if(!impl)
+            {
+                impl = std::make_unique<GAHttpCurl>();
+            }
+
+            impl->initialize();
         }
 
         EGAHTTPApiResponse GAHTTPApi::requestInitReturningDict(json& json_out, std::string const& configsHash)
