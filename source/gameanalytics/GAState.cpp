@@ -26,9 +26,10 @@ namespace gameanalytics
 
     namespace state
     {
+        GAState GAState::instance;
+        
         GAState& GAState::getInstance()
         {
-            static GAState instance;
             return instance;
         }
 
@@ -345,9 +346,6 @@ namespace gameanalytics
             {
                 return;
             }
-
-            // initialize http client (allow support for custom implementations)
-            getInstance()._gaHttp.initialize();
 
             // Make sure persisted states are loaded
             getInstance().ensurePersistedStates();

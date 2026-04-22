@@ -177,6 +177,8 @@ namespace gameanalytics
 
         private:
             
+            static GAState instance;
+            
             GAState();
             ~GAState();
             GAState(const GAState&) = delete;
