@@ -26,11 +26,6 @@ namespace gameanalytics
         // Constructor - setup the basic information for HTTP
         GAHTTPApi::GAHTTPApi()
         {
-            if(impl)
-            {
-                impl->initialize();
-            }
-
             baseUrl              = protocol + "://" + hostName + "/" + version;
             remoteConfigsBaseUrl = protocol + "://" + hostName + "/remote_configs/" + remoteConfigsVersion;
 
@@ -54,16 +49,19 @@ namespace gameanalytics
         {
             return state::GAState::getInstance()._gaHttp;
         }
-
+        
         void GAHTTPApi::setCustomHttpImpl(std::unique_ptr<GAHttpClient>&& customImpl)
         {
             getInstance().impl = std::move(customImpl);
         }
 
-        void GAHTTPApi::initialize()
+        void GAHTTPApi::initializeClient()
         {
+            logging::GALogger::d("Initialize http client");
+            
             if(!impl)
             {
+                logging::GALogger::d("Using default http client");
                 impl = std::make_unique<GAHttpCurl>();
             }
 
