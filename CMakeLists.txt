@@ -2,6 +2,8 @@ CMAKE_MINIMUM_REQUIRED (VERSION 3.20)
 
 PROJECT (GameAnalytics)
 
+include("$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+
 set(GA_SOURCE_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/source")
 set(DEPENDENCIES_DIR "${GA_SOURCE_DIR}/dependencies")
 set(EXTERNALS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/externals")
@@ -19,7 +21,7 @@ option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
 option(GA_SHARED_LIB "Build GA as a shared library" OFF)
 option(GA_UWP_BUILD  "Build GA for UWP (if targeting windows)" OFF)
 option(GA_BUILD_SAMPLE "Builds the GA Sample app" ON)
-option(GA_USE_PACKAGE "Use installed packages for dependencies" OFF)
+option(GA_USE_PACKAGE "Use installed packages for dependencies" ON)
 
 # set directories
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG	"${CMAKE_BINARY_DIR}/Debug")
@@ -49,8 +51,6 @@ include_directories(
     "${DEPENDENCIES_DIR}/sqlite"
     "${DEPENDENCIES_DIR}/crypto"
     "${DEPENDENCIES_DIR}/miniz"
-    "${EXTERNALS_DIR}/curl/include"
-    "${EXTERNALS_DIR}/openssl/include"
 )
 
 FILE(GLOB_RECURSE CPP_SOURCES
@@ -136,28 +136,13 @@ endif()
 
 # --------------------------- Settings --------------------------- #
 
-if(${GA_USE_PACKAGE})
+find_package(OpenSSL REQUIRED)
+find_package(CURL REQUIRED)
 
-    find_package(CURL REQUIRED PATHS ${EXTERNALS_DIR}/curl)
-    find_package(OpenSSL REQUIRED PATHS ${EXTERNALS_DIR}/openssl)
-    set(LIBS CURL::libcurl)
-
-else()
-
-    add_definitions("-DUSE_OPENSSL -DCURL_STATICLIB -DCRYPTOPP_DISABLE_ASM")
-
-    link_directories(
-        "${EXTERNALS_DIR}/openssl/1.1.1d/libs/${PLATFORM}"
-        "${EXTERNALS_DIR}/curl/lib/${PLATFORM}"
-    )
-
-    if(WIN32)
-        set(LIBS libcurl.lib libeay32.lib ssleay32.lib)
-    else()
-        set(LIBS libcurl.a libssl.a libcrypto.a)
-    endif()
-
-endif()
+set(LIBS 
+    CURL::libcurl
+    OpenSSL::SSL
+    OpenSSL::Crypto)
 
 if(${GA_SHARED_LIB})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGA_SHARED_LIB")
