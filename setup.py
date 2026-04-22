@@ -79,10 +79,20 @@ def main():
 		cmake_command += ' -G "Xcode"'
 
 	if use_vcpkg:
-		arch = 'x64'
-		lib  = 'dynamic' if args.shared else 'static'
 
-		triplet = f'{arch}-{args.platform}'
+		if args.platform.startswith('linux'):
+			platform = 'linux'
+		elif args.platform.startswith('win'):
+			platform = 'windows'
+		else:
+			platform = 'osx'
+		
+		if args.platform.endswith('x86'):
+			arch = 'x86'
+		else:
+			arch = 'x64'
+
+		triplet = f'{arch}-{platform}'
 
 		cmake_command += f' -DVCPKG_TARGET_TRIPLET={triplet}'
 	
