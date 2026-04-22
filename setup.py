@@ -85,7 +85,6 @@ def main():
 		triplet = f'{arch}-{args.platform}'
 
 		cmake_command += f' -DVCPKG_TARGET_TRIPLET={triplet}'
-		cmake_command += ' -DCMAKE_TOOLCHAIN_FILE=$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake'
 	
 	# Add build type for single-config generators (Linux uses Makefile/Ninja)
 	# Multi-config generators (Xcode, Visual Studio) use --config at build time instead
