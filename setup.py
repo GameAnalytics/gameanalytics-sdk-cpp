@@ -51,6 +51,7 @@ def main():
 	c_compiler = compiler_config.get('c', '')
 	cxx_compiler = compiler_config.get('cxx', '')
 	compiler_name = c_compiler if c_compiler else 'default'
+	use_vcpkg = True
 	
 	lib_type = 'shared' if args.shared else 'static'
 	print(f"\n{'='*60}")
@@ -76,6 +77,15 @@ def main():
 	
 	if args.platform == 'osx':
 		cmake_command += ' -G "Xcode"'
+
+	if use_vcpkg:
+		arch = 'x64'
+		lib  = 'dynamic' if args.shared else 'static'
+
+		triplet = f'{arch}-{args.platform}'
+
+		cmake_command += f' -DVCPKG_TARGET_TRIPLET={triplet}'
+		cmake_command += ' -DCMAKE_TOOLCHAIN_FILE=$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake'
 	
 	# Add build type for single-config generators (Linux uses Makefile/Ninja)
 	# Multi-config generators (Xcode, Visual Studio) use --config at build time instead
