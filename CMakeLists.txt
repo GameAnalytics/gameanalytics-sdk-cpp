@@ -2,8 +2,6 @@ CMAKE_MINIMUM_REQUIRED (VERSION 3.20)
 
 PROJECT (GameAnalytics)
 
-include("$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
-
 set(GA_SOURCE_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/source")
 set(DEPENDENCIES_DIR "${GA_SOURCE_DIR}/dependencies")
 set(EXTERNALS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/externals")
@@ -22,6 +20,7 @@ option(GA_SHARED_LIB "Build GA as a shared library" OFF)
 option(GA_UWP_BUILD  "Build GA for UWP (if targeting windows)" OFF)
 option(GA_BUILD_SAMPLE "Builds the GA Sample app" ON)
 option(GA_USE_PACKAGE "Use installed packages for dependencies" ON)
+option(USE_VCPKG "Install dependencies from VCPKG" ON)
 
 # set directories
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG	"${CMAKE_BINARY_DIR}/Debug")
@@ -36,6 +35,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_EXTENSIONS NO)
 
+if(${USE_VCPKG})
+    # set cmake
+    include("$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+    # set toolchain file
+    set(CMAKE_TOOLCHAIN_FILE, "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+endif()
 
 include_directories(
     # gameanalytics includes
