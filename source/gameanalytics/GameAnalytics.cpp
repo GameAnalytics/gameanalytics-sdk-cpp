@@ -363,7 +363,7 @@ namespace gameanalytics
             return;
         }
 
-        http::GAHTTPApi::setCustomHttpImpl(std::forward<std::unique_ptr<GAHttpClient>>(httpClient));
+        http::GAHTTPApi::setCustomHttpImpl(std::move(httpClient));
     }
 
     void GameAnalytics::initialize(std::string const& gameKey, std::string const& gameSecret)
@@ -373,6 +373,8 @@ namespace gameanalytics
             return;
         }
         
+        http::GAHTTPApi::getInstance().initializeClient();
+        
         threading::GAThreading::performTaskOnGAThread([gameKey, gameSecret]()
         {
             if (isSdkReady(true, false))
@@ -380,7 +382,7 @@ namespace gameanalytics
                 logging::GALogger::w("SDK already initialized. Can only be called once.");
                 return;
             }
-
+            
             device::GADevice::initPlatform();
             
             if (!validators::GAValidator::validateKeys(gameKey, gameSecret))
