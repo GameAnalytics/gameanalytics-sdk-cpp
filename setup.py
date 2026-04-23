@@ -87,13 +87,13 @@ def main():
 		else:
 			platform = args.platform
 		
-		if args.platform.endswith('x86'):
+		if args.platform.endswith('86'):
 			arch = 'x86'
-		elif args.platform.endswith('x64'):
+		elif args.platform.endswith('64'):
 			arch = 'x64'
 		elif args.platform == 'osx':
 			proc = Platform.processor()
-			arch = 'arm' if proc.startswith('arm') else 'x64'
+			arch = 'arm64' if proc.startswith('arm') else 'x64'
 
 		triplet = f'{arch}-{platform}'
 
