@@ -100,7 +100,7 @@ def main():
 		if args.platform == 'osx':
 			cmake_command += f' -DVCPKG_HOST_TRIPLET={triplet}'
 
-			if arch != 'arm':
+			if arch != 'arm64':
 				cmake_command += ' -DCMAKE_OSX_ARCHITECTURES=x86_64'
 
 		cmake_command += f' -DVCPKG_TARGET_TRIPLET={triplet}'
