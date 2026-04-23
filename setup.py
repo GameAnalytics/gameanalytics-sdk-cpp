@@ -3,7 +3,7 @@ import os
 import subprocess
 import shutil
 import glob
-import platform as plat
+import platform as Platform
 
 def run_command(command, shell=True, cwd=None):
 	if os.name == 'nt':  # Check if the OS is Windows
@@ -35,6 +35,7 @@ def main():
 	parser.add_argument('--build', action='store_true', help='Execute the build step')
 	parser.add_argument('--test', action='store_true', help='Execute the test step')
 	parser.add_argument('--coverage', action='store_true', help='Generate code coverage report')
+	parser.add_argument('--no_vcpkg', action='store_true', help='Do not download vcpkg packages')
  
 	args = parser.parse_args()
 
@@ -51,7 +52,6 @@ def main():
 	c_compiler = compiler_config.get('c', '')
 	cxx_compiler = compiler_config.get('cxx', '')
 	compiler_name = c_compiler if c_compiler else 'default'
-	use_vcpkg = True
 	
 	lib_type = 'shared' if args.shared else 'static'
 	print(f"\n{'='*60}")
@@ -78,21 +78,30 @@ def main():
 	if args.platform == 'osx':
 		cmake_command += ' -G "Xcode"'
 
-	if use_vcpkg:
+	if not args.no_vcpkg:
 
 		if args.platform.startswith('linux'):
 			platform = 'linux'
 		elif args.platform.startswith('win'):
 			platform = 'windows'
 		else:
-			platform = 'osx'
+			platform = args.platform
 		
 		if args.platform.endswith('x86'):
 			arch = 'x86'
-		else:
+		elif args.platform.endswith('x64'):
 			arch = 'x64'
+		elif args.platform == 'osx':
+			proc = Platform.processor()
+			arch = 'arm' if proc.startswith('arm') else 'x64'
 
 		triplet = f'{arch}-{platform}'
+
+		if args.platform == 'osx':
+			cmake_command += f' -DVCPKG_HOST_TRIPLET={triplet}'
+
+			if arch != 'arm':
+				cmake_command += ' -DCMAKE_OSX_ARCHITECTURES=x86_64'
 
 		cmake_command += f' -DVCPKG_TARGET_TRIPLET={triplet}'
 	
