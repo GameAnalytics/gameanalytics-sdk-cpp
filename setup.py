@@ -98,10 +98,9 @@ def main():
 		triplet = f'{arch}-{platform}'
 
 		if args.platform == 'osx':
+			osx_arch = arch if arch == 'arm64' else 'x86_64' # no official universal triplet for osx vcpkg
 			cmake_command += f' -DVCPKG_HOST_TRIPLET={triplet}'
-
-			if arch != 'arm64':
-				cmake_command += ' -DCMAKE_OSX_ARCHITECTURES=x86_64'
+			cmake_command += f' -DCMAKE_OSX_ARCHITECTURES={osx_arch}'
 
 		cmake_command += f' -DVCPKG_TARGET_TRIPLET={triplet}'
 	
