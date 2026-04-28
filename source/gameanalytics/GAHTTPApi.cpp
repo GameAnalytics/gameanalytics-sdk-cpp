@@ -14,12 +14,13 @@
     #include "Http/GAHttpCurl.h"
     namespace gameanalytics
     {
-        using GAHttpDefaultClient = GAHttpClientCurl;
+        using GAHttpClientDefault = GAHttpClientCurl;
     }
 #else
     #include "Http/GAHttpStub.h"
+    namespace gameanalytics
     {
-        using GAHttpDefaultClient = GAHttpClientCurl;
+        using GAHttpClientDefault = GAHttpClientStub;
     }
 #endif
 
@@ -73,7 +74,7 @@ namespace gameanalytics
             if(!impl)
             {
                 logging::GALogger::d("Using default http client");
-                impl = std::make_unique<GAHttpDefaultClient>();
+                impl = std::make_unique<GAHttpClientDefault>();
             }
 
             impl->initialize();
