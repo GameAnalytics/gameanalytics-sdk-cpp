@@ -21,6 +21,7 @@ option(GA_UWP_BUILD  "Build GA for UWP (if targeting windows)" OFF)
 option(GA_BUILD_SAMPLE "Builds the GA Sample app" ON)
 option(GA_USE_PACKAGE "Use installed packages for dependencies" ON)
 option(USE_VCPKG "Install dependencies from VCPKG" ON)
+option(GA_HTTP_USE_CURL "Use CURL for HTTP requests" ON)
 
 # set directories
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG	"${CMAKE_BINARY_DIR}/Debug")
@@ -141,13 +142,19 @@ endif()
 
 # --------------------------- Settings --------------------------- #
 
-find_package(OpenSSL REQUIRED)
-find_package(CURL REQUIRED)
+if(${GA_HTTP_USE_CURL})
+    find_package(OpenSSL REQUIRED)
+    find_package(CURL REQUIRED)
 
-set(LIBS 
-    CURL::libcurl
-    OpenSSL::SSL
-    OpenSSL::Crypto)
+    set(LIBS 
+        CURL::libcurl
+        OpenSSL::SSL
+        OpenSSL::Crypto)
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGA_HTTP_CURL")
+else 
+    set(LIBS)
+endif()
 
 if(${GA_SHARED_LIB})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGA_SHARED_LIB")

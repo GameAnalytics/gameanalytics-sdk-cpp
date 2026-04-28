@@ -36,6 +36,7 @@ def main():
 	parser.add_argument('--test', action='store_true', help='Execute the test step')
 	parser.add_argument('--coverage', action='store_true', help='Generate code coverage report')
 	parser.add_argument('--no_vcpkg', action='store_true', help='Do not download vcpkg packages')
+	parser.add_argument('--no_curl', action='store_true', help='Compile the SDK without CURL (you will need to provide a custom HTTP client implementation)')
  
 	args = parser.parse_args()
 
@@ -77,6 +78,9 @@ def main():
 	
 	if args.platform == 'osx':
 		cmake_command += ' -G "Xcode"'
+
+	if args.no_curl:
+		cmake_command += ' -DGA_HTTP_USE_CURL=OFF'
 
 	if not args.no_vcpkg:
 
