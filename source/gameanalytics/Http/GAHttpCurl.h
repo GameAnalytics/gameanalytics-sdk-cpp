@@ -22,7 +22,7 @@
 
 namespace gameanalytics
 {
-    class GAHttpCurlClient: public GAHttpClient
+    class GAHttpClientCurl: public GAHttpClient
     {
         virtual void initialize() override;
         

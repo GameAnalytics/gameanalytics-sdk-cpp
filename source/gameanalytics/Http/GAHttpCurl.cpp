@@ -20,17 +20,17 @@ namespace gameanalytics
         return size*nmemb;
     }
 
-    void GAHttpCurlClient::initialize()
+    void GAHttpClientCurl::initialize()
     {
         curl_global_init(CURL_GLOBAL_DEFAULT);
     }
 
-    void GAHttpCurlClient::cleanup()
+    void GAHttpClientCurl::cleanup()
     {
         curl_global_cleanup();
     }
 
-    GAHttpClient::Response GAHttpCurlClient::sendRequest(std::string const& url, std::string const& auth, std::vector<uint8_t> const& payloadData, bool useGzip, void* userData)
+    GAHttpClient::Response GAHttpClientCurl::sendRequest(std::string const& url, std::string const& auth, std::vector<uint8_t> const& payloadData, bool useGzip, void* userData)
     {
         CURL* curl = curl_easy_init();
         if (!curl)
@@ -60,7 +60,7 @@ namespace gameanalytics
         return response;
     }
 
-    void GAHttpCurlClient::createRequest(CURL *curl, std::string const& url, std::string const& auth, const std::vector<uint8_t>& payloadData, bool gzip)
+    void GAHttpClientCurl::createRequest(CURL *curl, std::string const& url, std::string const& auth, const std::vector<uint8_t>& payloadData, bool gzip)
     {
         if(!curl)
         {
