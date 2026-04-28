@@ -1,5 +1,9 @@
 #pragma once
 
+#include "GameAnalytics/GAHttpClient.h"
+
+#ifdef GA_HTTP_CURL
+
 #ifdef _WIN32
 
     #ifndef WIN32_LEAN_AND_MEAN
@@ -14,12 +18,11 @@
 
 #endif
 
-#include "GameAnalytics/GAHttpClient.h"
 #include <curl/curl.h>
 
 namespace gameanalytics
 {
-    class GAHttpCurl: public GAHttpClient
+    class GAHttpCurlClient: public GAHttpClient
     {
         virtual void initialize() override;
         
@@ -37,3 +40,5 @@ namespace gameanalytics
         void createRequest(CURL *curl, std::string const& url, std::string const& auth, const std::vector<uint8_t>& payloadData, bool gzip);
     };
 }
+
+#endif // GA_HTTP_CURL

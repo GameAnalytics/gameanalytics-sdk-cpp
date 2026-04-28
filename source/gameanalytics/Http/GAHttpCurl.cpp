@@ -2,6 +2,8 @@
 #include "GAHTTPApi.h"
 #include "GALogger.h"
 
+#ifdef GA_HTTP_CURL
+
 namespace gameanalytics
 {
     size_t writefunc(void *ptr, size_t size, size_t nmemb, GAHttpClient::Response *s)
@@ -18,17 +20,17 @@ namespace gameanalytics
         return size*nmemb;
     }
 
-    void GAHttpCurl::initialize()
+    void GAHttpCurlClient::initialize()
     {
         curl_global_init(CURL_GLOBAL_DEFAULT);
     }
 
-    void GAHttpCurl::cleanup()
+    void GAHttpCurlClient::cleanup()
     {
         curl_global_cleanup();
     }
 
-    GAHttpClient::Response GAHttpCurl::sendRequest(std::string const& url, std::string const& auth, std::vector<uint8_t> const& payloadData, bool useGzip, void* userData)
+    GAHttpClient::Response GAHttpCurlClient::sendRequest(std::string const& url, std::string const& auth, std::vector<uint8_t> const& payloadData, bool useGzip, void* userData)
     {
         CURL* curl = curl_easy_init();
         if (!curl)
@@ -58,7 +60,7 @@ namespace gameanalytics
         return response;
     }
 
-    void GAHttpCurl::createRequest(CURL *curl, std::string const& url, std::string const& auth, const std::vector<uint8_t>& payloadData, bool gzip)
+    void GAHttpCurlClient::createRequest(CURL *curl, std::string const& url, std::string const& auth, const std::vector<uint8_t>& payloadData, bool gzip)
     {
         if(!curl)
         {
@@ -85,3 +87,5 @@ namespace gameanalytics
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payloadData.size());
     }
 }
+
+#endif // GA_HTTP_CURL
