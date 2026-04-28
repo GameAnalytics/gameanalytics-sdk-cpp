@@ -152,7 +152,7 @@ if(${GA_HTTP_USE_CURL})
         OpenSSL::Crypto)
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGA_HTTP_CURL")
-else 
+else()
     set(LIBS)
 endif()
 
