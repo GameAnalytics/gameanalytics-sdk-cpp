@@ -10,18 +10,18 @@
 #include "GAUtilities.h"
 #include "GAValidator.h"
 
-#ifdef GA_HTTP_CURL
-    #include "Http/GAHttpCurl.h"
-    using GAHttpDefaultClient = GAHttpClientCurl;
-#else
-    #include "Http/GAHttpStub.h"
-    using GAHttpDefaultClient = GAHttpClientStub;
-#endif
-
 namespace gameanalytics
 {
     namespace http
     {
+        #ifdef GA_HTTP_CURL
+            #include "Http/GAHttpCurl.h"
+            using GAHttpDefaultClient = GAHttpClientCurl;
+        #else
+            #include "Http/GAHttpStub.h"
+            using GAHttpDefaultClient = GAHttpClientStub;
+        #endif
+    
         constexpr int HTTP_RESPONSE_OK = 200;
         constexpr int HTTP_RESPONSE_CREATED = 201;
         constexpr int HTTP_RESPONSE_NO_CONTENT = 204;
