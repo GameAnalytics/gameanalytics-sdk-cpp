@@ -121,8 +121,10 @@ endif()
 message(STATUS "System architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 
 if(${PLATFORM} STREQUAL "osx")
-    # Set archs to be build for osx to both x86_64 and arm64
-    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
+    # Default to universal binary if no architecture was specified via -DCMAKE_OSX_ARCHITECTURES
+    if(NOT DEFINED CMAKE_OSX_ARCHITECTURES OR CMAKE_OSX_ARCHITECTURES STREQUAL "")
+        set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
+    endif()
 
     if(DEFINED CMAKE_OSX_ARCHITECTURES)
         message(STATUS "Target architectures (CMAKE_OSX_ARCHITECTURES): ${CMAKE_OSX_ARCHITECTURES}")
