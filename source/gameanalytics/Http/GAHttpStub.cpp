@@ -5,9 +5,9 @@ namespace gameanalytics
 {
     void GAHttpClientStub::printWarning() const
     {
-        logging::GALogger::w("No proper HTTP client has been registered." 
-            "Compile with \'GA_HTTP_USE_CURL\' to use the default GameAnalytics client" 
-            "or provide a custom implementation using \'GameAnalytics::configureHttpClient\'");
+        logging::GALogger::w("No proper HTTP client has been registered.\
+            Compile with \'GA_HTTP_USE_CURL\' to use the default GameAnalytics client \
+            or provide a custom implementation using \'GameAnalytics::configureHttpClient\'");
     }
 
     void GAHttpClientStub::initialize()
@@ -26,5 +26,7 @@ namespace gameanalytics
     {
         logging::GALogger::d("GameAnalytics HTTP Client stub - send request: url: %s, content: %.*s", url.c_str(), (int)payloadData.size(), payloadData.data());
         printWarning();
+
+        return {};
     }
 }
