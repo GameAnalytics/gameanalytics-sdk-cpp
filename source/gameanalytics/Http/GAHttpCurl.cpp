@@ -4,6 +4,9 @@
 
 #ifdef GA_HTTP_CURL
 
+#include <openssl/ssl.h>
+#include <openssl/crypto.h>
+
 namespace gameanalytics
 {
     size_t writefunc(void *ptr, size_t size, size_t nmemb, GAHttpClient::Response *s)
@@ -22,7 +25,11 @@ namespace gameanalytics
 
     void GAHttpClientCurl::initialize()
     {
+        OPENSSL_init_crypto(OPENSSL_INIT_NO_ATEXIT, nullptr);
+        OPENSSL_init_ssl(OPENSSL_INIT_NO_ATEXIT, nullptr);
+
         curl_global_init(CURL_GLOBAL_DEFAULT);
+        logging::GALogger::d("Using CURL version: %s", curl_version());
     }
 
     void GAHttpClientCurl::cleanup()
@@ -50,7 +57,7 @@ namespace gameanalytics
         CURLcode res = curl_easy_perform(curl);
         if (res != CURLE_OK)
         {
-            logging::GALogger::d("%s", curl_easy_strerror(res));
+            logging::GALogger::d("CURL request failed: %s", curl_easy_strerror(res));
             return {};
         }
 
