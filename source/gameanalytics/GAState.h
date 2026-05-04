@@ -177,6 +177,8 @@ namespace gameanalytics
 
         private:
             
+            static GAState instance;
+            
             GAState();
             ~GAState();
             GAState(const GAState&) = delete;
@@ -185,7 +187,7 @@ namespace gameanalytics
             static constexpr const char* CategorySdkError = "sdk_error";
 
             template<typename ...args_t>
-            void LogAndAddErrorEvent(EGAErrorSeverity severity, std::string const& fmt, args_t&&... args)
+            void LogAndAddErrorEvent(EGAErrorSeverity severity, const char* fmt, args_t&&... args)
             {
                 const std::string msg = utilities::printString(fmt, std::forward<args_t>(args)...);
                 logging::GALogger::w(msg.c_str());

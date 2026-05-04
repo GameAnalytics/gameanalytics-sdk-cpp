@@ -621,7 +621,7 @@ namespace gameanalytics
             responseEnum = http.sendEventsInArray(dataDict, payloadArray);
 #endif
 
-            if (responseEnum == http::Ok)
+            if (responseEnum == http::Ok || responseEnum == http::NoContent)
             {
                 // Delete events
                 store::GAStore::executeQuerySync(deleteSql);

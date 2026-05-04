@@ -124,6 +124,58 @@ void myLogHandler(const char* message, GALoggerMessageType type)
 gameAnalytics_configureCustomLogHandler(myLogHandler);
 ```
 
+### Custom HTTP client
+
+By default, the SDK uses cURL for HTTP requests. If you need to use a different HTTP library (e.g. on consoles or custom platforms), you can provide your own implementation by subclassing `GAHttpClient`:
+
+``` c++
+#include "GameAnalytics/GAHttpClient.h"
+
+class MyHttpClient : public gameanalytics::GAHttpClient
+{
+public:
+    void initialize() override
+    {
+        // Set up your HTTP library
+    }
+
+    void cleanup() override
+    {
+        // Tear down your HTTP library
+    }
+
+    Response sendRequest(
+        std::string const& url,
+        std::string const& auth,
+        std::vector<uint8_t> const& payloadData,
+        bool useGzip,
+        void* userData) override
+    {
+        Response response;
+
+        // Use your HTTP library to POST payloadData to url.
+        // Set the following headers:
+        //   - auth (e.g. "Authorization: ...")
+        //   - "Content-Type: application/json"
+        //   - "Content-Encoding: gzip" (if useGzip is true)
+        //
+        // Fill in response.code with the HTTP status code.
+        // Fill in response.packet with the response body bytes.
+
+        return response;
+    }
+};
+```
+
+Register it **before** calling `initialize()`:
+
+``` c++
+gameanalytics::GameAnalytics::configureHttpClient(std::make_unique<MyHttpClient>());
+gameanalytics::GameAnalytics::initialize("<your game key>", "<your secret key>");
+```
+
+If `configureHttpClient` is not called, the built-in cURL implementation is used.
+
 ### Configuration
 
 Example:

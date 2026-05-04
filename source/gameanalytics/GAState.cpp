@@ -20,16 +20,16 @@
 #include <string.h>
 #include <stdio.h>
 
-
 namespace gameanalytics
 {
     constexpr int MAX_COUNT = 10;
 
     namespace state
     {
+        GAState GAState::instance;
+        
         GAState& GAState::getInstance()
         {
-            static GAState instance;
             return instance;
         }
 

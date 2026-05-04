@@ -19,7 +19,9 @@ option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
 option(GA_SHARED_LIB "Build GA as a shared library" OFF)
 option(GA_UWP_BUILD  "Build GA for UWP (if targeting windows)" OFF)
 option(GA_BUILD_SAMPLE "Builds the GA Sample app" ON)
-option(GA_USE_PACKAGE "Use installed packages for dependencies" OFF)
+option(GA_USE_PACKAGE "Use installed packages for dependencies" ON)
+option(USE_VCPKG "Install dependencies from VCPKG" ON)
+option(GA_HTTP_USE_CURL "Use CURL for HTTP requests" ON)
 
 # set directories
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG	"${CMAKE_BINARY_DIR}/Debug")
@@ -34,6 +36,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_EXTENSIONS NO)
 
+if(${USE_VCPKG})
+    # set cmake
+    include("$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+    # set toolchain file
+    set(CMAKE_TOOLCHAIN_FILE, "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+endif()
 
 include_directories(
     # gameanalytics includes
@@ -49,8 +57,6 @@ include_directories(
     "${DEPENDENCIES_DIR}/sqlite"
     "${DEPENDENCIES_DIR}/crypto"
     "${DEPENDENCIES_DIR}/miniz"
-    "${EXTERNALS_DIR}/curl/include"
-    "${EXTERNALS_DIR}/openssl/include"
 )
 
 FILE(GLOB_RECURSE CPP_SOURCES
@@ -115,8 +121,10 @@ endif()
 message(STATUS "System architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 
 if(${PLATFORM} STREQUAL "osx")
-    # Set archs to be build for osx to both x86_64 and arm64
-    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
+    # Default to universal binary if no architecture was specified via -DCMAKE_OSX_ARCHITECTURES
+    if(NOT DEFINED CMAKE_OSX_ARCHITECTURES OR CMAKE_OSX_ARCHITECTURES STREQUAL "")
+        set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
+    endif()
 
     if(DEFINED CMAKE_OSX_ARCHITECTURES)
         message(STATUS "Target architectures (CMAKE_OSX_ARCHITECTURES): ${CMAKE_OSX_ARCHITECTURES}")
@@ -136,27 +144,18 @@ endif()
 
 # --------------------------- Settings --------------------------- #
 
-if(${GA_USE_PACKAGE})
+if(${GA_HTTP_USE_CURL})
+    find_package(OpenSSL REQUIRED)
+    find_package(CURL REQUIRED)
 
-    find_package(CURL REQUIRED PATHS ${EXTERNALS_DIR}/curl)
-    find_package(OpenSSL REQUIRED PATHS ${EXTERNALS_DIR}/openssl)
-    set(LIBS CURL::libcurl)
+    set(LIBS 
+        CURL::libcurl
+        OpenSSL::SSL
+        OpenSSL::Crypto)
 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGA_HTTP_CURL")
 else()
-
-    add_definitions("-DUSE_OPENSSL -DCURL_STATICLIB -DCRYPTOPP_DISABLE_ASM")
-
-    link_directories(
-        "${EXTERNALS_DIR}/openssl/1.1.1d/libs/${PLATFORM}"
-        "${EXTERNALS_DIR}/curl/lib/${PLATFORM}"
-    )
-
-    if(WIN32)
-        set(LIBS libcurl.lib libeay32.lib ssleay32.lib)
-    else()
-        set(LIBS libcurl.a libssl.a libcrypto.a)
-    endif()
-
+    set(LIBS)
 endif()
 
 if(${GA_SHARED_LIB})

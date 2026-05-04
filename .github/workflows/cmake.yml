@@ -59,7 +59,7 @@ jobs:
             c_compiler: gcc
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: true
 
@@ -79,7 +79,7 @@ jobs:
         fi
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.x'
 
@@ -98,6 +98,24 @@ jobs:
         clang++ -v -E -x c++ /dev/null
         echo "check lld..."
         ldd --version
+
+    - name: Install vcpkg (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        git clone https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
+        "$HOME/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+        echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+        echo "$HOME/vcpkg" >> "$GITHUB_PATH"
+
+    - name: Install vcpkg (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        git clone https://github.com/microsoft/vcpkg.git "$env:USERPROFILE\vcpkg"
+        & "$env:USERPROFILE\vcpkg\bootstrap-vcpkg.bat" -disableMetrics
+        echo "VCPKG_ROOT=$env:USERPROFILE\vcpkg" >> $env:GITHUB_ENV
+        echo "$env:USERPROFILE\vcpkg" >> $env:GITHUB_PATH
 
     - name: Build, Test, and Package with setup.py
       shell: bash

@@ -3,7 +3,7 @@ import os
 import subprocess
 import shutil
 import glob
-import platform as plat
+import platform as Platform
 
 def run_command(command, shell=True, cwd=None):
 	if os.name == 'nt':  # Check if the OS is Windows
@@ -35,6 +35,8 @@ def main():
 	parser.add_argument('--build', action='store_true', help='Execute the build step')
 	parser.add_argument('--test', action='store_true', help='Execute the test step')
 	parser.add_argument('--coverage', action='store_true', help='Generate code coverage report')
+	parser.add_argument('--no_vcpkg', action='store_true', help='Do not download vcpkg packages')
+	parser.add_argument('--no_curl', action='store_true', help='Compile the SDK without CURL (you will need to provide a custom HTTP client implementation)')
  
 	args = parser.parse_args()
 
@@ -76,6 +78,35 @@ def main():
 	
 	if args.platform == 'osx':
 		cmake_command += ' -G "Xcode"'
+
+	if args.no_curl:
+		cmake_command += ' -DGA_HTTP_USE_CURL=OFF'
+
+	if not args.no_vcpkg:
+
+		if args.platform.startswith('linux'):
+			platform = 'linux'
+		elif args.platform.startswith('win'):
+			platform = 'windows'
+		else:
+			platform = args.platform
+		
+		if args.platform.endswith('86'):
+			arch = 'x86'
+		elif args.platform.endswith('64'):
+			arch = 'x64'
+		elif args.platform == 'osx':
+			proc = Platform.processor()
+			arch = 'arm64' if proc.startswith('arm') else 'x64'
+
+		triplet = f'{arch}-{platform}'
+
+		if args.platform == 'osx':
+			osx_arch = arch if arch == 'arm64' else 'x86_64' # no official universal triplet for osx vcpkg
+			cmake_command += f' -DVCPKG_HOST_TRIPLET={triplet}'
+			cmake_command += f' -DCMAKE_OSX_ARCHITECTURES={osx_arch}'
+
+		cmake_command += f' -DVCPKG_TARGET_TRIPLET={triplet}'
 	
 	# Add build type for single-config generators (Linux uses Makefile/Ninja)
 	# Multi-config generators (Xcode, Visual Studio) use --config at build time instead
