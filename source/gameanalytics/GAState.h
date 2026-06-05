@@ -150,11 +150,15 @@ namespace gameanalytics
                 inline static T getRemoteConfigsValue(std::string const& key, T const& defaultValue)
                 {
                     std::lock_guard<std::recursive_mutex> lg(getInstance()._mtx);
-                    if(getInstance()._gameRemoteConfigsJson.contains(key))
+                    
+                    for(auto& config : getInstance()._gameRemoteConfigsJson)
                     {
-                        json& config = getInstance()._gameRemoteConfigsJson[key];
-                        T value = utilities::getOptionalValue<T>(config, "value", defaultValue);
-                        return value;
+                        std::string configKey = utilities::getOptionalValue<std::string>(config, "key", "");
+                        if(configKey == key)
+                        {
+                            T value = utilities::getOptionalValue<T>(config, "value", defaultValue);
+                            return value;
+                        }
                     }
                     
                     return defaultValue;
@@ -177,6 +181,8 @@ namespace gameanalytics
 
         private:
             
+            static GAState instance;
+            
             GAState();
             ~GAState();
             GAState(const GAState&) = delete;
@@ -185,7 +191,7 @@ namespace gameanalytics
             static constexpr const char* CategorySdkError = "sdk_error";
 
             template<typename ...args_t>
-            void LogAndAddErrorEvent(EGAErrorSeverity severity, std::string const& fmt, args_t&&... args)
+            void LogAndAddErrorEvent(EGAErrorSeverity severity, const char* fmt, args_t&&... args)
             {
                 const std::string msg = utilities::printString(fmt, std::forward<args_t>(args)...);
                 logging::GALogger::w(msg.c_str());
