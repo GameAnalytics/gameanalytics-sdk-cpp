@@ -6,7 +6,7 @@
 #pragma once
 
 #include "GACommon.h"
-#include <curl/curl.h>
+#include "GameAnalytics/GAHttpClient.h"
 
 #include <vector>
 #include <map>
@@ -18,9 +18,11 @@ namespace gameanalytics
 {
     namespace http
     {
-
         enum EGAHTTPApiResponse
         {
+            // sdk is misconfigured
+            SdkError = -1,
+
             // client
             NoResponse = 0,
             BadResponse = 1,
@@ -28,12 +30,13 @@ namespace gameanalytics
             JsonEncodeFailed = 3,
             JsonDecodeFailed = 4,
             // server
-            InternalServerError = 5,
+            InternalServerError = 5, // 500
             BadRequest = 6, // 400
             Unauthorized = 7, // 401
             UnknownResponseCode = 8,
-            Ok = 9,
-            Created = 10,
+            Ok = 9, // 200
+            Created = 10, // 201
+            NoContent = 11, // 204
             InternalError
         };
 
@@ -102,12 +105,6 @@ namespace gameanalytics
             Message = 14
         };
 
-        struct ResponseData
-        {
-            std::vector<char> packet;
-            std::string toString() const;
-        };
-
         typedef std::tuple<EGASdkErrorCategory, EGASdkErrorArea> ErrorType;
 
         class GAHTTPApi
@@ -130,6 +127,10 @@ namespace gameanalytics
 
             static GAHTTPApi& getInstance();
 
+            static void setCustomHttpImpl(std::unique_ptr<GAHttpClient>&& customImpl);
+
+            void initializeClient();
+
             EGAHTTPApiResponse requestInitReturningDict(json& json_out, std::string const& configsHash);
             EGAHTTPApiResponse sendEventsInArray(json& json_out, const json& eventArray);
             void sendSdkErrorEvent(EGASdkErrorCategory category, EGASdkErrorArea area, EGASdkErrorAction action, EGASdkErrorParameter parameter, std::string const& reason, std::string const& gameKey, std::string const& secretKey);            
@@ -141,9 +142,11 @@ namespace gameanalytics
             GAHTTPApi(const GAHTTPApi&) = delete;
             GAHTTPApi& operator=(const GAHTTPApi&) = delete;
             std::vector<uint8_t> createPayloadData(std::string const& payload, bool gzip);
+            std::string createAuth(std::vector<uint8_t> const& payload);
+            EGAHTTPApiResponse processRequestResponse(GAHttpClient::Response const& response, std::string const& requestId);
 
-            std::vector<uint8_t> createRequest(CURL *curl, std::string const& url, const std::vector<uint8_t>& payloadData, bool gzip);
-            EGAHTTPApiResponse processRequestResponse(long statusCode, const char* body, const char* requestId);
+            std::unique_ptr<GAHttpClient> impl;
+            bool wasInitialized = false;
 
             std::string protocol                = PROTOCOL;
             std::string hostName                = HOST_NAME;
@@ -162,20 +165,8 @@ namespace gameanalytics
             std::map<ErrorType, int> countMap;
             std::map<ErrorType, int64_t> timestampMap;
 
-#if USE_UWP && defined(USE_UWP_HTTP)
-            Windows::Web::Http::HttpClient^ httpClient;
-#endif
+            static std::unique_ptr<GAHttpClient> pendingCustomImpl;
         };
-
-#if USE_UWP && defined(USE_UWP_HTTP)
-        ref class GANetworkStatus sealed
-        {
-        internal:
-            static void NetworkInformationOnNetworkStatusChanged(Platform::Object^ sender);
-            static void CheckInternetAccess();
-            static bool hasInternetAccess;
-        };
-#endif
 
         constexpr const char* GAHTTPApi::sdkErrorCategoryString(EGASdkErrorCategory value)
         {

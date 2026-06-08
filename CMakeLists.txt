@@ -19,7 +19,9 @@ option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
 option(GA_SHARED_LIB "Build GA as a shared library" OFF)
 option(GA_UWP_BUILD  "Build GA for UWP (if targeting windows)" OFF)
 option(GA_BUILD_SAMPLE "Builds the GA Sample app" ON)
-option(GA_USE_PACKAGE "Use installed packages for dependencies" OFF)
+option(GA_USE_PACKAGE "Use installed packages for dependencies" ON)
+option(USE_VCPKG "Install dependencies from VCPKG" ON)
+option(GA_HTTP_USE_CURL "Use CURL for HTTP requests" ON)
 
 # set directories
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG	"${CMAKE_BINARY_DIR}/Debug")
@@ -34,6 +36,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_EXTENSIONS NO)
 
+if(${USE_VCPKG})
+    # set cmake
+    include("$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+    # set toolchain file
+    set(CMAKE_TOOLCHAIN_FILE, "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+endif()
 
 include_directories(
     # gameanalytics includes
@@ -49,8 +57,6 @@ include_directories(
     "${DEPENDENCIES_DIR}/sqlite"
     "${DEPENDENCIES_DIR}/crypto"
     "${DEPENDENCIES_DIR}/miniz"
-    "${EXTERNALS_DIR}/curl/include"
-    "${EXTERNALS_DIR}/openssl/include"
 )
 
 FILE(GLOB_RECURSE CPP_SOURCES
@@ -115,8 +121,10 @@ endif()
 message(STATUS "System architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 
 if(${PLATFORM} STREQUAL "osx")
-    # Set archs to be build for osx to both x86_64 and arm64
-    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
+    # Default to universal binary if no architecture was specified via -DCMAKE_OSX_ARCHITECTURES
+    if(NOT DEFINED CMAKE_OSX_ARCHITECTURES OR CMAKE_OSX_ARCHITECTURES STREQUAL "")
+        set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
+    endif()
 
     if(DEFINED CMAKE_OSX_ARCHITECTURES)
         message(STATUS "Target architectures (CMAKE_OSX_ARCHITECTURES): ${CMAKE_OSX_ARCHITECTURES}")
@@ -136,27 +144,18 @@ endif()
 
 # --------------------------- Settings --------------------------- #
 
-if(${GA_USE_PACKAGE})
+if(${GA_HTTP_USE_CURL})
+    find_package(OpenSSL REQUIRED)
+    find_package(CURL REQUIRED)
 
-    find_package(CURL REQUIRED PATHS ${EXTERNALS_DIR}/curl)
-    find_package(OpenSSL REQUIRED PATHS ${EXTERNALS_DIR}/openssl)
-    set(LIBS CURL::libcurl)
+    set(LIBS 
+        CURL::libcurl
+        OpenSSL::SSL
+        OpenSSL::Crypto)
 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGA_HTTP_CURL")
 else()
-
-    add_definitions("-DUSE_OPENSSL -DCURL_STATICLIB -DCRYPTOPP_DISABLE_ASM")
-
-    link_directories(
-        "${EXTERNALS_DIR}/openssl/1.1.1d/libs/${PLATFORM}"
-        "${EXTERNALS_DIR}/curl/lib/${PLATFORM}"
-    )
-
-    if(WIN32)
-        set(LIBS libcurl.lib libeay32.lib ssleay32.lib)
-    else()
-        set(LIBS libcurl.a libssl.a libcrypto.a)
-    endif()
-
+    set(LIBS)
 endif()
 
 if(${GA_SHARED_LIB})
@@ -169,11 +168,9 @@ endif()
 if(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGUID_WINDOWS")
     if(${GA_SHARED_LIB})
-        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
     else()
-        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
 
     if(${GA_UWP_BUILD})
@@ -207,7 +204,11 @@ elseif(LINUX)
 endif()
 
 if(${GA_BUILD_SAMPLE})
-    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/sample")
+    if(${GA_SHARED_LIB})
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/sample_shared")
+    else()
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/sample")
+    endif()
 endif()
 
 add_library(GameAnalytics ${LIB_TYPE} ${CPP_SOURCES})
@@ -217,43 +218,52 @@ message(STATUS "CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
 message(STATUS "CMAKE_SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
 # --------------------------- Google Test Setup --------------------------- #
 
-# Set Project Name
-set(UT_PROJECT_NAME "${PROJECT_NAME}UnitTests")
+# Only build tests for static library builds
+# Shared library builds don't export internal symbols needed by tests
+if(NOT GA_SHARED_LIB)
+    message(STATUS "Building unit tests (tests are only available for static library builds)")
+    
+    # Set Project Name
+    set(UT_PROJECT_NAME "${PROJECT_NAME}UnitTests")
 
-# Add Google Test
-set(GTEST_DIR "${EXTERNALS_DIR}/googletest")
-add_subdirectory(${GTEST_DIR} ${PROJECT_SOURCE_DIR}/gtest_build)
+    # Add Google Test
+    set(GTEST_DIR "${EXTERNALS_DIR}/googletest")
+    add_subdirectory(${GTEST_DIR} ${PROJECT_SOURCE_DIR}/gtest_build)
 
-# Add tests
-enable_testing()
+    # Add tests
+    enable_testing()
 
-########################################
-# Test files
-########################################
+    ########################################
+    # Test files
+    ########################################
 
-file(GLOB_RECURSE TEST_SRC_FILES "${PROJECT_SOURCE_DIR}/test/*.cpp")
+    file(GLOB_RECURSE TEST_SRC_FILES "${PROJECT_SOURCE_DIR}/test/*.cpp")
 
-########################################
-# Unit Tests
-#######################################
-add_executable(${UT_PROJECT_NAME} ${TEST_SRC_FILES})
+    ########################################
+    # Unit Tests
+    #######################################
+    add_executable(${UT_PROJECT_NAME} ${TEST_SRC_FILES})
 
-########################################
-# Standard linking to gtest and gmock components
-########################################
-target_link_libraries(${UT_PROJECT_NAME} gtest gtest_main gmock_main)
+    ########################################
+    # Standard linking to gtest and gmock components
+    ########################################
+    target_link_libraries(${UT_PROJECT_NAME} gtest gtest_main gmock_main)
 
-########################################
-# Linking to GA SDK
-########################################
-target_link_libraries(${UT_PROJECT_NAME} ${PROJECT_NAME})
+    ########################################
+    # Linking to GA SDK
+    ########################################
+    target_link_libraries(${UT_PROJECT_NAME} ${PROJECT_NAME})
 
-########################################
-add_test(NAME ${UT_PROJECT_NAME} COMMAND GameAnalyticsUnitTests)
+    ########################################
+    add_test(NAME ${UT_PROJECT_NAME} COMMAND GameAnalyticsUnitTests)
+else()
+    message(STATUS "Skipping unit tests (not available for shared library builds)")
+endif()
 
 # --------------------------- Code Coverage Setup --------------------------- #
 
-if (ENABLE_COVERAGE)
+# Coverage requires tests, which are only available for static library builds
+if (ENABLE_COVERAGE AND NOT GA_SHARED_LIB)
     find_program(GCOV_PATH gcov)
     if (NOT GCOV_PATH)
         message(WARNING "program gcov not found")
