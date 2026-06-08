@@ -164,7 +164,7 @@ namespace gameanalytics
                     return defaultValue;
                 }
 
-                template<typename T = std::chrono::milliseconds>
+                template<typename T = std::chrono::seconds>
                 inline int64_t calculateSessionLength() const
                 {
                     auto len = std::chrono::high_resolution_clock::now() - _startTimepoint;
