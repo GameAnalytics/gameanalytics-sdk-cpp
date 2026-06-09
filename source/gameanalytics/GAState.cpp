@@ -1100,7 +1100,7 @@ namespace gameanalytics
 
         void GAState::updateTotalSessionTime()
         {
-            _lastSessionTime = calculateSessionLength();
+            _lastSessionTime = calculateSessionLength<std::chrono::seconds>();
             _totalElapsedSessionTime += _lastSessionTime;
             
             _gaStore.setState("last_session_time",  std::to_string(_lastSessionTime));

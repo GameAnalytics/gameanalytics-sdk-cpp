@@ -150,17 +150,21 @@ namespace gameanalytics
                 inline static T getRemoteConfigsValue(std::string const& key, T const& defaultValue)
                 {
                     std::lock_guard<std::recursive_mutex> lg(getInstance()._mtx);
-                    if(getInstance()._gameRemoteConfigsJson.contains(key))
+                    
+                    for(auto& config : getInstance()._gameRemoteConfigsJson)
                     {
-                        json& config = getInstance()._gameRemoteConfigsJson[key];
-                        T value = utilities::getOptionalValue<T>(config, "value", defaultValue);
-                        return value;
+                        std::string configKey = utilities::getOptionalValue<std::string>(config, "key", "");
+                        if(configKey == key)
+                        {
+                            T value = utilities::getOptionalValue<T>(config, "value", defaultValue);
+                            return value;
+                        }
                     }
                     
                     return defaultValue;
                 }
 
-                template<typename T = std::chrono::milliseconds>
+                template<typename T = std::chrono::seconds>
                 inline int64_t calculateSessionLength() const
                 {
                     auto len = std::chrono::high_resolution_clock::now() - _startTimepoint;
