@@ -220,12 +220,12 @@ namespace gameanalytics
 
             void buildRemoteConfigsJsons(const json& remoteCfgs);
             
-            threading::GAThreading  _gaThread;
             events::GAEvents        _gaEvents;
             device::GADevice        _gaDevice;
             logging::GALogger       _gaLogger;
             store::GAStore          _gaStore;
             http::GAHTTPApi         _gaHttp;
+            threading::GAThreading  _gaThread;
 
             std::string _customUserId;
             std::string _identifier;
