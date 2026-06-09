@@ -39,6 +39,8 @@ namespace gameanalytics
 
         GAState::~GAState()
         {
+            _gaLogger.customLogHandler.reset();
+
             _gaThread.queueBlock(
                 [this]()
                 {
