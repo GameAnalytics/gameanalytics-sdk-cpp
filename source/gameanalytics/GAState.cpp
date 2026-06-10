@@ -637,7 +637,11 @@ namespace gameanalytics
                     }
                     catch (json::exception& e)
                     {
-                        logging::GALogger::e(e.what());
+                        // Cached config is unparseable (e.g. written by the legacy C# SDK
+                        // in binary-base64 instead of JSON). Discard the stale row; a fresh
+                        // config is fetched on init and rewritten as JSON, so this self-heals.
+                        logging::GALogger::d("Discarding incompatible cached sdk config: %s", e.what());
+                        store::GAStore::setState("sdk_config_cached", "");
                     }
                 }
 

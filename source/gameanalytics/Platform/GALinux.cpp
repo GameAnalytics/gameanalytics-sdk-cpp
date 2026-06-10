@@ -81,9 +81,19 @@ std::string gameanalytics::GAPlatformLinux::getOSVersion()
     std::string version;
     int const strSize = strlen(info.release);
 
+    int dotCount = 0;
     for (size_t i = 0; i < strSize; ++i)
     {
-        if (!isdigit(info.release[i]) && info.release[i] != '.')
+        if (info.release[i] == '.')
+        {
+            ++dotCount;
+            if (dotCount == 3)
+            {
+                version = std::string(info.release, info.release + i);
+                break;
+            }
+        }
+        else if (!isdigit(info.release[i]))
         {
             version = std::string(info.release, info.release + i);
             break;

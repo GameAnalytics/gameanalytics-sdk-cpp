@@ -101,6 +101,14 @@ def main():
 
 		triplet = f'{arch}-{platform}'
 
+		# On Windows, statically link curl/openssl/zlib into the DLL so the Unity
+		# plugin is a single self-contained GameAnalytics.dll (mirrors macOS, where
+		# vcpkg's default triplet already produces static deps). The "-static-md"
+		# variant keeps the dynamic CRT (/MD), matching CMAKE_MSVC_RUNTIME_LIBRARY
+		# for shared builds; plain "-static" would use /MT and conflict.
+		if args.platform.startswith('win') and args.shared:
+			triplet = f'{arch}-windows-static-md'
+
 		if args.platform == 'osx':
 			osx_arch = arch if arch == 'arm64' else 'x86_64' # no official universal triplet for osx vcpkg
 			cmake_command += f' -DVCPKG_HOST_TRIPLET={triplet}'
