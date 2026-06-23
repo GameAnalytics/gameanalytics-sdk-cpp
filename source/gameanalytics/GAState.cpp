@@ -638,6 +638,7 @@ namespace gameanalytics
                     catch (json::exception& e)
                     {
                         logging::GALogger::e(e.what());
+                        store::GAStore::setState("sdk_config_cached", "");
                     }
                 }
 
