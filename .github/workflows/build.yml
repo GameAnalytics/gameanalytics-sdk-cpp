@@ -7,10 +7,21 @@ on:
   pull_request:
     branches: ['main']  # Trigger on pull requests to main
   workflow_dispatch:  # Allow manual triggering of workflow
+    inputs:
+      build_type:
+        description: 'Build type(s) to build, as a quoted JSON array (e.g. "Debug","Release")'
+        default: '"Debug","Release"'
+        required: false
+        type: string
+      upload_artifacts:
+        description: 'Whether to upload build artifacts'
+        default: true
+        required: false
+        type: boolean
 
 jobs:
   build:
     uses: ./.github/workflows/cmake.yml
     with:
-      build_type: ${{ (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') && '"Debug","Release"' || '"Debug"' }}
-      upload_artifacts: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' }}
+      build_type: ${{ (github.event_name == 'workflow_dispatch' && inputs.build_type) || ((github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') && '"Debug","Release"' || '"Debug"') }}
+      upload_artifacts: ${{ (github.event_name == 'workflow_dispatch' && inputs.upload_artifacts) || (github.event_name != 'workflow_dispatch' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') }}
