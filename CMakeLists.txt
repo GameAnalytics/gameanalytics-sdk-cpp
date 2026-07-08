@@ -194,7 +194,8 @@ elseif(APPLE)
     create_source_groups(MACOS_SOURCES)
 
 elseif(LINUX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGUID_STDLIB -std=c++17")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGUID_STDLIB -std=c++17 -fPIC")
+
 
     if (CMAKE_CXX_COMPILER MATCHES "clang")
         message(STATUS "Detected Clang compiler: ${CMAKE_CXX_COMPILER}")
