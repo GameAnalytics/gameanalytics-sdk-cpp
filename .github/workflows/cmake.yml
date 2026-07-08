@@ -29,10 +29,11 @@ jobs:
       # - Multiple compilers (cl, gcc, clang)
       # - Multiple library types (static, shared)
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest] 
+        os: [ubuntu-latest, windows-latest, macOS-latest]
         build_type: ${{ fromJSON(format('[{0}]', inputs.build_type || '"Debug","Release"')) }}
         c_compiler: [gcc, clang, cl]
-        lib_type: [static, shared]
+        # static_nocurl_novcpkg: static lib built with --no_curl --no_vcpkg, one compiler per OS
+        lib_type: [static, shared, static_nocurl_novcpkg]
         include:
           - os: windows-latest
             c_compiler: cl
@@ -57,6 +58,10 @@ jobs:
             c_compiler: cl
           - os: macOS-latest
             c_compiler: gcc
+          # only build the no_curl/no_vcpkg variant once per OS (skip the extra ubuntu compiler)
+          - os: ubuntu-latest
+            c_compiler: gcc
+            lib_type: static_nocurl_novcpkg
 
     steps:
     - uses: actions/checkout@v6
@@ -100,7 +105,7 @@ jobs:
         ldd --version
 
     - name: Install vcpkg (Linux/macOS)
-      if: runner.os != 'Windows'
+      if: runner.os != 'Windows' && matrix.lib_type != 'static_nocurl_novcpkg'
       shell: bash
       run: |
         git clone https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
@@ -109,7 +114,7 @@ jobs:
         echo "$HOME/vcpkg" >> "$GITHUB_PATH"
 
     - name: Install vcpkg (Windows)
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && matrix.lib_type != 'static_nocurl_novcpkg'
       shell: pwsh
       run: |
         git clone https://github.com/microsoft/vcpkg.git "$env:USERPROFILE\vcpkg"
@@ -121,14 +126,17 @@ jobs:
       shell: bash
       run: |
         SHARED_FLAG=""
+        EXTRA_FLAGS=""
         if [ "${{ matrix.lib_type }}" == "shared" ]; then
           SHARED_FLAG="--shared"
+        elif [ "${{ matrix.lib_type }}" == "static_nocurl_novcpkg" ]; then
+          EXTRA_FLAGS="--no_curl --no_vcpkg"
         fi
-        
+
         if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-          python setup.py --platform ${{ steps.strings.outputs.platform }} --compiler ${{ matrix.c_compiler }} --cfg ${{ matrix.build_type }} $SHARED_FLAG --build --test
+          python setup.py --platform ${{ steps.strings.outputs.platform }} --compiler ${{ matrix.c_compiler }} --cfg ${{ matrix.build_type }} $SHARED_FLAG $EXTRA_FLAGS --build --test
         else
-          python setup.py --platform ${{ steps.strings.outputs.platform }} --cfg ${{ matrix.build_type }} $SHARED_FLAG --build --test
+          python setup.py --platform ${{ steps.strings.outputs.platform }} --cfg ${{ matrix.build_type }} $SHARED_FLAG $EXTRA_FLAGS --build --test
         fi
         
     - name: Upload Build Artifact
