@@ -9,8 +9,6 @@ set(CMAKE_CXX_STANDARD 17)
 if(UNIX AND NOT APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
-    # Match the library's standard-library choice so the sample's ABI lines up
-    # with libGameAnalytics when built with clang.
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
     endif()
