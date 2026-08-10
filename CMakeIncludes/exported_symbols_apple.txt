@@ -1,0 +1,3 @@
+# Symbols exported from the GameAnalytics shared library on Apple platforms.
+# Used via -Wl,-exported_symbols_list. Glob patterns are supported by ld64.
+_gameAnalytics_*
