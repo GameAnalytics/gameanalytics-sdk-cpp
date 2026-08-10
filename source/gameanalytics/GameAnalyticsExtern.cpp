@@ -318,7 +318,6 @@ GA_API const char* gameAnalytics_getRemoteConfigsValueAsJson(const char* key)
 
 namespace
 {
-    // Adapts the C++ listener interface to a C function pointer
     class ExternRemoteConfigsListener : public gameanalytics::IRemoteConfigsListener
     {
     public:
