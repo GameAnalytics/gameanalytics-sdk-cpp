@@ -78,24 +78,26 @@ std::string gameanalytics::GAPlatformLinux::getOSVersion()
     struct utsname info;
     uname(&info);
 
-    std::string version;
-    int const strSize = strlen(info.release);
+    std::string version = info.release;
+    size_t const strSize = version.size();
 
     int dotCount = 0;
     for (size_t i = 0; i < strSize; ++i)
-    {    
-        if (info.release[i] == '.')
+    {
+        char const c = version[i];
+
+        if (c == '.')
         {
             ++dotCount;
             if (dotCount == 3)
             {
-                version = std::string(info.release, info.release + i);
+                version.resize(i);
                 break;
             }
         }
-        else if (!isdigit(info.release[i]))
+        else if (!isdigit(static_cast<unsigned char>(c)))
         {
-            version = std::string(info.release, info.release + i);
+            version.resize(i);
             break;
         }
     }
