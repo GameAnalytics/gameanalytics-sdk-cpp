@@ -13,6 +13,11 @@ void testCrash()
     *i = 10;
 }
 
+void onRemoteConfigsUpdated(const char* configs)
+{
+    std::cout << "remote configs = " << (configs ? configs : "") << '\n';
+}
+
 int main(int argc, char** argv)
 {
     std::cout << "start\n";
@@ -43,6 +48,9 @@ int main(int argc, char** argv)
     gameAnalytics_enableFPSHistogram([]() -> float { return 60.f; }, EGAEnabled);
 
     gameAnalytics_setCustomDimension01("test");
+
+    // register before initialize or the first update is missed
+    gameAnalytics_configureRemoteConfigsListener(onRemoteConfigsUpdated);
 
     using namespace std::chrono_literals;
 

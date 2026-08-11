@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Remote configs listener in the C API** — New `gameAnalytics_configureRemoteConfigsListener()` with `GARemoteConfigsListener` callback, making remote configs notifications usable from managed runtimes (e.g. Unity P/Invoke). Single listener; re-registering replaces it, `NULL` unregisters.
+
 ## 5.2.0
 
 ### Added

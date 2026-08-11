@@ -124,6 +124,37 @@ void myLogHandler(const char* message, GALoggerMessageType type)
 gameAnalytics_configureCustomLogHandler(myLogHandler);
 ```
 
+### Remote configs listener
+To be notified whenever remote configs are populated:
+
+**C++ API:**
+``` c++
+struct RemoteConfigs: public gameanalytics::IRemoteConfigsListener
+{
+    void onRemoteConfigsUpdated(std::string const& configs) override
+    {
+        // configs have been updated
+    }
+};
+
+auto listener = std::make_shared<RemoteConfigs>();
+gameanalytics::GameAnalytics::addRemoteConfigsListener(listener);
+```
+
+**C API (shared lib):**
+```c
+void myRemoteConfigsListener(const char* configs)
+{
+    // configs have been updated
+}
+
+gameAnalytics_configureRemoteConfigsListener(myRemoteConfigsListener);
+```
+
+The C API supports a single listener; registering again replaces the previous one and passing `NULL` unregisters. Register it before `gameAnalytics_initialize` to not miss the first update.
+
+> **Note:** The listener is invoked on the SDK's internal thread and the `configs` string is only valid during the call — copy it if needed (do not pass it to `gameAnalytics_freeString`).
+
 ### Custom HTTP client
 
 By default, the SDK uses cURL for HTTP requests. If you need to use a different HTTP library (e.g. on consoles or custom platforms), you can provide your own implementation by subclassing `GAHttpClient`:

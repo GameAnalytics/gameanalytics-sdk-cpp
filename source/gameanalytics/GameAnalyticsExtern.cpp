@@ -6,6 +6,7 @@
 #include "GAUtilities.h"
 #include <cstring>
 #include <cstdlib>
+#include <memory>
 
 gameanalytics::StringVector makeStringVector(const char** arr, int size)
 {
@@ -313,6 +314,50 @@ GA_API const char* gameAnalytics_getRemoteConfigsValueAsJson(const char* key)
 {
     std::string returnValue = gameanalytics::GameAnalytics::getRemoteConfigsValueAsJson(safeString(key));
     return gameAnalytics_allocString(returnValue);
+}
+
+namespace
+{
+    class ExternRemoteConfigsListener : public gameanalytics::IRemoteConfigsListener
+    {
+    public:
+
+        explicit ExternRemoteConfigsListener(GARemoteConfigsListener listener):
+            _listener(listener)
+        {
+        }
+
+        void onRemoteConfigsUpdated(std::string const& remoteConfigs) override
+        {
+            if (_listener)
+            {
+                _listener(remoteConfigs.c_str());
+            }
+        }
+
+    private:
+
+        GARemoteConfigsListener _listener;
+    };
+
+    std::shared_ptr<gameanalytics::IRemoteConfigsListener> g_externRemoteConfigsListener;
+}
+
+GA_API void gameAnalytics_configureRemoteConfigsListener(GARemoteConfigsListener listener)
+{
+    if (g_externRemoteConfigsListener)
+    {
+        gameanalytics::GameAnalytics::removeRemoteConfigsListener(g_externRemoteConfigsListener);
+        g_externRemoteConfigsListener.reset();
+    }
+
+    if (!listener)
+    {
+        return;
+    }
+
+    g_externRemoteConfigsListener = std::make_shared<ExternRemoteConfigsListener>(listener);
+    gameanalytics::GameAnalytics::addRemoteConfigsListener(g_externRemoteConfigsListener);
 }
 
 GA_API const char* gameAnalytics_getABTestingId()

@@ -637,7 +637,8 @@ namespace gameanalytics
                     }
                     catch (json::exception& e)
                     {
-                        logging::GALogger::e(e.what());
+                        // discard unparseable cached config
+                        logging::GALogger::w("Discarding incompatible cached sdk config: %s", e.what());
                         store::GAStore::setState("sdk_config_cached", "");
                     }
                 }

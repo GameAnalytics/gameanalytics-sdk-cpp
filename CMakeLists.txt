@@ -193,10 +193,11 @@ elseif(APPLE)
 
     create_source_groups(MACOS_SOURCES)
 
-elseif(LINUX)
+elseif(UNIX AND NOT APPLE)
+    # Linux
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGUID_STDLIB -std=c++17")
 
-    if (CMAKE_CXX_COMPILER MATCHES "clang")
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         message(STATUS "Detected Clang compiler: ${CMAKE_CXX_COMPILER}")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
     endif()
@@ -213,6 +214,24 @@ endif()
 
 add_library(GameAnalytics ${LIB_TYPE} ${CPP_SOURCES})
 target_link_libraries(GameAnalytics PRIVATE ${LIBS} PUBLIC ${PUBLIC_LIBS})
+
+# Hide symbols by default (GCC/Clang -fvisibility=hidden); GA_API in GameAnalyticsExtern.h
+# still marks the public C API as exported. No-op on MSVC (dllexport/dllimport controls that).
+set_target_properties(GameAnalytics PROPERTIES
+    C_VISIBILITY_PRESET hidden
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN ON
+)
+
+if(${GA_SHARED_LIB})
+    if(APPLE)
+        target_link_options(GameAnalytics PRIVATE
+            "-Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/CMakeIncludes/exported_symbols_apple.txt")
+    elseif(UNIX)
+        target_link_options(GameAnalytics PRIVATE "-Wl,--exclude-libs,ALL")
+    endif()
+endif()
+
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 message(STATUS "CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
 message(STATUS "CMAKE_SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
