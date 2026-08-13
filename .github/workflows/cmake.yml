@@ -61,6 +61,8 @@ jobs:
             c_compiler: cl
           - os: macOS-latest
             c_compiler: gcc
+          - lib_type: shared
+            dependency_mode: no_vcpkg_no_curl
 
     steps:
     - uses: actions/checkout@v6
@@ -74,11 +76,11 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
         # Map OS to platform
-        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+        if [ "${{ runner.os }}" == "Linux" ]; then
           echo "platform=linux_x64" >> "$GITHUB_OUTPUT"
-        elif [ "${{ matrix.os }}" == "windows-2022" ]; then
+        elif [ "${{ runner.os }}" == "Windows" ]; then
           echo "platform=win64" >> "$GITHUB_OUTPUT"
-        elif [ "${{ matrix.os }}" == "macOS-latest" ]; then
+        elif [ "${{ runner.os }}" == "macOS" ]; then
           echo "platform=osx" >> "$GITHUB_OUTPUT"
         fi
 
