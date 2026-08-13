@@ -103,7 +103,7 @@ def main():
 
 		# match CMAKE_MSVC_RUNTIME_LIBRARY: /MD shared, /MT static
 		if args.platform.startswith('win'):
-			triplet = f'{arch}-windows-static-md' if args.shared else f'{arch}-windows-static'
+			triplet = f'{arch}-windows-static-md'
 
 		if args.platform == 'osx':
 			osx_arch = arch if arch == 'arm64' else 'x86_64' # no official universal triplet for osx vcpkg
