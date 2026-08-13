@@ -38,30 +38,32 @@ jobs:
           git push origin ${{ inputs.tag_name }}
     
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: ./release-artifacts
 
       - name: Organize release files
         run: |
-          # Create separate directories for static and shared libraries
+          # Create separate directories for static, shared and no-deps static libraries
           mkdir -p ./static-release/include
           mkdir -p ./shared-release/include
-      
+          mkdir -p ./static-no-deps-release/include
+
           # Copy include directory from any artifact (they're all identical)
           FIRST_ARTIFACT=$(find ./release-artifacts -mindepth 1 -maxdepth 1 -type d | head -n 1)
           cp -r $FIRST_ARTIFACT/include/* ./static-release/include/
           cp -r $FIRST_ARTIFACT/include/* ./shared-release/include/
+          cp -r $FIRST_ARTIFACT/include/* ./static-no-deps-release/include/
           
           # Copy GameAnalyticsExtern.h for shared library release
           cp ./source/gameanalytics/GameAnalyticsExtern.h ./shared-release/include/GameAnalytics/
       
           # Process static library artifacts
-          for artifact_dir in ./release-artifacts/*-static; do
+          for artifact_dir in ./release-artifacts/*-static-default; do
             artifact_name=$(basename $artifact_dir)
-            # Extract platform info (remove ga-cpp-sdk- prefix and -static suffix)
+            # Extract platform info (remove ga-cpp-sdk- prefix and -static-default suffix)
             platform_info=${artifact_name#ga-cpp-sdk-}
-            platform_info=${platform_info%-static}
+            platform_info=${platform_info%-static-default}
             
             mkdir -p ./static-release/$platform_info
             
@@ -74,11 +76,11 @@ jobs:
           done
           
           # Process shared library artifacts
-          for artifact_dir in ./release-artifacts/*-shared; do
+          for artifact_dir in ./release-artifacts/*-shared-default; do
             artifact_name=$(basename $artifact_dir)
-            # Extract platform info (remove ga-cpp-sdk- prefix and -shared suffix)
+            # Extract platform info (remove ga-cpp-sdk- prefix and -shared-default suffix)
             platform_info=${artifact_name#ga-cpp-sdk-}
-            platform_info=${platform_info%-shared}
+            platform_info=${platform_info%-shared-default}
             
             mkdir -p ./shared-release/$platform_info
             
@@ -92,9 +94,27 @@ jobs:
             fi
           done
 
+          # Process no-deps static library artifacts (no vcpkg/curl, custom HTTP client required)
+          for artifact_dir in ./release-artifacts/*-static-no_deps; do
+            artifact_name=$(basename $artifact_dir)
+            # Extract platform info (remove ga-cpp-sdk- prefix and -static-no_deps suffix)
+            platform_info=${artifact_name#ga-cpp-sdk-}
+            platform_info=${platform_info%-static-no_deps}
+
+            mkdir -p ./static-no-deps-release/$platform_info
+
+            # Copy static libraries
+            if [[ $artifact_name == *"windows"* ]]; then
+              cp $artifact_dir/*.lib ./static-no-deps-release/$platform_info/ 2>/dev/null || true
+            else
+              cp $artifact_dir/*.a ./static-no-deps-release/$platform_info/ 2>/dev/null || true
+            fi
+          done
+
           # Create zip archives
           zip -r ga-sdk-static-${{ inputs.tag_name }}.zip ./static-release
           zip -r ga-sdk-shared-${{ inputs.tag_name }}.zip ./shared-release
+          zip -r ga-sdk-static-no-deps-${{ inputs.tag_name }}.zip ./static-no-deps-release
 
       - name: Show organized release files
         run: |
@@ -103,6 +123,9 @@ jobs:
           echo ""
           echo "=== Shared Libraries ==="
           tree ./shared-release || ls -R ./shared-release
+          echo ""
+          echo "=== Static Libraries (no dependencies) ==="
+          tree ./static-no-deps-release || ls -R ./static-no-deps-release
 
       - name: Create release
         uses: softprops/action-gh-release@v2.0.8
@@ -114,3 +137,4 @@ jobs:
           files: |
             ga-sdk-static-${{ inputs.tag_name }}.zip
             ga-sdk-shared-${{ inputs.tag_name }}.zip
+            ga-sdk-static-no-deps-${{ inputs.tag_name }}.zip

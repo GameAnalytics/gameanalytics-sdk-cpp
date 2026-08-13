@@ -28,7 +28,7 @@ def get_compiler_for_platform(platform, compiler=None):
 
 def main():
 	parser = argparse.ArgumentParser(description="CMake Build and Test Script")
-	parser.add_argument('--platform', choices=['linux_x64', 'linux_x86', 'osx', 'win32', 'win64', 'uwp'], help='Platform to build for', required=True)
+	parser.add_argument('--platform', choices=['linux_x64', 'linux_x86', 'osx', 'win64'], help='Platform to build for', required=True)
 	parser.add_argument('--cfg', default='Debug', choices=['Release', 'Debug'], help='Configuration Type')
 	parser.add_argument('--compiler', choices=['gcc', 'clang'], help='Compiler to use (Linux only: gcc or clang, default=clang)')
 	parser.add_argument('--shared', action='store_true', help='Build shared library instead of static')
@@ -82,7 +82,11 @@ def main():
 	if args.no_curl:
 		cmake_command += ' -DGA_HTTP_USE_CURL=OFF'
 
-	if not args.no_vcpkg:
+	if args.no_vcpkg:
+		cmake_command += ' -DUSE_VCPKG=OFF'
+		if args.platform == 'osx':
+			cmake_command += ' "-DCMAKE_OSX_ARCHITECTURES=x86_64;arm64"'
+	else:
 
 		if args.platform.startswith('linux'):
 			platform = 'linux'
@@ -101,9 +105,8 @@ def main():
 
 		triplet = f'{arch}-{platform}'
 
-		# match CMAKE_MSVC_RUNTIME_LIBRARY: /MD shared, /MT static
 		if args.platform.startswith('win'):
-			triplet = f'{arch}-windows-static-md' if args.shared else f'{arch}-windows-static'
+			triplet = f'{arch}-windows-static-md'
 
 		if args.platform == 'osx':
 			osx_arch = arch if arch == 'arm64' else 'x86_64' # no official universal triplet for osx vcpkg

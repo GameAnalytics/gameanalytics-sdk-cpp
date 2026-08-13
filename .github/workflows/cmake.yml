@@ -28,13 +28,17 @@ jobs:
       # - Multiple platforms (Windows, Linux, macOS)
       # - Multiple compilers (cl, gcc, clang)
       # - Multiple library types (static, shared)
+      # windows-latest now floats to Windows Server 2025 / Visual Studio 2026 (MSVC v14.50+).
+      # Pin to windows-2022 to guarantee MSVC 2022 (toolset v14.38+), which is what Unreal 5.8
+      # requires at minimum and what "cl" builds here need to stay ABI-compatible with.
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest] 
+        os: [ubuntu-latest, windows-2022, macOS-latest]
         build_type: ${{ fromJSON(format('[{0}]', inputs.build_type || '"Debug","Release"')) }}
         c_compiler: [gcc, clang, cl]
         lib_type: [static, shared]
+        dependency_mode: [default, no_deps]
         include:
-          - os: windows-latest
+          - os: windows-2022
             c_compiler: cl
             cpp_compiler: cl
           - os: ubuntu-latest
@@ -47,9 +51,9 @@ jobs:
             c_compiler: clang
             cpp_compiler: clang++
         exclude:
-          - os: windows-latest
+          - os: windows-2022
             c_compiler: gcc
-          - os: windows-latest
+          - os: windows-2022
             c_compiler: clang
           - os: ubuntu-latest
             c_compiler: cl
@@ -57,6 +61,8 @@ jobs:
             c_compiler: cl
           - os: macOS-latest
             c_compiler: gcc
+          - lib_type: shared
+            dependency_mode: no_deps
 
     steps:
     - uses: actions/checkout@v6
@@ -70,11 +76,11 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
         # Map OS to platform
-        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+        if [ "${{ runner.os }}" == "Linux" ]; then
           echo "platform=linux_x64" >> "$GITHUB_OUTPUT"
-        elif [ "${{ matrix.os }}" == "windows-latest" ]; then
+        elif [ "${{ runner.os }}" == "Windows" ]; then
           echo "platform=win64" >> "$GITHUB_OUTPUT"
-        elif [ "${{ matrix.os }}" == "macOS-latest" ]; then
+        elif [ "${{ runner.os }}" == "macOS" ]; then
           echo "platform=osx" >> "$GITHUB_OUTPUT"
         fi
 
@@ -100,7 +106,7 @@ jobs:
         ldd --version
 
     - name: Install vcpkg (Linux/macOS)
-      if: runner.os != 'Windows'
+      if: runner.os != 'Windows' && matrix.dependency_mode != 'no_deps'
       shell: bash
       run: |
         git clone https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
@@ -109,7 +115,7 @@ jobs:
         echo "$HOME/vcpkg" >> "$GITHUB_PATH"
 
     - name: Install vcpkg (Windows)
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && matrix.dependency_mode != 'no_deps'
       shell: pwsh
       run: |
         git clone https://github.com/microsoft/vcpkg.git "$env:USERPROFILE\vcpkg"
@@ -124,18 +130,23 @@ jobs:
         if [ "${{ matrix.lib_type }}" == "shared" ]; then
           SHARED_FLAG="--shared"
         fi
-        
+
+        DEPENDENCY_FLAGS=""
+        if [ "${{ matrix.dependency_mode }}" == "no_deps" ]; then
+          DEPENDENCY_FLAGS="--no_vcpkg --no_curl"
+        fi
+
         if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-          python setup.py --platform ${{ steps.strings.outputs.platform }} --compiler ${{ matrix.c_compiler }} --cfg ${{ matrix.build_type }} $SHARED_FLAG --build --test
+          python setup.py --platform ${{ steps.strings.outputs.platform }} --compiler ${{ matrix.c_compiler }} --cfg ${{ matrix.build_type }} $SHARED_FLAG $DEPENDENCY_FLAGS --build --test
         else
-          python setup.py --platform ${{ steps.strings.outputs.platform }} --cfg ${{ matrix.build_type }} $SHARED_FLAG --build --test
+          python setup.py --platform ${{ steps.strings.outputs.platform }} --cfg ${{ matrix.build_type }} $SHARED_FLAG $DEPENDENCY_FLAGS --build --test
         fi
         
     - name: Upload Build Artifact
       if: ${{ inputs.upload_artifacts && success() }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
-        name: ga-cpp-sdk-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}-${{ matrix.lib_type }}
+        name: ga-cpp-sdk-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}-${{ matrix.lib_type }}-${{ matrix.dependency_mode }}
         path: ${{ steps.strings.outputs.build-output-dir }}/package/
         retention-days: 3
     
