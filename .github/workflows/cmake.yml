@@ -104,7 +104,7 @@ jobs:
         ldd --version
 
     - name: Install vcpkg (Linux/macOS)
-      if: runner.os != 'Windows'
+      if: runner.os != 'Windows' && matrix.dependency_mode != 'no_vcpkg_no_curl'
       shell: bash
       run: |
         git clone https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
@@ -113,7 +113,7 @@ jobs:
         echo "$HOME/vcpkg" >> "$GITHUB_PATH"
 
     - name: Install vcpkg (Windows)
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && matrix.dependency_mode != 'no_vcpkg_no_curl'
       shell: pwsh
       run: |
         git clone https://github.com/microsoft/vcpkg.git "$env:USERPROFILE\vcpkg"
