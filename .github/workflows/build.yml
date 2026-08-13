@@ -9,9 +9,14 @@ on:
   workflow_dispatch:  # Allow manual triggering of workflow
     inputs:
       build_type:
-        description: 'Build type(s) as a quoted JSON array, e.g. "Debug","Release"'
+        description: 'Build type(s)'
         required: false
-        type: string
+        type: choice
+        options:
+          - Debug
+          - Release
+          - Debug + Release
+        default: Debug
       upload_artifacts:
         description: 'Whether to upload build artifacts'
         required: false
@@ -22,5 +27,5 @@ jobs:
   build:
     uses: ./.github/workflows/cmake.yml
     with:
-      build_type: ${{ (github.event_name == 'workflow_dispatch' && inputs.build_type) || ((github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') && '"Debug","Release"') || '"Debug"' }}
+      build_type: ${{ (github.event_name == 'workflow_dispatch' && (inputs.build_type == 'Debug + Release' && '"Debug","Release"' || format('"{0}"', inputs.build_type))) || ((github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') && '"Debug","Release"') || '"Debug"' }}
       upload_artifacts: ${{ (github.event_name == 'workflow_dispatch' && inputs.upload_artifacts) || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') }}
