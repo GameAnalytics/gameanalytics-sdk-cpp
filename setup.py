@@ -82,7 +82,9 @@ def main():
 	if args.no_curl:
 		cmake_command += ' -DGA_HTTP_USE_CURL=OFF'
 
-	if not args.no_vcpkg:
+	if args.no_vcpkg:
+		cmake_command += ' -DUSE_VCPKG=OFF'
+	else:
 
 		if args.platform.startswith('linux'):
 			platform = 'linux'
