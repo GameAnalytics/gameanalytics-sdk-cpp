@@ -36,7 +36,7 @@ jobs:
         build_type: ${{ fromJSON(format('[{0}]', inputs.build_type || '"Debug","Release"')) }}
         c_compiler: [gcc, clang, cl]
         lib_type: [static, shared]
-        dependency_mode: [default, no_vcpkg_no_curl]
+        dependency_mode: [default, no_deps]
         include:
           - os: windows-2022
             c_compiler: cl
@@ -62,7 +62,7 @@ jobs:
           - os: macOS-latest
             c_compiler: gcc
           - lib_type: shared
-            dependency_mode: no_vcpkg_no_curl
+            dependency_mode: no_deps
 
     steps:
     - uses: actions/checkout@v6
@@ -106,7 +106,7 @@ jobs:
         ldd --version
 
     - name: Install vcpkg (Linux/macOS)
-      if: runner.os != 'Windows' && matrix.dependency_mode != 'no_vcpkg_no_curl'
+      if: runner.os != 'Windows' && matrix.dependency_mode != 'no_deps'
       shell: bash
       run: |
         git clone https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
@@ -115,7 +115,7 @@ jobs:
         echo "$HOME/vcpkg" >> "$GITHUB_PATH"
 
     - name: Install vcpkg (Windows)
-      if: runner.os == 'Windows' && matrix.dependency_mode != 'no_vcpkg_no_curl'
+      if: runner.os == 'Windows' && matrix.dependency_mode != 'no_deps'
       shell: pwsh
       run: |
         git clone https://github.com/microsoft/vcpkg.git "$env:USERPROFILE\vcpkg"
@@ -132,7 +132,7 @@ jobs:
         fi
 
         DEPENDENCY_FLAGS=""
-        if [ "${{ matrix.dependency_mode }}" == "no_vcpkg_no_curl" ]; then
+        if [ "${{ matrix.dependency_mode }}" == "no_deps" ]; then
           DEPENDENCY_FLAGS="--no_vcpkg --no_curl"
         fi
 
