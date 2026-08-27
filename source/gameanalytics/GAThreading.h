@@ -17,6 +17,7 @@
 #include <algorithm>
 
 #include "GACommon.h"
+#include "GAThread.h"
 
 namespace gameanalytics
 {
@@ -71,7 +72,7 @@ namespace gameanalytics
             
             std::vector<ScheduledTask> _tasks;
             std::queue<Block> _blocks;
-            std::thread       _thread;
+            GAThread          _thread;
             std::mutex        _blockMutex;
             std::mutex        _taskMutex;
             std::atomic<bool> _endThread = false;
