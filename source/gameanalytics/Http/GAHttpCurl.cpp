@@ -7,6 +7,8 @@
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
 
+#include <memory>
+
 namespace gameanalytics
 {
     size_t writefunc(void *ptr, size_t size, size_t nmemb, GAHttpClient::Response *s)
@@ -39,39 +41,39 @@ namespace gameanalytics
 
     GAHttpClient::Response GAHttpClientCurl::sendRequest(std::string const& url, std::string const& auth, std::vector<uint8_t> const& payloadData, bool useGzip, void* userData)
     {
-        CURL* curl = curl_easy_init();
+        std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> curl(curl_easy_init(), &curl_easy_cleanup);
         if (!curl)
         {
             return {};
         }
 
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+        curl_easy_setopt(curl.get(), CURLOPT_SSL_VERIFYPEER, 0L);
 
         GAHttpClient::Response response = {};
 
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+        curl_easy_setopt(curl.get(), CURLOPT_WRITEFUNCTION, writefunc);
+        curl_easy_setopt(curl.get(), CURLOPT_WRITEDATA, &response);
 
-        createRequest(curl, url, auth, payloadData, useGzip);
+        std::unique_ptr<curl_slist, decltype(&curl_slist_free_all)> header(
+            createRequest(curl.get(), url, auth, payloadData, useGzip), &curl_slist_free_all);
 
-        CURLcode res = curl_easy_perform(curl);
+        CURLcode res = curl_easy_perform(curl.get());
         if (res != CURLE_OK)
         {
             logging::GALogger::d("CURL request failed: %s", curl_easy_strerror(res));
             return {};
         }
 
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response.code);
-        curl_easy_cleanup(curl);
+        curl_easy_getinfo(curl.get(), CURLINFO_RESPONSE_CODE, &response.code);
 
         return response;
     }
 
-    void GAHttpClientCurl::createRequest(CURL *curl, std::string const& url, std::string const& auth, const std::vector<uint8_t>& payloadData, bool gzip)
+    curl_slist* GAHttpClientCurl::createRequest(CURL *curl, std::string const& url, std::string const& auth, const std::vector<uint8_t>& payloadData, bool gzip)
     {
         if(!curl)
         {
-            return;
+            return nullptr;
         }
 
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -90,8 +92,9 @@ namespace gameanalytics
 
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadData.data());
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payloadData.size());
+
+        return header;
     }
 }
 
