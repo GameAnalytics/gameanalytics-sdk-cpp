@@ -9,46 +9,7 @@
 #include <GAState.h>
 #include <GAStore.h>
 
-namespace gameanalytics
-{
-    namespace state
-    {
-        // friend of GAState (see GAState.h) exposing the private bits needed
-        // to exercise ensurePersistedStates() in isolation
-        struct GAStateTestAccessor
-        {
-            static void resetConfigState(std::string const& customUserId)
-            {
-                GAState& s = GAState::getInstance();
-
-                s._sdkConfig       = json();
-                s._sdkConfigCached = json();
-                s._configsHash.clear();
-                s._defaultUserId.clear();
-
-                s._customUserId = customUserId;
-                s.cacheIdentifier();
-            }
-
-            static void ensurePersistedStates()
-            {
-                GAState::getInstance().ensurePersistedStates();
-            }
-
-            static std::string configsHash()
-            {
-                return GAState::getInstance()._configsHash;
-            }
-
-            static json validateAndCleanCustomFields(const json& fields)
-            {
-                json out;
-                GAState::getInstance().validateAndCleanCustomFields(fields, out);
-                return out;
-            }
-        };
-    }
-}
+#include "helpers/GAStateTestAccessor.h"
 
 using namespace gameanalytics;
 
