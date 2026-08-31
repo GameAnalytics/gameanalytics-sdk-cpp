@@ -345,15 +345,33 @@ if (ENABLE_COVERAGE AND NOT GA_SHARED_LIB)
                 COMMAND GameAnalyticsUnitTests
 
                 # Capturing lcov counters and generating report
-                COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info --rc lcov_branch_coverage=1 --rc derive_function_end_line=0
+                # System headers are excluded at capture time; format/inconsistent are
+                # clang gcov artifacts downgraded to warnings; the baseline capture keeps
+                # instrumented files the tests never executed in the report
+                COMMAND ${LCOV_PATH} --directory . --capture --initial --output-file ${covname}.base.info
+                                    --branch-coverage --rc derive_function_end_line=0
+                                    --exclude '/Applications/Xcode.app/*'
+                                    --exclude '/usr/*'
+                                    --ignore-errors format,inconsistent,unused
+                COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.run.info
+                                    --branch-coverage --rc derive_function_end_line=0
+                                    --exclude '/Applications/Xcode.app/*'
+                                    --exclude '/usr/*'
+                                    --ignore-errors format,inconsistent,unused
+                COMMAND ${LCOV_PATH} --add-tracefile ${covname}.base.info
+                                    --add-tracefile ${covname}.run.info
+                                    --output-file ${covname}.info
+                                    --branch-coverage
+                                    --ignore-errors inconsistent,format
                 COMMAND ${LCOV_PATH} --remove ${covname}.info
                                     '${CMAKE_SOURCE_DIR}/source/dependencies/*'
-                                    '/usr/*'
+                                    '${CMAKE_SOURCE_DIR}/test/*'
                                     --output-file ${covname}.info.cleaned
-                                    --rc lcov_branch_coverage=1 
+                                    --branch-coverage
                                     --rc derive_function_end_line=0
-                COMMAND ${GENHTML_PATH} -o ${covname} ${covname}.info.cleaned --rc lcov_branch_coverage=1 --rc derive_function_end_line=0
-                COMMAND ${CMAKE_COMMAND} -E remove ${covname}.info ${covname}.info.cleaned
+                                    --ignore-errors unused,inconsistent,format
+                COMMAND ${GENHTML_PATH} -o ${covname} ${covname}.info.cleaned --branch-coverage --rc derive_function_end_line=0 --ignore-errors inconsistent,category
+                COMMAND ${CMAKE_COMMAND} -E remove ${covname}.base.info ${covname}.run.info ${covname}.info ${covname}.info.cleaned
 
                 COMMENT "Resetting code coverage counters to zero.\nProcessing code coverage counters and generating report."
             )
