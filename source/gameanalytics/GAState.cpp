@@ -887,6 +887,7 @@ namespace gameanalytics
 
         void GAState::addRemoteConfigsListener(const std::shared_ptr<IRemoteConfigsListener>& listener)
         {
+            std::lock_guard<std::recursive_mutex> lg(getInstance()._mtx);
             if(std::find(getInstance()._remoteConfigsListeners.begin(), getInstance()._remoteConfigsListeners.end(), listener) == getInstance()._remoteConfigsListeners.end())
             {
                 getInstance()._remoteConfigsListeners.push_back(listener);
@@ -895,10 +896,11 @@ namespace gameanalytics
 
         void GAState::removeRemoteConfigsListener(const std::shared_ptr<IRemoteConfigsListener>& listener)
         {
+            std::lock_guard<std::recursive_mutex> lg(getInstance()._mtx);
             if(std::find(getInstance()._remoteConfigsListeners.begin(), getInstance()._remoteConfigsListeners.end(), listener) != getInstance()._remoteConfigsListeners.end())
             {
                 getInstance()._remoteConfigsListeners.erase(
-                    std::remove(getInstance()._remoteConfigsListeners.begin(), getInstance()._remoteConfigsListeners.end(), listener), 
+                    std::remove(getInstance()._remoteConfigsListeners.begin(), getInstance()._remoteConfigsListeners.end(), listener),
                     getInstance()._remoteConfigsListeners.end()
                 );
             }
@@ -979,12 +981,20 @@ namespace gameanalytics
                     }
                 }
 
-                buildRemoteConfigsJsons(_tempRemoteConfigsJson);
+                std::string configStr;
+                std::vector<std::shared_ptr<IRemoteConfigsListener>> listeners;
+                {
+                    std::lock_guard<std::recursive_mutex> lg(_mtx);
 
-                _remoteConfigsIsReady = true;
-                
-                std::string const configStr = _gameRemoteConfigsJson.dump();
-                for (auto& listener : _remoteConfigsListeners)
+                    buildRemoteConfigsJsons(_tempRemoteConfigsJson);
+                    _remoteConfigsIsReady = true;
+
+                    configStr = _gameRemoteConfigsJson.dump();
+                    listeners = _remoteConfigsListeners;
+                }
+
+                // notify outside the lock so a listener can safely call back into the SDK
+                for (auto& listener : listeners)
                 {
                     listener->onRemoteConfigsUpdated(configStr);
                 }
