@@ -624,8 +624,9 @@ namespace gameanalytics
                             std::string lastUsedIdentifier = state_dict.contains("last_used_identifier") ?
                                 state_dict["last_used_identifier"].get<std::string>() : "";
 
-                            if (!lastUsedIdentifier.empty())
+                            if (!lastUsedIdentifier.empty() && lastUsedIdentifier != _identifier)
                             {
+                                logging::GALogger::w("New identifier spotted compared to last one used, clearing cached configs hash!");
                                 if (d.contains("configs_hash"))
                                 {
                                     d.erase("configs_hash");
