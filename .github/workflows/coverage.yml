@@ -44,8 +44,6 @@ jobs:
 
     - name: Setup LCOV
       uses: hrishikesh-kadam/setup-lcov@v1
-      with:
-        ref: v2.0
 
     - name: Configure CMake    
       shell: bash
