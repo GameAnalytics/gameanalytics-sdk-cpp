@@ -261,7 +261,7 @@ std::string gameanalytics::GAPlatformLinux::getConnectionType()
             struct iwreq req = {};
             strncpy(req.ifr_name, current->ifa_name, IFNAMSIZ);
 
-            int sock = socket(AF_INET, SOCK_STREAM, 0);
+            sock = socket(AF_INET, SOCK_STREAM, 0);
             if (sock == -1) 
             {
                 connection = CONNECTION_LAN;
