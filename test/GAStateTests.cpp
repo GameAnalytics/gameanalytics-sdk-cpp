@@ -7,110 +7,78 @@
 #include <gmock/gmock.h>
 
 #include <GAState.h>
-//#include "rapidjson/document.h"
-//
-//#include "helpers/GATestHelpers.h"
-//
-//TEST(GAStateTest, testValidateAndCleanCustomFields)
-//{
-//    rapidjson::Document map;
-//    rapidjson::Value v;
-//
-//    {
-//        v = rapidjson::Value();
-//        map.SetObject();
-//        rapidjson::Document::AllocatorType& a = map.GetAllocator();
-//        while(map.MemberCount() < 100)
-//        {
-//            map.AddMember(rapidjson::Value(GATestHelpers::getRandomString(4).c_str(), a), rapidjson::Value(GATestHelpers::getRandomString(4).c_str(), a), a);
-//        }
-//    }
-//    ASSERT_EQ(100, map.MemberCount());
-//    gameanalytics::state::GAState::validateAndCleanCustomFields(map, v);
-//    ASSERT_TRUE(v.MemberCount() == 50);
-//
-//    {
-//        v = rapidjson::Value();
-//        map.SetObject();
-//        rapidjson::Document::AllocatorType& a = map.GetAllocator();
-//        while(map.MemberCount() < 50)
-//        {
-//            map.AddMember(rapidjson::Value(GATestHelpers::getRandomString(4).c_str(), a), rapidjson::Value(GATestHelpers::getRandomString(4).c_str(), a), a);
-//        }
-//    }
-//    ASSERT_EQ(50, map.MemberCount());
-//    gameanalytics::state::GAState::validateAndCleanCustomFields(map, v);
-//    ASSERT_EQ(50, v.MemberCount());
-//
-//    {
-//        v = rapidjson::Value();
-//        map.SetObject();
-//        rapidjson::Document::AllocatorType& a = map.GetAllocator();
-//        map.AddMember(rapidjson::Value(GATestHelpers::getRandomString(4).c_str(), a), rapidjson::Value("", a), a);
-//    }
-//    gameanalytics::state::GAState::validateAndCleanCustomFields(map, v);
-//    ASSERT_TRUE(v.MemberCount() == 0);
-//
-//    {
-//        v = rapidjson::Value();
-//        map.SetObject();
-//        rapidjson::Document::AllocatorType& a = map.GetAllocator();
-//        map.AddMember(rapidjson::Value(GATestHelpers::getRandomString(4).c_str(), a), rapidjson::Value(GATestHelpers::getRandomString(257).c_str(), a), a);
-//    }
-//    gameanalytics::state::GAState::validateAndCleanCustomFields(map, v);
-//    ASSERT_TRUE(v.MemberCount() == 0);
-//
-//    {
-//        v = rapidjson::Value();
-//        map.SetObject();
-//        rapidjson::Document::AllocatorType& a = map.GetAllocator();
-//        map.AddMember("", rapidjson::Value(GATestHelpers::getRandomString(4).c_str(), a), a);
-//    }
-//    gameanalytics::state::GAState::validateAndCleanCustomFields(map, v);
-//    ASSERT_TRUE(v.MemberCount() == 0);
-//
-//    {
-//        v = rapidjson::Value();
-//        map.SetObject();
-//        rapidjson::Document::AllocatorType& a = map.GetAllocator();
-//        map.AddMember(rapidjson::Value("___", a), rapidjson::Value(GATestHelpers::getRandomString(4).c_str(), a), a);
-//    }
-//    gameanalytics::state::GAState::validateAndCleanCustomFields(map, v);
-//    ASSERT_TRUE(v.MemberCount() == 1);
-//
-//    {
-//        v = rapidjson::Value();
-//        map.SetObject();
-//        rapidjson::Document::AllocatorType& a = map.GetAllocator();
-//        map.AddMember(rapidjson::Value("_&_", a), rapidjson::Value(GATestHelpers::getRandomString(4).c_str(), a), a);
-//    }
-//    gameanalytics::state::GAState::validateAndCleanCustomFields(map, v);
-//    ASSERT_TRUE(v.MemberCount() == 0);
-//
-//    {
-//        v = rapidjson::Value();
-//        map.SetObject();
-//        rapidjson::Document::AllocatorType& a = map.GetAllocator();
-//        map.AddMember(rapidjson::Value(GATestHelpers::getRandomString(65).c_str(), a), rapidjson::Value(GATestHelpers::getRandomString(4).c_str(), a), a);
-//    }
-//    gameanalytics::state::GAState::validateAndCleanCustomFields(map, v);
-//    ASSERT_TRUE(v.MemberCount() == 0);
-//
-//    {
-//        v = rapidjson::Value();
-//        map.SetObject();
-//        rapidjson::Document::AllocatorType& a = map.GetAllocator();
-//        map.AddMember(rapidjson::Value(GATestHelpers::getRandomString(4).c_str(), a), rapidjson::Value(100), a);
-//    }
-//    gameanalytics::state::GAState::validateAndCleanCustomFields(map, v);
-//    ASSERT_TRUE(v.MemberCount() == 1);
-//
-//    {
-//        v = rapidjson::Value();
-//        map.SetObject();
-//        rapidjson::Document::AllocatorType& a = map.GetAllocator();
-//        map.AddMember(rapidjson::Value(GATestHelpers::getRandomString(4).c_str(), a), rapidjson::Value(true), a);
-//    }
-//    gameanalytics::state::GAState::validateAndCleanCustomFields(map, v);
-//    ASSERT_TRUE(v.MemberCount() == 0);
-//}
+#include <GAStore.h>
+
+namespace gameanalytics
+{
+    namespace state
+    {
+        // friend of GAState (see GAState.h) exposing the private bits needed
+        // to exercise ensurePersistedStates() in isolation
+        struct GAStateTestAccessor
+        {
+            static void resetConfigState(std::string const& customUserId)
+            {
+                GAState& s = GAState::getInstance();
+
+                s._sdkConfig       = json();
+                s._sdkConfigCached = json();
+                s._configsHash.clear();
+                s._defaultUserId.clear();
+
+                s._customUserId = customUserId;
+                s.cacheIdentifier();
+            }
+
+            static void ensurePersistedStates()
+            {
+                GAState::getInstance().ensurePersistedStates();
+            }
+
+            static std::string configsHash()
+            {
+                return GAState::getInstance()._configsHash;
+            }
+        };
+    }
+}
+
+using namespace gameanalytics;
+
+namespace
+{
+    constexpr const char* kGameKey = "bd624ee6f8e6efb32a054f8d7ba11618";
+
+    void seedCachedConfig(std::string const& lastUsedIdentifier, std::string const& configsHash)
+    {
+        ASSERT_TRUE(store::GAStore::ensureDatabase(false, kGameKey));
+
+        store::GAStore::setState("last_used_identifier", lastUsedIdentifier);
+        store::GAStore::setState("sdk_config_cached", std::string("{\"configs_hash\":\"") + configsHash + "\"}");
+    }
+}
+
+// Regression test: the cached configs_hash must survive a relaunch with the
+// same user identifier, so the init request can tell the backend which config
+// version it already has. It must only be cleared when the identifier changed
+// since the config was cached (matches the iOS/C# SDK behavior).
+
+TEST(GAStateTest, testConfigsHashKeptWhenIdentifierUnchanged)
+{
+    seedCachedConfig("user-a", "hash-abc123");
+
+    state::GAStateTestAccessor::resetConfigState("user-a");
+    state::GAStateTestAccessor::ensurePersistedStates();
+
+    ASSERT_EQ("hash-abc123", state::GAStateTestAccessor::configsHash());
+}
+
+TEST(GAStateTest, testConfigsHashClearedWhenIdentifierChanged)
+{
+    seedCachedConfig("user-a", "hash-abc123");
+
+    state::GAStateTestAccessor::resetConfigState("user-b");
+    state::GAStateTestAccessor::ensurePersistedStates();
+
+    ASSERT_TRUE(state::GAStateTestAccessor::configsHash().empty());
+}
