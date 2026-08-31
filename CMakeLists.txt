@@ -298,22 +298,31 @@ if (ENABLE_COVERAGE AND NOT GA_SHARED_LIB)
     add_custom_target(cov_data
         COMMAND ${LCOV_PATH} --zerocounters --directory .
         COMMAND GameAnalyticsUnitTests
-        COMMAND ${LCOV_PATH} --capture --directory . --output-file cov.info.cleaned
-                             --exclude '${CMAKE_SOURCE_DIR}/source/dependencies/*'
-                             --exclude '${CMAKE_SOURCE_DIR}/test/*'
-                             --exclude '/usr/*'
-                             --exclude '/Applications/Xcode.app/*'
+        COMMAND ${LCOV_PATH} --capture --directory . --output-file cov.info
+                             --exclude "${CMAKE_SOURCE_DIR}/source/dependencies/*"
+                             --exclude "${CMAKE_SOURCE_DIR}/test/*"
+                             --exclude "/usr/*"
+                             --exclude "/Applications/Xcode.app/*"
+                             ${LCOV_OPTIONS}
+        # repo-relative source paths; substituting during --capture instead would
+        # break geninfo's source-file lookup
+        COMMAND ${LCOV_PATH} --add-tracefile cov.info --output-file cov.info.cleaned
+                             --substitute "s|^${CMAKE_SOURCE_DIR}/||"
                              ${LCOV_OPTIONS}
         COMMENT "Running tests and capturing coverage into cov.info.cleaned"
+        VERBATIM
     )
     add_dependencies(cov_data ${UT_PROJECT_NAME})
 
     add_custom_target(cov
-        COMMAND ${GENHTML_PATH} cov.info.cleaned --output-directory cov
+        COMMAND ${GENHTML_PATH} ${CMAKE_BINARY_DIR}/cov.info.cleaned
+                                --output-directory ${CMAKE_BINARY_DIR}/cov
                                 --branch-coverage
                                 --rc derive_function_end_line=0
                                 --ignore-errors inconsistent,category
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Generating HTML coverage report in cov/"
+        VERBATIM
     )
     add_dependencies(cov cov_data)
 endif()
