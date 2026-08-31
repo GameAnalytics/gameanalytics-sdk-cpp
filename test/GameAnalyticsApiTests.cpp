@@ -165,9 +165,26 @@ namespace
             events::GAEvents::stopEventQueue();
         }
 
+        // ga_session rows survive until a session_end is successfully sent, and
+        // fixMissingSessionEndEvents synthesizes session_end events for stale rows,
+        // so both tables must be cleared for tests to stay independent
         static void clearStoredEvents()
         {
             store::GAStore::executeQuerySync("DELETE FROM ga_events;");
+            store::GAStore::executeQuerySync("DELETE FROM ga_session;");
+        }
+
+        static size_t storedSessionEndCount(std::string const& sessionId)
+        {
+            size_t count = 0;
+            for (const json& ev : storedEvents("session_end"))
+            {
+                if (ev.value("session_id", "") == sessionId)
+                {
+                    ++count;
+                }
+            }
+            return count;
         }
 
         static std::vector<json> storedEvents(std::string const& category = "")
@@ -528,7 +545,7 @@ TEST_F(GameAnalyticsApiTest, AutomaticSessionHandlingOnSuspendAndResume)
     GameAnalytics::onSuspend();
     ASSERT_TRUE(drainGAThread());
     EXPECT_FALSE(state::GAState::sessionIsStarted());
-    EXPECT_EQ(1u, storedEvents("session_end").size());
+    EXPECT_EQ(1u, storedSessionEndCount(firstSessionId));
     EXPECT_GE(GameAnalytics::getElapsedTimeForPreviousSession(), 0);
 
     GameAnalytics::onResume();
@@ -558,7 +575,7 @@ TEST_F(GameAnalyticsApiTest, ManualSessionHandlingControlsSessionExplicitly)
     GameAnalytics::endSession();
     ASSERT_TRUE(drainGAThread());
     EXPECT_FALSE(state::GAState::sessionIsStarted());
-    EXPECT_EQ(1u, storedEvents("session_end").size());
+    EXPECT_EQ(1u, storedSessionEndCount(firstSessionId));
 
     GameAnalytics::startSession();
     ASSERT_TRUE(drainGAThread());
