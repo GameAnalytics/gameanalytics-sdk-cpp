@@ -279,53 +279,41 @@ endif()
 
 # Coverage requires tests, which are only available for static library builds
 if (ENABLE_COVERAGE AND NOT GA_SHARED_LIB)
-    find_program(LCOV_PATH lcov)
-    find_program(GENHTML_PATH genhtml)
+    find_program(LCOV_PATH lcov REQUIRED)
+    find_program(GENHTML_PATH genhtml REQUIRED)
 
-    if (LCOV_PATH)
-        target_compile_options(
-            GameAnalytics
-            PRIVATE
-                -g -O0 -fprofile-arcs -ftest-coverage -fprofile-update=atomic
-        )
+    target_compile_options(GameAnalytics PRIVATE -g -O0 --coverage -fprofile-update=atomic)
+    target_link_options(GameAnalytics PUBLIC --coverage)
 
-        target_link_libraries(
-            GameAnalytics PRIVATE -fprofile-arcs -ftest-coverage
-        )
+    # geninfo_unexecuted_blocks and derive_function_end_line smooth over gcc/llvm
+    # gcov differences; the ignored error classes are non-fatal data quirks of the
+    # same two toolchains (never add no_exception_branch: it corrupts both)
+    set(LCOV_OPTIONS
+        --branch-coverage
+        --rc geninfo_unexecuted_blocks=1
+        --rc derive_function_end_line=0
+        --ignore-errors format,inconsistent,unused,mismatch,empty
+    )
 
-        set(LCOV_COMMON_ARGS
-            --branch-coverage
-            --rc geninfo_unexecuted_blocks=1
-            --rc derive_function_end_line=0
-            --ignore-errors format,inconsistent,unused,mismatch,empty
-        )
+    add_custom_target(cov_data
+        COMMAND ${LCOV_PATH} --zerocounters --directory .
+        COMMAND GameAnalyticsUnitTests
+        COMMAND ${LCOV_PATH} --capture --directory . --output-file cov.info.cleaned
+                             --exclude '${CMAKE_SOURCE_DIR}/source/dependencies/*'
+                             --exclude '${CMAKE_SOURCE_DIR}/test/*'
+                             --exclude '/usr/*'
+                             --exclude '/Applications/Xcode.app/*'
+                             ${LCOV_OPTIONS}
+        COMMENT "Running tests and capturing coverage into cov.info.cleaned"
+    )
+    add_dependencies(cov_data ${UT_PROJECT_NAME})
 
-        add_custom_target(cov_data
-            COMMAND ${LCOV_PATH} --directory . --zerocounters
-            COMMAND GameAnalyticsUnitTests
-            COMMAND ${LCOV_PATH} --directory . --capture --output-file cov.info.cleaned
-                                 --exclude '${CMAKE_SOURCE_DIR}/source/dependencies/*'
-                                 --exclude '${CMAKE_SOURCE_DIR}/test/*'
-                                 --exclude '/usr/*'
-                                 --exclude '/Applications/Xcode.app/*'
-                                 ${LCOV_COMMON_ARGS}
-            COMMENT "Running tests and capturing coverage into cov.info.cleaned"
-        )
-        add_dependencies(cov_data ${UT_PROJECT_NAME})
-
-        if (GENHTML_PATH)
-            add_custom_target(cov
-                COMMAND ${GENHTML_PATH} -o cov cov.info.cleaned
-                                        --branch-coverage
-                                        --rc derive_function_end_line=0
-                                        --ignore-errors inconsistent,category
-                COMMENT "Generating HTML coverage report in cov/"
-            )
-            add_dependencies(cov cov_data)
-        else()
-            message(WARNING "unable to add 'cov' target: missing genhtml")
-        endif()
-    else()
-        message(WARNING "unable to add coverage targets: missing lcov")
-    endif()
+    add_custom_target(cov
+        COMMAND ${GENHTML_PATH} cov.info.cleaned --output-directory cov
+                                --branch-coverage
+                                --rc derive_function_end_line=0
+                                --ignore-errors inconsistent,category
+        COMMENT "Generating HTML coverage report in cov/"
+    )
+    add_dependencies(cov cov_data)
 endif()
