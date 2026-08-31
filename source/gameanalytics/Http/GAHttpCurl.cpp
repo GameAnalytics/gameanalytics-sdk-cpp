@@ -52,22 +52,26 @@ namespace gameanalytics
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
-        createRequest(curl, url, auth, payloadData, useGzip);
+        curl_slist* header = nullptr;
+        createRequest(curl, header, url, auth, payloadData, useGzip);
 
         CURLcode res = curl_easy_perform(curl);
-        if (res != CURLE_OK)
+        if (res == CURLE_OK)
+        {
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response.code);
+        }
+        else
         {
             logging::GALogger::d("CURL request failed: %s", curl_easy_strerror(res));
-            return {};
         }
 
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response.code);
+        curl_slist_free_all(header);
         curl_easy_cleanup(curl);
 
-        return response;
+        return res == CURLE_OK ? response : GAHttpClient::Response{};
     }
 
-    void GAHttpClientCurl::createRequest(CURL *curl, std::string const& url, std::string const& auth, const std::vector<uint8_t>& payloadData, bool gzip)
+    void GAHttpClientCurl::createRequest(CURL *curl, curl_slist*& header, std::string const& url, std::string const& auth, const std::vector<uint8_t>& payloadData, bool gzip)
     {
         if(!curl)
         {
@@ -76,7 +80,6 @@ namespace gameanalytics
 
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
-        struct curl_slist *header = NULL;
 
         if (gzip)
         {
