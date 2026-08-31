@@ -299,7 +299,7 @@ if (ENABLE_COVERAGE AND NOT GA_SHARED_LIB)
         target_compile_options(
             GameAnalytics
             PRIVATE
-                -g -O0 -fprofile-arcs -ftest-coverage
+                -g -O0 -fprofile-arcs -ftest-coverage -fprofile-update=atomic
         )
 
         target_link_libraries(
