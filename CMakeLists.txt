@@ -330,7 +330,8 @@ if (ENABLE_COVERAGE AND NOT GA_SHARED_LIB)
                                 '/usr/*'
                                 '/Applications/Xcode.app/*'
                                 --output-file ${covname}.info.cleaned
-                                --ignore-errors unused
+                                --branch-coverage
+                                --ignore-errors unused,inconsistent
             
             COMMAND echo "Finished processing code coverage counters and generating report."
         )

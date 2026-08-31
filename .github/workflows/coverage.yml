@@ -60,6 +60,11 @@ jobs:
       shell: bash
       run: cmake --build . --target cov_data
 
+    - name: Make coverage paths repo-relative
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: sed -i "s|^SF:${{ github.workspace }}/|SF:|" cov.info.cleaned
+
     - name: Report code coverage
       uses: zgosalvez/github-actions-report-lcov@v7.2.0
       with:
