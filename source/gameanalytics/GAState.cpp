@@ -1083,8 +1083,8 @@ namespace gameanalytics
                             else
                             {
                                 constexpr const char* fmt = "validateAndCleanCustomFields: entry with key=%s, value=%s has been omitted because its key contains illegal character, is empty or exceeds the max number of characters (%d)";
-                            
-                                const std::string value = fields[key].get<std::string>();
+
+                                const std::string value = fields[key].dump();
                                 LogAndAddErrorEvent(EGAErrorSeverity::Warning, fmt, key.c_str(), value.c_str(), MAX_CUSTOM_FIELDS_KEY_LENGTH);
                             }
                         }
