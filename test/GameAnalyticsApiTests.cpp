@@ -108,7 +108,7 @@ namespace
 
         void TearDown() override
         {
-            drainGAThread();
+            EXPECT_TRUE(drainGAThread());
             events::GAEvents::stopEventQueue();
             state::GAState::setEnabledEventSubmission(false);
             http::GAHTTPApi::setCustomHttpImpl(nullptr);
