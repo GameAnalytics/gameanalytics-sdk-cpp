@@ -279,23 +279,10 @@ endif()
 
 # Coverage requires tests, which are only available for static library builds
 if (ENABLE_COVERAGE AND NOT GA_SHARED_LIB)
-    find_program(GCOV_PATH gcov)
-    if (NOT GCOV_PATH)
-        message(WARNING "program gcov not found")
-    endif()
-
     find_program(LCOV_PATH lcov)
-    if (NOT LCOV_PATH)
-        message(WARNING "program lcov not found")
-    endif()
-
     find_program(GENHTML_PATH genhtml)
-    if (NOT GENHTML_PATH)
-        message(WARNING "program genhtml not found")
-    endif()
 
-    if (LCOV_PATH AND GCOV_PATH)
-
+    if (LCOV_PATH)
         target_compile_options(
             GameAnalytics
             PRIVATE
@@ -306,81 +293,39 @@ if (ENABLE_COVERAGE AND NOT GA_SHARED_LIB)
             GameAnalytics PRIVATE -fprofile-arcs -ftest-coverage
         )
 
-        set(covname cov)
+        set(LCOV_COMMON_ARGS
+            --branch-coverage
+            --rc geninfo_unexecuted_blocks=1
+            --rc derive_function_end_line=0
+            --ignore-errors format,inconsistent,unused,mismatch,empty
+        )
 
         add_custom_target(cov_data
-            # Cleanup lcov
-            COMMENT "Resetting code coverage counters to zero."
-            ${LCOV_PATH} --directory . --zerocounters
-
-            # Run tests
+            COMMAND ${LCOV_PATH} --directory . --zerocounters
             COMMAND GameAnalyticsUnitTests
-
-            # Capturing lcov counters and generating report
-
-            COMMAND echo "Processing code coverage counters and generating report."
-
-            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info --branch-coverage --rc geninfo_unexecuted_blocks=1 --rc no_exception_branch=1
-
-            COMMAND echo "Removing unwanted files from coverage report."
-            
-            COMMAND ${LCOV_PATH} --remove ${covname}.info
-                                '${CMAKE_SOURCE_DIR}/source/dependencies/*'
-                                '${CMAKE_SOURCE_DIR}/test/*'
-                                '/usr/*'
-                                '/Applications/Xcode.app/*'
-                                --output-file ${covname}.info.cleaned
-                                --branch-coverage
-                                --ignore-errors unused,inconsistent
-            
-            COMMAND echo "Finished processing code coverage counters and generating report."
+            COMMAND ${LCOV_PATH} --directory . --capture --output-file cov.info.cleaned
+                                 --exclude '${CMAKE_SOURCE_DIR}/source/dependencies/*'
+                                 --exclude '${CMAKE_SOURCE_DIR}/test/*'
+                                 --exclude '/usr/*'
+                                 --exclude '/Applications/Xcode.app/*'
+                                 ${LCOV_COMMON_ARGS}
+            COMMENT "Running tests and capturing coverage into cov.info.cleaned"
         )
+        add_dependencies(cov_data ${UT_PROJECT_NAME})
 
         if (GENHTML_PATH)
             add_custom_target(cov
-
-                # Cleanup lcov
-                ${LCOV_PATH} --directory . --zerocounters
-
-                # Run tests
-                COMMAND GameAnalyticsUnitTests
-
-                # Capturing lcov counters and generating report
-                # System headers are excluded at capture time; format/inconsistent are
-                # clang gcov artifacts downgraded to warnings; the baseline capture keeps
-                # instrumented files the tests never executed in the report
-                COMMAND ${LCOV_PATH} --directory . --capture --initial --output-file ${covname}.base.info
-                                    --branch-coverage --rc derive_function_end_line=0
-                                    --exclude '/Applications/Xcode.app/*'
-                                    --exclude '/usr/*'
-                                    --ignore-errors format,inconsistent,unused
-                COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.run.info
-                                    --branch-coverage --rc derive_function_end_line=0
-                                    --exclude '/Applications/Xcode.app/*'
-                                    --exclude '/usr/*'
-                                    --ignore-errors format,inconsistent,unused
-                COMMAND ${LCOV_PATH} --add-tracefile ${covname}.base.info
-                                    --add-tracefile ${covname}.run.info
-                                    --output-file ${covname}.info
-                                    --branch-coverage
-                                    --ignore-errors inconsistent,format
-                COMMAND ${LCOV_PATH} --remove ${covname}.info
-                                    '${CMAKE_SOURCE_DIR}/source/dependencies/*'
-                                    '${CMAKE_SOURCE_DIR}/test/*'
-                                    --output-file ${covname}.info.cleaned
-                                    --branch-coverage
-                                    --rc derive_function_end_line=0
-                                    --ignore-errors unused,inconsistent,format
-                COMMAND ${GENHTML_PATH} -o ${covname} ${covname}.info.cleaned --branch-coverage --rc derive_function_end_line=0 --ignore-errors inconsistent,category
-                COMMAND ${CMAKE_COMMAND} -E remove ${covname}.base.info ${covname}.run.info ${covname}.info ${covname}.info.cleaned
-
-                COMMENT "Resetting code coverage counters to zero.\nProcessing code coverage counters and generating report."
+                COMMAND ${GENHTML_PATH} -o cov cov.info.cleaned
+                                        --branch-coverage
+                                        --rc derive_function_end_line=0
+                                        --ignore-errors inconsistent,category
+                COMMENT "Generating HTML coverage report in cov/"
             )
+            add_dependencies(cov cov_data)
         else()
-            message(WARNING "unable to generate coverage report: missing genhtml")
+            message(WARNING "unable to add 'cov' target: missing genhtml")
         endif()
-
     else()
-        message(WARNING "unable to add coverage targets: missing coverage tools")
+        message(WARNING "unable to add coverage targets: missing lcov")
     endif()
 endif()
