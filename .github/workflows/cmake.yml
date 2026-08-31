@@ -105,6 +105,14 @@ jobs:
         echo "check lld..."
         ldd --version
 
+    - name: Cache vcpkg binaries
+      if: matrix.dependency_mode != 'no_deps'
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.os == 'Windows' && '~/AppData/Local/vcpkg/archives' || '~/.cache/vcpkg/archives' }}
+        key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+        restore-keys: vcpkg-${{ runner.os }}-
+
     - name: Install vcpkg (Linux/macOS)
       if: runner.os != 'Windows' && matrix.dependency_mode != 'no_deps'
       shell: bash
