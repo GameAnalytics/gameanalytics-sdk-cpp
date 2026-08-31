@@ -39,6 +39,13 @@ namespace gameanalytics
             {
                 return GAState::getInstance()._configsHash;
             }
+
+            static json validateAndCleanCustomFields(const json& fields)
+            {
+                json out;
+                GAState::getInstance().validateAndCleanCustomFields(fields, out);
+                return out;
+            }
         };
     }
 }
@@ -81,4 +88,63 @@ TEST(GAStateTest, testConfigsHashClearedWhenIdentifierChanged)
     state::GAStateTestAccessor::ensurePersistedStates();
 
     ASSERT_TRUE(state::GAStateTestAccessor::configsHash().empty());
+}
+
+// validateAndCleanCustomFields: keys must match ^[a-zA-Z0-9_]{1,64}$, values must be
+// a number, a boolean or a non-empty string of at most 256 chars, capped at 50 fields
+
+static json cleanFields(const json& fields)
+{
+    return state::GAStateTestAccessor::validateAndCleanCustomFields(fields);
+}
+
+TEST(GAStateTest, testCustomFieldsCappedAtMaxCount)
+{
+    json fields;
+    for (int i = 0; i < MAX_CUSTOM_FIELDS_COUNT * 2; ++i)
+    {
+        fields["key_" + std::to_string(i)] = "value";
+    }
+    ASSERT_EQ(MAX_CUSTOM_FIELDS_COUNT, static_cast<int>(cleanFields(fields).size()));
+
+    fields.clear();
+    for (int i = 0; i < MAX_CUSTOM_FIELDS_COUNT; ++i)
+    {
+        fields["key_" + std::to_string(i)] = "value";
+    }
+    ASSERT_EQ(MAX_CUSTOM_FIELDS_COUNT, static_cast<int>(cleanFields(fields).size()));
+}
+
+TEST(GAStateTest, testCustomFieldsKeyValidation)
+{
+    ASSERT_EQ(1u, cleanFields({{"___", "value"}}).size());
+    ASSERT_EQ(1u, cleanFields({{std::string(MAX_CUSTOM_FIELDS_KEY_LENGTH, 'k'), "value"}}).size());
+
+    ASSERT_TRUE(cleanFields({{"", "value"}}).empty());
+    ASSERT_TRUE(cleanFields({{"_&_", "value"}}).empty());
+    ASSERT_TRUE(cleanFields({{std::string(MAX_CUSTOM_FIELDS_KEY_LENGTH + 1, 'k'), "value"}}).empty());
+}
+
+TEST(GAStateTest, testCustomFieldsValueValidation)
+{
+    ASSERT_EQ(1u, cleanFields({{"key", 100}}).size());
+    ASSERT_EQ(1u, cleanFields({{"key", 3.14}}).size());
+    ASSERT_EQ(1u, cleanFields({{"key", true}}).size());
+    ASSERT_EQ(1u, cleanFields({{"key", std::string(MAX_CUSTOM_FIELDS_VALUE_STRING_LENGTH, 'v')}}).size());
+
+    ASSERT_TRUE(cleanFields({{"key", ""}}).empty());
+    ASSERT_TRUE(cleanFields({{"key", std::string(MAX_CUSTOM_FIELDS_VALUE_STRING_LENGTH + 1, 'v')}}).empty());
+    ASSERT_TRUE(cleanFields({{"key", nullptr}}).empty());
+    ASSERT_TRUE(cleanFields({{"key", json::object()}}).empty());
+    ASSERT_TRUE(cleanFields({{"key", json::array()}}).empty());
+}
+
+// regression: a non-string value under an illegal key used to throw while logging
+// the rejection, discarding every other field in the payload
+TEST(GAStateTest, testCustomFieldsIllegalKeyWithNumberValueKeepsOtherFields)
+{
+    json out = cleanFields({{"bad&key", 100}, {"good_key", "value"}});
+
+    ASSERT_EQ(1u, out.size());
+    ASSERT_TRUE(out.contains("good_key"));
 }
