@@ -253,6 +253,7 @@ if(NOT GA_SHARED_LIB)
     ########################################
 
     file(GLOB_RECURSE TEST_SRC_FILES "${PROJECT_SOURCE_DIR}/test/*.cpp")
+    list(FILTER TEST_SRC_FILES EXCLUDE REGEX "/test/allocator_boundary/")
 
     ########################################
     # Unit Tests
@@ -271,6 +272,18 @@ if(NOT GA_SHARED_LIB)
 
     ########################################
     add_test(NAME ${UT_PROJECT_NAME} COMMAND GameAnalyticsUnitTests)
+
+    if(APPLE)
+        # Mimics monolithic Unreal: private operator new/delete.
+        set(AB_TEST_NAME "${PROJECT_NAME}AllocatorBoundaryTest")
+        add_executable(${AB_TEST_NAME} "${PROJECT_SOURCE_DIR}/test/allocator_boundary/main.cpp")
+        target_link_libraries(${AB_TEST_NAME} ${PROJECT_NAME})
+        file(WRITE "${CMAKE_BINARY_DIR}/no_exports.txt" "")
+        target_link_options(${AB_TEST_NAME} PRIVATE "LINKER:-exported_symbols_list,${CMAKE_BINARY_DIR}/no_exports.txt")
+        add_test(NAME ${AB_TEST_NAME} COMMAND ${AB_TEST_NAME})
+        add_test(NAME ${PROJECT_NAME}NoLibcxxStringImports
+                 COMMAND sh -c "! nm -u $<TARGET_FILE:${AB_TEST_NAME}> | grep -E '^_+ZNSt3__1(12basic_string|15basic_stringbuf|1[89]basic_[io]?stringstream|plI)'")
+    endif()
 else()
     message(STATUS "Skipping unit tests (not available for shared library builds)")
 endif()

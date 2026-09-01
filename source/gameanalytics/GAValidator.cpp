@@ -181,7 +181,10 @@ namespace gameanalytics
                 out.action = http::EGASdkErrorAction::InvalidAmount;
                 out.parameter = http::EGASdkErrorParameter::Amount;
 
-                out.reason = std::to_string(amount);
+                // std::to_string(double) allocates in libc++.dylib.
+                char amountStr[64] = {};
+                std::snprintf(amountStr, sizeof(amountStr), "%f", amount);
+                out.reason = amountStr;
 
                 return;
             }
