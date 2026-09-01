@@ -107,7 +107,7 @@ jobs:
 
     - name: Cache vcpkg binaries
       if: matrix.dependency_mode != 'no_deps'
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ runner.os == 'Windows' && '~/AppData/Local/vcpkg/archives' || '~/.cache/vcpkg/archives' }}
         key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
