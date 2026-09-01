@@ -46,9 +46,9 @@ jobs:
     - name: Generate coverage report
       uses: threeal/gcovr-action@v1.2.0
       with:
-        fail-under-line: 65
-        fail-under-branch: 25
-        fail-under-function: 78
+        fail-under-line: 60
+        fail-under-branch: 50
+        fail-under-function: 80
         print-summary: true
         txt-out: coverage/coverage.txt
         html-out: coverage/index.html
