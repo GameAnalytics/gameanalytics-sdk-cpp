@@ -1,6 +1,9 @@
 GA-SDK-CPP
 ==========
 
+[![Coverage Status](https://coveralls.io/repos/github/GameAnalytics/gameanalytics-sdk-cpp/badge.svg?branch=main)](https://coveralls.io/github/GameAnalytics/gameanalytics-sdk-cpp?branch=main)
+[![codecov](https://codecov.io/gh/GameAnalytics/gameanalytics-sdk-cpp/branch/main/graph/badge.svg)](https://codecov.io/gh/GameAnalytics/gameanalytics-sdk-cpp)
+
 GameAnalytics C++ SDK
 
 Documentation can be found [here](https://gameanalytics.com/docs/cpp-sdk).

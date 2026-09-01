@@ -4,6 +4,7 @@ import subprocess
 import shutil
 import glob
 import platform as Platform
+import webbrowser
 
 def run_command(command, shell=True, cwd=None):
 	if os.name == 'nt':  # Check if the OS is Windows
@@ -148,16 +149,15 @@ def main():
 	if args.coverage and not args.no_cov_report:
 		coverage_dir = os.path.join(build_output_dir, 'coverage')
 		os.makedirs(coverage_dir, exist_ok=True)
-		gcovr_command = 'gcovr --print-summary'
-		gcovr_command += ' --filter source/gameanalytics/ --filter include/GameAnalytics/'
-		gcovr_command += ' --exclude source/gameanalytics/Platform/'
-		gcovr_command += f' --html-details {os.path.join(coverage_dir, "index.html")}'
+		report_path = os.path.join(coverage_dir, 'index.html')
+		gcovr_command = f'gcovr --print-summary --html-details {report_path}'
 		if args.platform == 'osx':
 			gcovr_command += ' --gcov-executable "xcrun llvm-cov gcov"'
 		elif cxx_compiler == 'clang++':
 			gcovr_command += ' --gcov-executable "llvm-cov gcov"'
 		run_command(gcovr_command)
-		print(f"\nCoverage report: {os.path.join(coverage_dir, 'index.html')}\n")
+		print(f"\nCoverage report: {report_path}\n")
+		webbrowser.open(f'file://{report_path}')
 
 	# Package Build Artifacts
 	package_dir = os.path.join(build_output_dir, 'package')
