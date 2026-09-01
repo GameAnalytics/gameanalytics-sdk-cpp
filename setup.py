@@ -34,7 +34,6 @@ def main():
 	parser.add_argument('--shared', action='store_true', help='Build shared library instead of static')
 	parser.add_argument('--build', action='store_true', help='Execute the build step')
 	parser.add_argument('--test', action='store_true', help='Execute the test step')
-	parser.add_argument('--coverage', action='store_true', help='Generate code coverage report')
 	parser.add_argument('--no_vcpkg', action='store_true', help='Do not download vcpkg packages')
 	parser.add_argument('--no_curl', action='store_true', help='Compile the SDK without CURL (you will need to provide a custom HTTP client implementation)')
  
@@ -43,10 +42,6 @@ def main():
 	# Validate compiler argument is only used with Linux
 	if args.compiler and not args.platform.startswith('linux'):
 		parser.error('--compiler can only be used with Linux platforms')
-
-	# Validate coverage is not used with shared library
-	if args.coverage and args.shared:
-		parser.error('--coverage cannot be used with --shared (coverage requires tests which need static library)')
 
 	# Get compiler configuration for this platform (single compiler, like cmake.yml)
 	compiler_config = get_compiler_for_platform(args.platform, args.compiler)
@@ -121,9 +116,7 @@ def main():
 		cmake_command += f' -DCMAKE_BUILD_TYPE={args.cfg}'
 	if args.platform:
 		cmake_command += f' -DPLATFORM:STRING={args.platform}'
-	if args.coverage:
-		cmake_command += ' -DENABLE_COVERAGE=ON'
-  
+
 	run_command(cmake_command)
 
 	# Build
@@ -137,11 +130,6 @@ def main():
 		run_command(f'ctest --build-config {args.cfg} --verbose --output-on-failure', cwd=build_output_dir)
 	else:
 		exit(0)
-
-	# Code Coverage
-	if args.coverage:
-		# Prepare coverage data
-		run_command(f'cmake --build {build_output_dir} --target cov', cwd=build_output_dir)
 
 	# Package Build Artifacts
 	package_dir = os.path.join(build_output_dir, 'package')

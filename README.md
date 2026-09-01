@@ -31,7 +31,7 @@ How to build
 Run `setup.py` with the required arguments for your platform:
 
 ```sh
-python setup.py --platform {linux_x64,linux_x86,osx,win32,win64,uwp} [--cfg {Release,Debug}] [--compiler {gcc,clang}] [--shared] [--build] [--test] [--coverage]
+python setup.py --platform {linux_x64,linux_x86,osx,win32,win64,uwp} [--cfg {Release,Debug}] [--compiler {gcc,clang}] [--shared] [--build] [--test]
 ```
 
 | Argument | Values | Description |
@@ -42,7 +42,6 @@ python setup.py --platform {linux_x64,linux_x86,osx,win32,win64,uwp} [--cfg {Rel
 | `--shared` | — | Build a shared library (`.dll`/`.so`/`.dylib`) instead of a static library |
 | `--build` | — | Execute the build step |
 | `--test` | — | Execute the test step (not available with `--shared`) |
-| `--coverage` | — | Generate code coverage report (not available with `--shared`) |
 
 #### Examples
 

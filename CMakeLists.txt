@@ -15,7 +15,6 @@ include("create_source_groups_macro")
 include("eval_condition_macro")
 
 # --------------------------- Options --------------------------- #
-option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
 option(GA_SHARED_LIB "Build GA as a shared library" OFF)
 option(GA_UWP_BUILD  "Build GA for UWP (if targeting windows)" OFF)
 option(GA_BUILD_SAMPLE "Builds the GA Sample app" ON)
@@ -273,56 +272,4 @@ if(NOT GA_SHARED_LIB)
     add_test(NAME ${UT_PROJECT_NAME} COMMAND GameAnalyticsUnitTests)
 else()
     message(STATUS "Skipping unit tests (not available for shared library builds)")
-endif()
-
-# --------------------------- Code Coverage Setup --------------------------- #
-
-# Coverage requires tests, which are only available for static library builds
-if (ENABLE_COVERAGE AND NOT GA_SHARED_LIB)
-    find_program(LCOV_PATH lcov REQUIRED)
-    find_program(GENHTML_PATH genhtml REQUIRED)
-
-    target_compile_options(GameAnalytics PRIVATE -g -O0 --coverage -fprofile-update=atomic)
-    target_link_options(GameAnalytics PUBLIC --coverage)
-
-    # geninfo_unexecuted_blocks and derive_function_end_line smooth over gcc/llvm
-    # gcov differences; the ignored error classes are non-fatal data quirks of the
-    # same two toolchains (never add no_exception_branch: it corrupts both)
-    set(LCOV_OPTIONS
-        --branch-coverage
-        --rc geninfo_unexecuted_blocks=1
-        --rc derive_function_end_line=0
-        --ignore-errors format,inconsistent,unused,mismatch,empty
-    )
-
-    add_custom_target(cov_data
-        COMMAND ${LCOV_PATH} --zerocounters --directory .
-        COMMAND GameAnalyticsUnitTests
-        COMMAND ${LCOV_PATH} --capture --directory . --output-file cov.info
-                             --exclude "${CMAKE_SOURCE_DIR}/source/dependencies/*"
-                             --exclude "${CMAKE_SOURCE_DIR}/test/*"
-                             --exclude "/usr/*"
-                             --exclude "/Applications/Xcode.app/*"
-                             ${LCOV_OPTIONS}
-        # repo-relative source paths; substituting during --capture instead would
-        # break geninfo's source-file lookup
-        COMMAND ${LCOV_PATH} --add-tracefile cov.info --output-file cov.info.cleaned
-                             --substitute "s|^${CMAKE_SOURCE_DIR}/||"
-                             ${LCOV_OPTIONS}
-        COMMENT "Running tests and capturing coverage into cov.info.cleaned"
-        VERBATIM
-    )
-    add_dependencies(cov_data ${UT_PROJECT_NAME})
-
-    add_custom_target(cov
-        COMMAND ${GENHTML_PATH} ${CMAKE_BINARY_DIR}/cov.info.cleaned
-                                --output-directory ${CMAKE_BINARY_DIR}/cov
-                                --branch-coverage
-                                --rc derive_function_end_line=0
-                                --ignore-errors inconsistent,category
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Generating HTML coverage report in cov/"
-        VERBATIM
-    )
-    add_dependencies(cov cov_data)
 endif()
