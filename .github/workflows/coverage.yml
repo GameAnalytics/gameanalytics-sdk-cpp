@@ -1,0 +1,67 @@
+name: Test Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    name: Report Test Coverage
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: true
+
+    - name: Cache vcpkg binaries
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/vcpkg/archives
+        key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+        restore-keys: vcpkg-${{ runner.os }}-
+
+    - name: Install vcpkg
+      run: |
+        git clone https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
+        "$HOME/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+        echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+        echo "$HOME/vcpkg" >> "$GITHUB_PATH"
+
+    - name: Build and test with coverage instrumentation
+      run: |
+        python3 setup.py --platform linux_x64 --compiler gcc --build --test --coverage --no_cov_report
+        mkdir -p coverage
+
+    - name: Generate coverage report
+      uses: threeal/gcovr-action@v1.2.0
+      with:
+        filter: |
+          source/gameanalytics/
+          include/GameAnalytics/
+        excludes: source/gameanalytics/Platform/
+        fail-under-line: 65
+        fail-under-branch: 25
+        print-summary: true
+        txt-out: coverage/coverage.txt
+        html-out: coverage/index.html
+        html-details: true
+
+    - name: Publish coverage summary
+      if: ${{ !cancelled() }}
+      run: |
+        {
+          echo '```'
+          cat coverage/coverage.txt
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload coverage report
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: code-coverage-report
+        path: coverage/

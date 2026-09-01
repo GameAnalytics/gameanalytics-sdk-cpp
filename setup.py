@@ -34,6 +34,8 @@ def main():
 	parser.add_argument('--shared', action='store_true', help='Build shared library instead of static')
 	parser.add_argument('--build', action='store_true', help='Execute the build step')
 	parser.add_argument('--test', action='store_true', help='Execute the test step')
+	parser.add_argument('--coverage', action='store_true', help='Build with coverage instrumentation and generate a coverage report')
+	parser.add_argument('--no_cov_report', action='store_true', help='Skip the local coverage report generation (used on CI where gcovr runs separately)')
 	parser.add_argument('--no_vcpkg', action='store_true', help='Do not download vcpkg packages')
 	parser.add_argument('--no_curl', action='store_true', help='Compile the SDK without CURL (you will need to provide a custom HTTP client implementation)')
  
@@ -42,6 +44,15 @@ def main():
 	# Validate compiler argument is only used with Linux
 	if args.compiler and not args.platform.startswith('linux'):
 		parser.error('--compiler can only be used with Linux platforms')
+
+	if args.coverage and args.shared:
+		parser.error('--coverage cannot be used with --shared (coverage requires tests which need static library)')
+
+	if args.coverage and not (args.build and args.test):
+		parser.error('--coverage requires --build and --test')
+
+	if args.no_cov_report and not args.coverage:
+		parser.error('--no_cov_report requires --coverage')
 
 	# Get compiler configuration for this platform (single compiler, like cmake.yml)
 	compiler_config = get_compiler_for_platform(args.platform, args.compiler)
@@ -116,6 +127,8 @@ def main():
 		cmake_command += f' -DCMAKE_BUILD_TYPE={args.cfg}'
 	if args.platform:
 		cmake_command += f' -DPLATFORM:STRING={args.platform}'
+	if args.coverage:
+		cmake_command += ' -DENABLE_COVERAGE=ON'
 
 	run_command(cmake_command)
 
@@ -130,6 +143,21 @@ def main():
 		run_command(f'ctest --build-config {args.cfg} --verbose --output-on-failure', cwd=build_output_dir)
 	else:
 		exit(0)
+
+	# Code Coverage Report
+	if args.coverage and not args.no_cov_report:
+		coverage_dir = os.path.join(build_output_dir, 'coverage')
+		os.makedirs(coverage_dir, exist_ok=True)
+		gcovr_command = 'gcovr --print-summary'
+		gcovr_command += ' --filter source/gameanalytics/ --filter include/GameAnalytics/'
+		gcovr_command += ' --exclude source/gameanalytics/Platform/'
+		gcovr_command += f' --html-details {os.path.join(coverage_dir, "index.html")}'
+		if args.platform == 'osx':
+			gcovr_command += ' --gcov-executable "xcrun llvm-cov gcov"'
+		elif cxx_compiler == 'clang++':
+			gcovr_command += ' --gcov-executable "llvm-cov gcov"'
+		run_command(gcovr_command)
+		print(f"\nCoverage report: {os.path.join(coverage_dir, 'index.html')}\n")
 
 	# Package Build Artifacts
 	package_dir = os.path.join(build_output_dir, 'package')

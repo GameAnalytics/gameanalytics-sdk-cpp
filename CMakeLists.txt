@@ -15,6 +15,7 @@ include("create_source_groups_macro")
 include("eval_condition_macro")
 
 # --------------------------- Options --------------------------- #
+option(ENABLE_COVERAGE "Build with code coverage instrumentation" OFF)
 option(GA_SHARED_LIB "Build GA as a shared library" OFF)
 option(GA_UWP_BUILD  "Build GA for UWP (if targeting windows)" OFF)
 option(GA_BUILD_SAMPLE "Builds the GA Sample app" ON)
@@ -272,4 +273,14 @@ if(NOT GA_SHARED_LIB)
     add_test(NAME ${UT_PROJECT_NAME} COMMAND GameAnalyticsUnitTests)
 else()
     message(STATUS "Skipping unit tests (not available for shared library builds)")
+endif()
+
+# --------------------------- Code Coverage Instrumentation --------------------------- #
+
+if(ENABLE_COVERAGE)
+    if(GA_SHARED_LIB)
+        message(FATAL_ERROR "ENABLE_COVERAGE requires a static library build (coverage is measured through the unit tests)")
+    endif()
+    target_compile_options(GameAnalytics PRIVATE -g -O0 --coverage -fprofile-update=atomic)
+    target_link_options(GameAnalytics PUBLIC --coverage)
 endif()
