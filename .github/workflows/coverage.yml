@@ -1,63 +1,102 @@
 name: Test Coverage
 
-on: [pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: coverage-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  build:
+  coverage:
     name: Report Test Coverage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
     - uses: actions/checkout@v6
       with:
         submodules: true
 
-    - name: Install vcpkg (Linux/macOS)
-      if: runner.os != 'Windows'
-      shell: bash
+    - name: Cache vcpkg binaries
+      uses: actions/cache@v5
+      with:
+        path: ~/.cache/vcpkg/archives
+        key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+        restore-keys: vcpkg-${{ runner.os }}-
+
+    - name: Install vcpkg
       run: |
         git clone https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
         "$HOME/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
         echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
         echo "$HOME/vcpkg" >> "$GITHUB_PATH"
 
-    - name: Install vcpkg (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
+    - name: Build and test with coverage instrumentation
+      id: build
       run: |
-        git clone https://github.com/microsoft/vcpkg.git "$env:USERPROFILE\vcpkg"
-        & "$env:USERPROFILE\vcpkg\bootstrap-vcpkg.bat" -disableMetrics
-        echo "VCPKG_ROOT=$env:USERPROFILE\vcpkg" >> $env:GITHUB_ENV
-        echo "$env:USERPROFILE\vcpkg" >> $env:GITHUB_PATH
+        python3 setup.py --platform linux_x64 --compiler gcc --build --test --coverage --no_cov_report
+        mkdir -p coverage
 
-    - name: Create Build Environment     
-      run: cmake -E make_directory ${{github.workspace}}/build
-
-    - name: Setup LCOV
-      uses: hrishikesh-kadam/setup-lcov@v1
-
-    - name: Configure CMake    
-      shell: bash
-      working-directory: ${{github.workspace}}/build   
-      run: cmake -DENABLE_COVERAGE=ON ..
-
-    - name: Build
-      working-directory: ${{github.workspace}}/build
-      shell: bash
-      run: cmake --build .
-
-    - name: Prepare coverage data
-      working-directory: ${{github.workspace}}/build
-      shell: bash
-      run: cmake --build . --target cov_data
-
-    - name: Report code coverage
-      uses: zgosalvez/github-actions-report-lcov@v4
+    - name: Generate coverage report
+      uses: threeal/gcovr-action@v1.2.0
       with:
-        coverage-files: build/cov.info.cleaned
-        minimum-coverage: 30
-        artifact-name: code-coverage-report
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: ${{github.workspace}}
-        update-comment: true
+        fail-under-line: 60
+        fail-under-branch: 50
+        fail-under-function: 80
+        print-summary: true
+        txt-out: coverage/coverage.txt
+        html-out: coverage/index.html
+        html-details: true
+        cobertura-out: coverage/cobertura.xml
 
+    - name: Publish coverage summary
+      if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+      run: |
+        {
+          echo '```'
+          cat coverage/coverage.txt
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload to Codecov
+      if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+      uses: codecov/codecov-action@v5
+      with:
+        files: coverage/cobertura.xml
+        use_oidc: true
+
+    - name: Upload coverage report
+      if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: code-coverage-report
+        path: coverage/
+
+    - name: Upload Pages artifact
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: actions/upload-pages-artifact@v4
+      with:
+        path: coverage/
+
+  publish-pages:
+    name: Publish Report to GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: coverage
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - id: deployment
+      uses: actions/deploy-pages@v4

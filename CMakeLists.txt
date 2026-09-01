@@ -15,7 +15,7 @@ include("create_source_groups_macro")
 include("eval_condition_macro")
 
 # --------------------------- Options --------------------------- #
-option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
+option(ENABLE_COVERAGE "Build with code coverage instrumentation" OFF)
 option(GA_SHARED_LIB "Build GA as a shared library" OFF)
 option(GA_UWP_BUILD  "Build GA for UWP (if targeting windows)" OFF)
 option(GA_BUILD_SAMPLE "Builds the GA Sample app" ON)
@@ -275,93 +275,12 @@ else()
     message(STATUS "Skipping unit tests (not available for shared library builds)")
 endif()
 
-# --------------------------- Code Coverage Setup --------------------------- #
+# --------------------------- Code Coverage Instrumentation --------------------------- #
 
-# Coverage requires tests, which are only available for static library builds
-if (ENABLE_COVERAGE AND NOT GA_SHARED_LIB)
-    find_program(GCOV_PATH gcov)
-    if (NOT GCOV_PATH)
-        message(WARNING "program gcov not found")
+if(ENABLE_COVERAGE)
+    if(GA_SHARED_LIB)
+        message(FATAL_ERROR "ENABLE_COVERAGE requires a static library build (coverage is measured through the unit tests)")
     endif()
-
-    find_program(LCOV_PATH lcov)
-    if (NOT LCOV_PATH)
-        message(WARNING "program lcov not found")
-    endif()
-
-    find_program(GENHTML_PATH genhtml)
-    if (NOT GENHTML_PATH)
-        message(WARNING "program genhtml not found")
-    endif()
-
-    if (LCOV_PATH AND GCOV_PATH)
-
-        target_compile_options(
-            GameAnalytics
-            PRIVATE
-                -g -O0 -fprofile-arcs -ftest-coverage
-        )
-
-        target_link_libraries(
-            GameAnalytics PRIVATE -fprofile-arcs -ftest-coverage
-        )
-
-        set(covname cov)
-
-        add_custom_target(cov_data
-            # Cleanup lcov
-            COMMENT "Resetting code coverage counters to zero."
-            ${LCOV_PATH} --directory . --zerocounters
-
-            # Run tests
-            COMMAND GameAnalyticsUnitTests
-
-            # Capturing lcov counters and generating report
-
-            COMMAND echo "Processing code coverage counters and generating report."
-
-            COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info --branch-coverage --rc geninfo_unexecuted_blocks=1 --rc no_exception_branch=1
-
-            COMMAND echo "Removing unwanted files from coverage report."
-            
-            COMMAND ${LCOV_PATH} --remove ${covname}.info
-                                '${CMAKE_SOURCE_DIR}/source/dependencies/*'
-                                '${CMAKE_SOURCE_DIR}/test/*'
-                                '/usr/*'
-                                '/Applications/Xcode.app/*'
-                                --output-file ${covname}.info.cleaned
-                                --ignore-errors unused
-            
-            COMMAND echo "Finished processing code coverage counters and generating report."
-        )
-
-        if (GENHTML_PATH)
-            add_custom_target(cov
-
-                # Cleanup lcov
-                ${LCOV_PATH} --directory . --zerocounters
-
-                # Run tests
-                COMMAND GameAnalyticsUnitTests
-
-                # Capturing lcov counters and generating report
-                COMMAND ${LCOV_PATH} --directory . --capture --output-file ${covname}.info --rc lcov_branch_coverage=1 --rc derive_function_end_line=0
-                COMMAND ${LCOV_PATH} --remove ${covname}.info
-                                    '${CMAKE_SOURCE_DIR}/source/dependencies/*'
-                                    '/usr/*'
-                                    --output-file ${covname}.info.cleaned
-                                    --rc lcov_branch_coverage=1 
-                                    --rc derive_function_end_line=0
-                COMMAND ${GENHTML_PATH} -o ${covname} ${covname}.info.cleaned --rc lcov_branch_coverage=1 --rc derive_function_end_line=0
-                COMMAND ${CMAKE_COMMAND} -E remove ${covname}.info ${covname}.info.cleaned
-
-                COMMENT "Resetting code coverage counters to zero.\nProcessing code coverage counters and generating report."
-            )
-        else()
-            message(WARNING "unable to generate coverage report: missing genhtml")
-        endif()
-
-    else()
-        message(WARNING "unable to add coverage targets: missing coverage tools")
-    endif()
+    target_compile_options(GameAnalytics PRIVATE -g -O0 --coverage -fprofile-update=atomic)
+    target_link_options(GameAnalytics PUBLIC --coverage)
 endif()

@@ -1,5 +1,14 @@
 # Changelog
 
+## 5.4.1
+
+### Fixed
+
+- **Remote configs caching** — fixed cached configs being re-downloaded on every launch instead of reused across sessions.
+- **Remote configs listeners** — fixed a possible crash when adding or removing a listener during session start.
+- **Custom fields** — fixed one invalid field dropping all other custom fields on the event.
+- **Resource leaks** — fixed curl handle and header list leaks, and a per-event socket leak on Linux.
+
 ## 5.4.0
 
 ### Added

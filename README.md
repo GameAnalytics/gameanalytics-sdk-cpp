@@ -1,6 +1,8 @@
 GA-SDK-CPP
 ==========
 
+[![codecov](https://codecov.io/gh/GameAnalytics/gameanalytics-sdk-cpp/branch/main/graph/badge.svg)](https://codecov.io/gh/GameAnalytics/gameanalytics-sdk-cpp)
+
 GameAnalytics C++ SDK
 
 Documentation can be found [here](https://gameanalytics.com/docs/cpp-sdk).
@@ -42,7 +44,7 @@ python setup.py --platform {linux_x64,linux_x86,osx,win32,win64,uwp} [--cfg {Rel
 | `--shared` | — | Build a shared library (`.dll`/`.so`/`.dylib`) instead of a static library |
 | `--build` | — | Execute the build step |
 | `--test` | — | Execute the test step (not available with `--shared`) |
-| `--coverage` | — | Generate code coverage report (not available with `--shared`) |
+| `--coverage` | — | Build with coverage instrumentation and generate an HTML report in `build/coverage/` (requires `--build --test`; not available with `--shared`; needs [gcovr](https://gcovr.com) installed) |
 
 #### Examples
 

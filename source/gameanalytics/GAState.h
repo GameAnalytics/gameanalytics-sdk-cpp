@@ -79,6 +79,7 @@ namespace gameanalytics
             friend class logging::GALogger;
             friend class store::GAStore;
             friend class http::GAHTTPApi;
+            friend struct GAStateTestAccessor;
             
             public:
 

@@ -4,6 +4,7 @@ import subprocess
 import shutil
 import glob
 import platform as Platform
+import webbrowser
 
 def run_command(command, shell=True, cwd=None):
 	if os.name == 'nt':  # Check if the OS is Windows
@@ -34,7 +35,8 @@ def main():
 	parser.add_argument('--shared', action='store_true', help='Build shared library instead of static')
 	parser.add_argument('--build', action='store_true', help='Execute the build step')
 	parser.add_argument('--test', action='store_true', help='Execute the test step')
-	parser.add_argument('--coverage', action='store_true', help='Generate code coverage report')
+	parser.add_argument('--coverage', action='store_true', help='Build with coverage instrumentation and generate a coverage report')
+	parser.add_argument('--no_cov_report', action='store_true', help='Skip the local coverage report generation (used on CI where gcovr runs separately)')
 	parser.add_argument('--no_vcpkg', action='store_true', help='Do not download vcpkg packages')
 	parser.add_argument('--no_curl', action='store_true', help='Compile the SDK without CURL (you will need to provide a custom HTTP client implementation)')
  
@@ -44,9 +46,14 @@ def main():
 	if args.compiler and not args.platform.startswith('linux'):
 		parser.error('--compiler can only be used with Linux platforms')
 
-	# Validate coverage is not used with shared library
 	if args.coverage and args.shared:
 		parser.error('--coverage cannot be used with --shared (coverage requires tests which need static library)')
+
+	if args.coverage and not (args.build and args.test):
+		parser.error('--coverage requires --build and --test')
+
+	if args.no_cov_report and not args.coverage:
+		parser.error('--no_cov_report requires --coverage')
 
 	# Get compiler configuration for this platform (single compiler, like cmake.yml)
 	compiler_config = get_compiler_for_platform(args.platform, args.compiler)
@@ -123,7 +130,7 @@ def main():
 		cmake_command += f' -DPLATFORM:STRING={args.platform}'
 	if args.coverage:
 		cmake_command += ' -DENABLE_COVERAGE=ON'
-  
+
 	run_command(cmake_command)
 
 	# Build
@@ -138,10 +145,19 @@ def main():
 	else:
 		exit(0)
 
-	# Code Coverage
-	if args.coverage:
-		# Prepare coverage data
-		run_command(f'cmake --build {build_output_dir} --target cov', cwd=build_output_dir)
+	# Code Coverage Report
+	if args.coverage and not args.no_cov_report:
+		coverage_dir = os.path.join(build_output_dir, 'coverage')
+		os.makedirs(coverage_dir, exist_ok=True)
+		report_path = os.path.join(coverage_dir, 'index.html')
+		gcovr_command = f'gcovr --print-summary --html-details {report_path}'
+		if args.platform == 'osx':
+			gcovr_command += ' --gcov-executable "xcrun llvm-cov gcov"'
+		elif cxx_compiler == 'clang++':
+			gcovr_command += ' --gcov-executable "llvm-cov gcov"'
+		run_command(gcovr_command)
+		print(f"\nCoverage report: {report_path}\n")
+		webbrowser.open(f'file://{report_path}')
 
 	# Package Build Artifacts
 	package_dir = os.path.join(build_output_dir, 'package')
