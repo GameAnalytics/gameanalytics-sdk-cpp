@@ -54,8 +54,6 @@ jobs:
         html-out: coverage/index.html
         html-details: true
         cobertura-out: coverage/cobertura.xml
-        coveralls-out: coverage/coveralls.json
-        coveralls-send: true
 
     - name: Publish coverage summary
       if: ${{ !cancelled() }}
