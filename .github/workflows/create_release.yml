@@ -138,3 +138,15 @@ jobs:
             ga-sdk-static-${{ inputs.tag_name }}.zip
             ga-sdk-shared-${{ inputs.tag_name }}.zip
             ga-sdk-static-no-deps-${{ inputs.tag_name }}.zip
+
+
+  notify:
+    name: Slack notification
+    needs: release
+    uses: GameAnalytics/sdk-release-notify/.github/workflows/notify.yml@main
+    with:
+      sdk_name: C++ SDK
+      tag: ${{ inputs.tag_name }}
+      releaser: ${{ github.actor }}
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
