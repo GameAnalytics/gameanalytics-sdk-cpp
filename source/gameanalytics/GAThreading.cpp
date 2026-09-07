@@ -32,7 +32,7 @@ namespace gameanalytics
 
         GAThreading::GAThreading()
         {
-            _thread = std::thread(
+            _thread = GAThread(
                 [this]()
                 { 
                     work();

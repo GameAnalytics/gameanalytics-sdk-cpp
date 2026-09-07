@@ -323,59 +323,54 @@ namespace gameanalytics
 
             ErrorType errorType = std::make_tuple(category, area);
 
-            bool useGzip = this->useGzip;
-
-            auto task = std::async(std::launch::async, [=]() -> void
+            int64_t now = utilities::GAUtilities::timeIntervalSince1970();
+            if(timestampMap.count(errorType) == 0)
             {
-                int64_t now = utilities::GAUtilities::timeIntervalSince1970();
-                if(timestampMap.count(errorType) == 0)
-                {
-                    timestampMap[errorType] = now;
-                }
-                if(countMap.count(errorType) == 0)
-                {
-                    countMap[errorType] = 0;
-                }
-                
-                constexpr int64_t FREQUENCY = 3600; // 1h
+                timestampMap[errorType] = now;
+            }
+            if(countMap.count(errorType) == 0)
+            {
+                countMap[errorType] = 0;
+            }
+            
+            constexpr int64_t FREQUENCY = 3600; // 1h
 
-                int64_t diff = now - timestampMap[errorType];
-                if(diff >= FREQUENCY)
-                {
-                    countMap[errorType] = 0;
-                    timestampMap[errorType] = now;
-                }
+            int64_t diff = now - timestampMap[errorType];
+            if(diff >= FREQUENCY)
+            {
+                countMap[errorType] = 0;
+                timestampMap[errorType] = now;
+            }
 
-                if(countMap[errorType] >= MaxCount)
-                {
-                    return;
-                }
+            if(countMap[errorType] >= MaxCount)
+            {
+                return;
+            }
 
-                std::vector<uint8_t> payloadData = getInstance().createPayloadData(payloadJSONString, useGzip);
+            std::vector<uint8_t> payloadData = getInstance().createPayloadData(payloadJSONString, useGzip);
 
-                std::string auth = createAuth(payloadData);
-                GAHttpClient::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
+            std::string auth = createAuth(payloadData);
+            GAHttpClient::Response response = impl->sendRequest(url, auth, payloadData, useGzip, nullptr);
 
-                if(response.code < 0)
-                {
-                    logging::GALogger::e("Request failed: %s", url.c_str());
-                    return;
-                }
+            if(response.code < 0)
+            {
+                logging::GALogger::e("Request failed: %s", url.c_str());
+                return;
+            }
 
-                std::string_view content = response.toString();
+            std::string_view content = response.toString();
 
-                // process the response
-                logging::GALogger::d("sdk error content : %.*s", (int)content.size(), content.data());
+            // process the response
+            logging::GALogger::d("sdk error content : %.*s", (int)content.size(), content.data());
 
-                // if not 200 result
-                if (response.code != HTTP_RESPONSE_OK && response.code != HTTP_RESPONSE_NO_CONTENT)
-                {
-                    logging::GALogger::d("sdk error failed. response code not 200 or 204. status code: %ld", response.code);
-                    return;
-                }
+            // if not 200 result
+            if (response.code != HTTP_RESPONSE_OK && response.code != HTTP_RESPONSE_NO_CONTENT)
+            {
+                logging::GALogger::d("sdk error failed. response code not 200 or 204. status code: %ld", response.code);
+                return;
+            }
 
-                countMap[errorType] = countMap[errorType] + 1;
-            });
+            countMap[errorType] = countMap[errorType] + 1;
         }
 
         std::vector<uint8_t> GAHTTPApi::createPayloadData(std::string const& payload, bool gzip)
