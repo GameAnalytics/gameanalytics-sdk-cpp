@@ -37,7 +37,7 @@ namespace gameanalytics
 
         private:
 
-        void createRequest(CURL *curl, std::string const& url, std::string const& auth, const std::vector<uint8_t>& payloadData, bool gzip);
+        curl_slist* createRequest(CURL *curl, std::string const& url, std::string const& auth, const std::vector<uint8_t>& payloadData, bool gzip);
     };
 }
 

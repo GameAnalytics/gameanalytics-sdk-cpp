@@ -1,8 +1,13 @@
 #include <gtest/gtest.h>
 
+#include <GAState.h>
+
 int main(int argc, char **argv) {
 	::testing::InitGoogleTest(&argc, argv);
-	
+
+	// tests must never send events to the GA servers
+	gameanalytics::state::GAState::setEnabledEventSubmission(false);
+
 	if (sizeof(void*) == 8) {
         std::cout << "64-bit architecture" << std::endl;
     } else if (sizeof(void*) == 4) {

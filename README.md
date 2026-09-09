@@ -1,6 +1,8 @@
 GA-SDK-CPP
 ==========
 
+[![codecov](https://codecov.io/gh/GameAnalytics/gameanalytics-sdk-cpp/branch/main/graph/badge.svg)](https://codecov.io/gh/GameAnalytics/gameanalytics-sdk-cpp)
+
 GameAnalytics C++ SDK
 
 Documentation can be found [here](https://gameanalytics.com/docs/cpp-sdk).
@@ -42,7 +44,7 @@ python setup.py --platform {linux_x64,linux_x86,osx,win32,win64,uwp} [--cfg {Rel
 | `--shared` | — | Build a shared library (`.dll`/`.so`/`.dylib`) instead of a static library |
 | `--build` | — | Execute the build step |
 | `--test` | — | Execute the test step (not available with `--shared`) |
-| `--coverage` | — | Generate code coverage report (not available with `--shared`) |
+| `--coverage` | — | Build with coverage instrumentation and generate an HTML report in `build/coverage/` (requires `--build --test`; not available with `--shared`; needs [gcovr](https://gcovr.com) installed) |
 
 #### Examples
 
@@ -123,6 +125,37 @@ void myLogHandler(const char* message, GALoggerMessageType type)
 
 gameAnalytics_configureCustomLogHandler(myLogHandler);
 ```
+
+### Remote configs listener
+To be notified whenever remote configs are populated:
+
+**C++ API:**
+``` c++
+struct RemoteConfigs: public gameanalytics::IRemoteConfigsListener
+{
+    void onRemoteConfigsUpdated(std::string const& configs) override
+    {
+        // configs have been updated
+    }
+};
+
+auto listener = std::make_shared<RemoteConfigs>();
+gameanalytics::GameAnalytics::addRemoteConfigsListener(listener);
+```
+
+**C API (shared lib):**
+```c
+void myRemoteConfigsListener(const char* configs)
+{
+    // configs have been updated
+}
+
+gameAnalytics_configureRemoteConfigsListener(myRemoteConfigsListener);
+```
+
+The C API supports a single listener; registering again replaces the previous one and passing `NULL` unregisters. Register it before `gameAnalytics_initialize` to not miss the first update.
+
+> **Note:** The listener is invoked on the SDK's internal thread and the `configs` string is only valid during the call — copy it if needed (do not pass it to `gameAnalytics_freeString`).
 
 ### Custom HTTP client
 

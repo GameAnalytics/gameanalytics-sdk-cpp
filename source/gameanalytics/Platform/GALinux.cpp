@@ -78,14 +78,26 @@ std::string gameanalytics::GAPlatformLinux::getOSVersion()
     struct utsname info;
     uname(&info);
 
-    std::string version;
-    int const strSize = strlen(info.release);
+    std::string version = info.release;
+    size_t const strSize = version.size();
 
+    int dotCount = 0;
     for (size_t i = 0; i < strSize; ++i)
     {
-        if (!isdigit(info.release[i]) && info.release[i] != '.')
+        char const c = version[i];
+
+        if (c == '.')
         {
-            version = std::string(info.release, info.release + i);
+            ++dotCount;
+            if (dotCount == 3)
+            {
+                version.resize(i);
+                break;
+            }
+        }
+        else if (!isdigit(static_cast<unsigned char>(c)))
+        {
+            version.resize(i);
             break;
         }
     }
@@ -240,34 +252,35 @@ std::string gameanalytics::GAPlatformLinux::getConnectionType()
         return connection;
     }
 
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+
     current = list;
     while(current)
     {
-        int sock = -1;
-        if (!current->ifa_addr || current->ifa_addr->sa_family != AF_PACKET) 
+        if (!current->ifa_addr || current->ifa_addr->sa_family != AF_PACKET)
         {
-            struct iwreq req = {};
-            strncpy(req.ifr_name, current->ifa_name, IFNAMSIZ);
-
-            int sock = socket(AF_INET, SOCK_STREAM, 0);
-            if (sock == -1) 
+            if (sock == -1)
             {
                 connection = CONNECTION_LAN;
             }
             else
             {
-                if (ioctl(sock, SIOCGIWNAME, &req) != -1) 
+                struct iwreq req = {};
+                strncpy(req.ifr_name, current->ifa_name, IFNAMSIZ);
+
+                if (ioctl(sock, SIOCGIWNAME, &req) != -1)
                 {
                     connection = CONNECTION_WIFI;
+                    break;
                 }
             }
         }
 
-        if(sock != -1)
-            close(sock);
-
         current = current->ifa_next;
     }
+
+    if(sock != -1)
+        close(sock);
 
     freeifaddrs(list);
     return connection;

@@ -39,6 +39,8 @@ namespace gameanalytics
 
         GAState::~GAState()
         {
+            _gaLogger.customLogHandler.reset();
+
             _gaThread.queueBlock(
                 [this]()
                 {
@@ -622,8 +624,9 @@ namespace gameanalytics
                             std::string lastUsedIdentifier = state_dict.contains("last_used_identifier") ?
                                 state_dict["last_used_identifier"].get<std::string>() : "";
 
-                            if (!lastUsedIdentifier.empty())
+                            if (!lastUsedIdentifier.empty() && lastUsedIdentifier != _identifier)
                             {
+                                logging::GALogger::w("New identifier spotted compared to last one used, clearing cached configs hash!");
                                 if (d.contains("configs_hash"))
                                 {
                                     d.erase("configs_hash");
@@ -635,7 +638,9 @@ namespace gameanalytics
                     }
                     catch (json::exception& e)
                     {
-                        logging::GALogger::e(e.what());
+                        // discard unparseable cached config
+                        logging::GALogger::w("Discarding incompatible cached sdk config: %s", e.what());
+                        store::GAStore::setState("sdk_config_cached", "");
                     }
                 }
 
@@ -882,6 +887,7 @@ namespace gameanalytics
 
         void GAState::addRemoteConfigsListener(const std::shared_ptr<IRemoteConfigsListener>& listener)
         {
+            std::lock_guard<std::recursive_mutex> lg(getInstance()._mtx);
             if(std::find(getInstance()._remoteConfigsListeners.begin(), getInstance()._remoteConfigsListeners.end(), listener) == getInstance()._remoteConfigsListeners.end())
             {
                 getInstance()._remoteConfigsListeners.push_back(listener);
@@ -890,10 +896,11 @@ namespace gameanalytics
 
         void GAState::removeRemoteConfigsListener(const std::shared_ptr<IRemoteConfigsListener>& listener)
         {
+            std::lock_guard<std::recursive_mutex> lg(getInstance()._mtx);
             if(std::find(getInstance()._remoteConfigsListeners.begin(), getInstance()._remoteConfigsListeners.end(), listener) != getInstance()._remoteConfigsListeners.end())
             {
                 getInstance()._remoteConfigsListeners.erase(
-                    std::remove(getInstance()._remoteConfigsListeners.begin(), getInstance()._remoteConfigsListeners.end(), listener), 
+                    std::remove(getInstance()._remoteConfigsListeners.begin(), getInstance()._remoteConfigsListeners.end(), listener),
                     getInstance()._remoteConfigsListeners.end()
                 );
             }
@@ -974,12 +981,20 @@ namespace gameanalytics
                     }
                 }
 
-                buildRemoteConfigsJsons(_tempRemoteConfigsJson);
+                std::string configStr;
+                std::vector<std::shared_ptr<IRemoteConfigsListener>> listeners;
+                {
+                    std::lock_guard<std::recursive_mutex> lg(_mtx);
 
-                _remoteConfigsIsReady = true;
-                
-                std::string const configStr = _gameRemoteConfigsJson.dump();
-                for (auto& listener : _remoteConfigsListeners)
+                    buildRemoteConfigsJsons(_tempRemoteConfigsJson);
+                    _remoteConfigsIsReady = true;
+
+                    configStr = _gameRemoteConfigsJson.dump();
+                    listeners = _remoteConfigsListeners;
+                }
+
+                // notify outside the lock so a listener can safely call back into the SDK
+                for (auto& listener : listeners)
                 {
                     listener->onRemoteConfigsUpdated(configStr);
                 }
@@ -1068,8 +1083,8 @@ namespace gameanalytics
                             else
                             {
                                 constexpr const char* fmt = "validateAndCleanCustomFields: entry with key=%s, value=%s has been omitted because its key contains illegal character, is empty or exceeds the max number of characters (%d)";
-                            
-                                const std::string value = fields[key].get<std::string>();
+
+                                const std::string value = fields[key].dump();
                                 LogAndAddErrorEvent(EGAErrorSeverity::Warning, fmt, key.c_str(), value.c_str(), MAX_CUSTOM_FIELDS_KEY_LENGTH);
                             }
                         }

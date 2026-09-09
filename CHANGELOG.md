@@ -1,5 +1,24 @@
 # Changelog
 
+## 5.4.1
+
+### Fixed
+
+- **Remote configs caching** — fixed cached configs being re-downloaded on every launch instead of reused across sessions.
+- **Remote configs listeners** — fixed a possible crash when adding or removing a listener during session start.
+- **Custom fields** — fixed one invalid field dropping all other custom fields on the event.
+- **Resource leaks** — fixed curl handle and header list leaks, and a per-event socket leak on Linux.
+
+## 5.4.0
+
+### Added
+
+- **Remote configs listener in the C API** — New `gameAnalytics_configureRemoteConfigsListener()` with `GARemoteConfigsListener` callback, making remote configs notifications usable from managed runtimes (e.g. Unity P/Invoke). Single listener; re-registering replaces it, `NULL` unregisters.
+
+### Changed
+
+- **Windows: static builds now use the dynamic MSVC runtime (`/MD`)** — All Windows builds (static and shared) now compile against the DLL runtime instead of `/MT` for static builds, matching what Unreal Engine and most consumers require. **Breaking for consumers linking the static library with `/MT`**: upgrading will produce an LNK2038 RuntimeLibrary mismatch; switch your project to `/MD` (`MultiThreadedDLL`).
+
 ## 5.2.0
 
 ### Added
