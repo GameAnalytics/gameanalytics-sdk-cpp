@@ -37,6 +37,9 @@ jobs:
         c_compiler: [gcc, clang, cl]
         lib_type: [static, shared]
         dependency_mode: [default, no_deps]
+        # md: DLL MSVC runtime (/MD, e.g. Unreal), mt: static MSVC runtime (/MT, e.g. Defold).
+        # Only meaningful on Windows, the other platforms build md only.
+        msvc_runtime: [md, mt]
         include:
           - os: windows-2022
             c_compiler: cl
@@ -63,6 +66,13 @@ jobs:
             c_compiler: gcc
           - lib_type: shared
             dependency_mode: no_deps
+          - os: ubuntu-latest
+            msvc_runtime: mt
+          - os: macOS-latest
+            msvc_runtime: mt
+          # a DLL has its own copy of the runtime either way
+          - lib_type: shared
+            msvc_runtime: mt
 
     steps:
     - uses: actions/checkout@v6
@@ -144,6 +154,10 @@ jobs:
           DEPENDENCY_FLAGS="--no_vcpkg --no_curl"
         fi
 
+        if [ "${{ matrix.msvc_runtime }}" == "mt" ]; then
+          DEPENDENCY_FLAGS="$DEPENDENCY_FLAGS --static_runtime"
+        fi
+
         if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
           python setup.py --platform ${{ steps.strings.outputs.platform }} --compiler ${{ matrix.c_compiler }} --cfg ${{ matrix.build_type }} $SHARED_FLAG $DEPENDENCY_FLAGS --build --test
         else
@@ -154,7 +168,7 @@ jobs:
       if: ${{ inputs.upload_artifacts && success() }}
       uses: actions/upload-artifact@v7
       with:
-        name: ga-cpp-sdk-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}-${{ matrix.lib_type }}-${{ matrix.dependency_mode }}
+        name: ga-cpp-sdk-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}-${{ matrix.lib_type }}-${{ matrix.dependency_mode }}${{ matrix.msvc_runtime == 'mt' && '-mt' || '' }}
         path: ${{ steps.strings.outputs.build-output-dir }}/package/
         retention-days: 3
     

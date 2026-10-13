@@ -48,12 +48,14 @@ jobs:
           mkdir -p ./static-release/include
           mkdir -p ./shared-release/include
           mkdir -p ./static-no-deps-release/include
+          mkdir -p ./static-mt-release/include
 
           # Copy include directory from any artifact (they're all identical)
           FIRST_ARTIFACT=$(find ./release-artifacts -mindepth 1 -maxdepth 1 -type d | head -n 1)
           cp -r $FIRST_ARTIFACT/include/* ./static-release/include/
           cp -r $FIRST_ARTIFACT/include/* ./shared-release/include/
           cp -r $FIRST_ARTIFACT/include/* ./static-no-deps-release/include/
+          cp -r $FIRST_ARTIFACT/include/* ./static-mt-release/include/
           
           # Copy GameAnalyticsExtern.h for shared library release
           cp ./source/gameanalytics/GameAnalyticsExtern.h ./shared-release/include/GameAnalytics/
@@ -111,10 +113,23 @@ jobs:
             fi
           done
 
+          # Process Windows static library artifacts built against the static MSVC runtime (/MT)
+          for artifact_dir in ./release-artifacts/*-mt; do
+            artifact_name=$(basename $artifact_dir)
+            # Extract platform info (remove ga-cpp-sdk- prefix and -mt suffix), e.g.
+            # windows-2022-cl-Release-static-default or windows-2022-cl-Release-static-no_deps
+            platform_info=${artifact_name#ga-cpp-sdk-}
+            platform_info=${platform_info%-mt}
+
+            mkdir -p ./static-mt-release/$platform_info
+            cp $artifact_dir/*.lib ./static-mt-release/$platform_info/ 2>/dev/null || true
+          done
+
           # Create zip archives
           zip -r ga-sdk-static-${{ inputs.tag_name }}.zip ./static-release
           zip -r ga-sdk-shared-${{ inputs.tag_name }}.zip ./shared-release
           zip -r ga-sdk-static-no-deps-${{ inputs.tag_name }}.zip ./static-no-deps-release
+          zip -r ga-sdk-static-mt-${{ inputs.tag_name }}.zip ./static-mt-release
 
       - name: Show organized release files
         run: |
@@ -126,6 +141,9 @@ jobs:
           echo ""
           echo "=== Static Libraries (no dependencies) ==="
           tree ./static-no-deps-release || ls -R ./static-no-deps-release
+          echo ""
+          echo "=== Windows static libraries (/MT runtime) ==="
+          tree ./static-mt-release || ls -R ./static-mt-release
 
       - name: Create release
         uses: softprops/action-gh-release@v2.0.8
@@ -138,6 +156,7 @@ jobs:
             ga-sdk-static-${{ inputs.tag_name }}.zip
             ga-sdk-shared-${{ inputs.tag_name }}.zip
             ga-sdk-static-no-deps-${{ inputs.tag_name }}.zip
+            ga-sdk-static-mt-${{ inputs.tag_name }}.zip
 
 
   notify:

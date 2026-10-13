@@ -39,12 +39,15 @@ def main():
 	parser.add_argument('--no_cov_report', action='store_true', help='Skip the local coverage report generation (used on CI where gcovr runs separately)')
 	parser.add_argument('--no_vcpkg', action='store_true', help='Do not download vcpkg packages')
 	parser.add_argument('--no_curl', action='store_true', help='Compile the SDK without CURL (you will need to provide a custom HTTP client implementation)')
+	parser.add_argument('--static_runtime', action='store_true', help='Windows only: link the static MSVC runtime (/MT) instead of the DLL runtime (/MD)')
  
 	args = parser.parse_args()
 
 	# Validate compiler argument is only used with Linux
 	if args.compiler and not args.platform.startswith('linux'):
 		parser.error('--compiler can only be used with Linux platforms')
+	if args.static_runtime and not args.platform.startswith('win'):
+		parser.error('--static_runtime can only be used with Windows platforms')
 
 	if args.coverage and args.shared:
 		parser.error('--coverage cannot be used with --shared (coverage requires tests which need static library)')
@@ -113,7 +116,8 @@ def main():
 		triplet = f'{arch}-{platform}'
 
 		if args.platform.startswith('win'):
-			triplet = f'{arch}-windows-static-md'
+			# the dependencies have to use the same MSVC runtime as the SDK
+			triplet = f'{arch}-windows-static' if args.static_runtime else f'{arch}-windows-static-md'
 
 		if args.platform == 'osx':
 			osx_arch = arch if arch == 'arm64' else 'x86_64' # no official universal triplet for osx vcpkg
@@ -128,6 +132,8 @@ def main():
 		cmake_command += f' -DCMAKE_BUILD_TYPE={args.cfg}'
 	if args.platform:
 		cmake_command += f' -DPLATFORM:STRING={args.platform}'
+	if args.static_runtime:
+		cmake_command += ' -DGA_MSVC_STATIC_RUNTIME=ON'
 	if args.coverage:
 		cmake_command += ' -DENABLE_COVERAGE=ON'
 

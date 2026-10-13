@@ -22,6 +22,9 @@ option(GA_BUILD_SAMPLE "Builds the GA Sample app" ON)
 option(GA_USE_PACKAGE "Use installed packages for dependencies" ON)
 option(USE_VCPKG "Install dependencies from VCPKG" ON)
 option(GA_HTTP_USE_CURL "Use CURL for HTTP requests" ON)
+# Engines that link the static MSVC runtime (/MT), e.g. Defold, can't link a
+# library built against the DLL runtime (/MD), which is what Unreal needs.
+option(GA_MSVC_STATIC_RUNTIME "Windows: link the static MSVC runtime (/MT) instead of the DLL runtime (/MD)" OFF)
 
 # set directories
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG	"${CMAKE_BINARY_DIR}/Debug")
@@ -167,7 +170,11 @@ endif()
 
 if(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGUID_WINDOWS")
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+    if(${GA_MSVC_STATIC_RUNTIME})
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    else()
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+    endif()
 
     if(${GA_UWP_BUILD})
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGA_UWP_BUILD")
