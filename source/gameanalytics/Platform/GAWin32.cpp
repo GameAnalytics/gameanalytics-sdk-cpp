@@ -11,7 +11,7 @@
 #include <psapi.h>
 #include <wininet.h>
 
-#pragma comment(lib, "Wininet.lib")
+#pragma comment(lib, "wininet.lib")
 
 #include <stacktrace/call_stack.hpp>
 

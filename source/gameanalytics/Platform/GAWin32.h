@@ -26,7 +26,7 @@
 	#endif
 
 
-	#pragma comment(lib, "Ws2_32.lib")
+	#pragma comment(lib, "ws2_32.lib")
 	#pragma comment(lib, "gdi32.lib")
 	#pragma comment(lib, "crypt32.lib")
 
