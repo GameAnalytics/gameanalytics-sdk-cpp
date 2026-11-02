@@ -37,3 +37,6 @@
 /gtest_build
 .DS_Store
 *.pyc
+
+# local research notes
+RESEARCH.md
