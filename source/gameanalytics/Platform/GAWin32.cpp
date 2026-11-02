@@ -10,6 +10,11 @@
 
 #include <psapi.h>
 #include <wininet.h>
+#include <intrin.h>
+
+#include <cctype>
+#include <cstring>
+#include <vector>
 
 #pragma comment(lib, "Wininet.lib")
 
@@ -23,51 +28,94 @@ void (*GAPlatformWin32::old_state_abrt)	(int) = nullptr;
 void (*GAPlatformWin32::old_state_fpe)	(int) = nullptr;
 void (*GAPlatformWin32::old_state_segv)	(int) = nullptr;
 
-// no official helper function exists for win11 (for the time being at least)
-bool IsWin11OrGreater()
+// RtlGetVersion reports the real OS version. GetVersionEx and the VersionHelpers.h functions
+// are subject to the app manifest: without a supportedOS entry for Windows 10 they report 6.2 (Windows 8),
+// and they have no notion of a build number so cannot tell Windows 11 apart from Windows 10.
+bool getWindowsVersion(DWORD& major, DWORD& minor, DWORD& build)
 {
-    constexpr DWORD MAJOR_VERSION = 10;
-    constexpr DWORD MINOR_VERSION = 0;
-    constexpr DWORD BUILD_NUM     = 21996;
+    using RtlGetVersionFn = LONG (WINAPI*)(PRTL_OSVERSIONINFOW);
 
-    return IsWindowsVersionOrGreater(MAJOR_VERSION, MINOR_VERSION, BUILD_NUM);
+    HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
+    if (!ntdll)
+    {
+        return false;
+    }
+
+    auto rtlGetVersion = reinterpret_cast<RtlGetVersionFn>(GetProcAddress(ntdll, "RtlGetVersion"));
+    if (!rtlGetVersion)
+    {
+        return false;
+    }
+
+    RTL_OSVERSIONINFOW info = {};
+    info.dwOSVersionInfoSize = sizeof(info);
+
+    // returns an NTSTATUS, 0 is STATUS_SUCCESS
+    if (rtlGetVersion(&info) != 0)
+    {
+        return false;
+    }
+
+    major = info.dwMajorVersion;
+    minor = info.dwMinorVersion;
+    build = info.dwBuildNumber;
+
+    return true;
 }
 
 std::string GAPlatformWin32::getOSVersion()
 {
     std::string osVersion = getBuildPlatform() + " ";
 
-    #if (_MSC_VER >= 1900)
-        if(IsWin11OrGreater())
+    DWORD major = 0;
+    DWORD minor = 0;
+    DWORD build = 0;
+
+    if (getWindowsVersion(major, minor, build))
+    {
+        // Windows 11 kept the 10.0 version number, the first release build is 22000
+        constexpr DWORD WIN11_FIRST_BUILD = 22000;
+
+        if (major == 10)
         {
-            return osVersion + "11";
+            return osVersion + (build >= WIN11_FIRST_BUILD ? "11" : "10");
         }
-        else if (IsWindows10OrGreater())
+        else if (major > 10)
+        {
+            return osVersion + std::to_string(major);
+        }
+
+        return osVersion + std::to_string(major) + "." + std::to_string(minor);
+    }
+
+    // fallback, manifest dependent (see above)
+    #if (_MSC_VER >= 1900)
+        if (IsWindows10OrGreater())
         {
             return osVersion + "10";
         }
     #endif
 
-        if (IsWindows8Point1OrGreater())
-        {
-            return osVersion + "6.3";
-        }
-        else if (IsWindows8OrGreater())
-        {
-            return osVersion + "6.2";
-        }
-        else if (IsWindows7OrGreater())
-        {
-            return osVersion + "6.1";
-        }
-        else if (IsWindowsVistaOrGreater())
-        {
-            return osVersion + "6.1";
-        }
-        else if (IsWindowsXPOrGreater())
-        {
-            return osVersion + "5.1";
-        }
+    if (IsWindows8Point1OrGreater())
+    {
+        return osVersion + "6.3";
+    }
+    else if (IsWindows8OrGreater())
+    {
+        return osVersion + "6.2";
+    }
+    else if (IsWindows7OrGreater())
+    {
+        return osVersion + "6.1";
+    }
+    else if (IsWindowsVistaOrGreater())
+    {
+        return osVersion + "6.0";
+    }
+    else if (IsWindowsXPOrGreater())
+    {
+        return osVersion + "5.1";
+    }
 
     return osVersion + "0.0.0";
 }
@@ -119,29 +167,31 @@ std::string GAPlatformWin32::getPersistentPath()
 
 std::string getRegistryKey(HKEY key, const TCHAR* subkey, const TCHAR* value)
 {
+    // RegGetValue reports errors through its return value, not GetLastError,
+    // and the size it reports is in bytes (including the null terminator)
+    DWORD size = 0;
+    if (RegGetValue(key, subkey, value, RRF_RT_REG_SZ, nullptr, nullptr, &size) != ERROR_SUCCESS || size <= sizeof(TCHAR))
     {
-        constexpr DWORD maxBufSize = 128;
-
-        DWORD size = maxBufSize * sizeof(TCHAR);
-        TCHAR buffer[maxBufSize] = _T("");
-        RegGetValue(key, subkey, value, RRF_RT_REG_SZ, NULL, buffer, &size);
-
-        if (!GetLastError() && size > 0)
-        {
-            std::string val;
-
-#ifdef UNICODE
-            std::wstring wstr(buffer, buffer + size);
-            val = utilities::GAUtilities::ws2s(wstr);
-#else
-            val = std::string(buffer, buffer + size);
-#endif
-
-            return val;
-        }
+        return UNKNOWN_VALUE;
     }
 
-    return UNKNOWN_VALUE;
+    std::vector<TCHAR> buffer(size / sizeof(TCHAR) + 1, 0);
+    size = static_cast<DWORD>(buffer.size() * sizeof(TCHAR));
+
+    if (RegGetValue(key, subkey, value, RRF_RT_REG_SZ, nullptr, buffer.data(), &size) != ERROR_SUCCESS)
+    {
+        return UNKNOWN_VALUE;
+    }
+
+    std::string val;
+
+#ifdef UNICODE
+    val = utilities::GAUtilities::ws2s(std::wstring(buffer.data()));
+#else
+    val = std::string(buffer.data());
+#endif
+
+    return val.empty() ? UNKNOWN_VALUE : val;
 }
 
 std::string GAPlatformWin32::getDeviceModel()
@@ -160,20 +210,102 @@ std::string GAPlatformWin32::getDeviceManufacturer()
     return getRegistryKey(HKEY_LOCAL_MACHINE, subkey, value);
 }
 
-std::string GAPlatformWin32::getCpuModel() const
+// trims and collapses repeated whitespace (brand strings are often padded, e.g. "       Intel(R) Core(TM) i7 CPU")
+std::string normalizeCpuName(std::string const& name)
 {
-    constexpr const TCHAR* subkey = _T("HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0");
+    std::string result;
+    result.reserve(name.size());
 
-    constexpr const TCHAR* values[] = { _T("ProcessorName"), _T("ProcessorNameString") };
-
-    for (auto& val : values)
+    for (char c : name)
     {
-        std::string s = getRegistryKey(HKEY_LOCAL_MACHINE, subkey, val);
-        if (!s.empty())
-            return s;
+        if (c == '\0')
+        {
+            break;
+        }
+
+        if (std::isspace(static_cast<unsigned char>(c)))
+        {
+            if (!result.empty() && result.back() != ' ')
+            {
+                result += ' ';
+            }
+        }
+        else
+        {
+            result += c;
+        }
     }
 
-    return UNKNOWN_VALUE;
+    if (!result.empty() && result.back() == ' ')
+    {
+        result.pop_back();
+    }
+
+    return result;
+}
+
+std::string getCpuidBrandString()
+{
+#if (defined(_M_X64) || defined(_M_IX86)) && !defined(_M_ARM64EC)
+    int regs[4] = {};
+
+    __cpuid(regs, 0x80000000);
+    if (static_cast<unsigned int>(regs[0]) < 0x80000004)
+    {
+        return "";
+    }
+
+    char brand[49] = {};
+    for (int i = 0; i < 3; ++i)
+    {
+        __cpuid(regs, 0x80000002 + i);
+        std::memcpy(brand + i * sizeof(regs), regs, sizeof(regs));
+    }
+
+    return normalizeCpuName(brand);
+#else
+    return "";
+#endif
+}
+
+std::string getCpuArchitecture()
+{
+    SYSTEM_INFO info = {};
+    GetNativeSystemInfo(&info);
+
+    switch (info.wProcessorArchitecture)
+    {
+        case PROCESSOR_ARCHITECTURE_AMD64:  return "x86_64";
+        case PROCESSOR_ARCHITECTURE_ARM64:  return "arm64";
+        case PROCESSOR_ARCHITECTURE_INTEL:  return "x86";
+        case PROCESSOR_ARCHITECTURE_ARM:    return "arm";
+        default:                            return UNKNOWN_VALUE;
+    }
+}
+
+std::string GAPlatformWin32::getCpuModel() const
+{
+    // the registry holds the name of the physical cpu (also correct for x64 apps emulated on arm64)
+    constexpr const TCHAR* subkey = _T("HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0");
+    constexpr const TCHAR* value  = _T("ProcessorNameString");
+
+    std::string name = getRegistryKey(HKEY_LOCAL_MACHINE, subkey, value);
+    if (name != UNKNOWN_VALUE)
+    {
+        name = normalizeCpuName(name);
+        if (!name.empty())
+        {
+            return name;
+        }
+    }
+
+    name = getCpuidBrandString();
+    if (!name.empty())
+    {
+        return name;
+    }
+
+    return getCpuArchitecture();
 }
 
 void GAPlatformWin32::setupUncaughtExceptionHandler()

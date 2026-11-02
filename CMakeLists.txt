@@ -217,6 +217,12 @@ set_target_properties(GameAnalytics PROPERTIES
     C_VISIBILITY_PRESET hidden
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN ON
+    # The static build gets linked into consumers' shared libraries (every Godot
+    # GDExtension is a .so), which fails on Linux without PIC:
+    #   relocation R_X86_64_PC32 against symbol `_ZSt4cerr' can not be used when
+    #   making a shared object; recompile with -fPIC
+    # No-op for MSVC, already the default on macOS.
+    POSITION_INDEPENDENT_CODE ON
 )
 
 if(${GA_SHARED_LIB})
