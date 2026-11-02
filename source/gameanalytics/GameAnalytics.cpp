@@ -366,6 +366,73 @@ namespace gameanalytics
         http::GAHTTPApi::setCustomHttpImpl(std::move(httpClient));
     }
 
+    void GameAnalytics::setStoreFront(std::unique_ptr<GAStoreFront>&& storeFront)
+    {
+        if(_endThread)
+        {
+            return;
+        }
+
+        if (isSdkReady(true, false))
+        {
+            logging::GALogger::w("Storefront must be set before SDK is initialized.");
+            return;
+        }
+
+        if (!storeFront)
+        {
+            return;
+        }
+
+        const std::string name = storeFront->getName();
+
+        if (!storeFront->isAvailable())
+        {
+            logging::GALogger::w("Storefront '%s' is not available (store client not running or its SDK not initialized), ignoring it.", name.c_str());
+            return;
+        }
+
+        // Runs on the caller's (game's) thread on purpose: store callbacks have to be registered there, and most store SDKs
+        // must not be called from our worker thread. start() caches everything the getters below return.
+        storeFront->start();
+
+        const std::string userId       = storeFront->getUserId();
+        const std::string model        = storeFront->getDeviceModel();
+        const std::string manufacturer = storeFront->getDeviceManufacturer();
+
+        // getCustomFields() is not applied yet: merging store context under the game's global custom fields needs GAState support
+
+        device::GADevice::setStoreFront(std::move(storeFront));
+
+        threading::GAThreading::performTaskOnGAThread([=]()
+        {
+            if (!userId.empty())
+            {
+                if (validators::GAValidator::validateUserId(userId))
+                {
+                    // same path as configureUserId(): a later configureUserId() call replaces it.
+                    // Sent raw for now; whether to hash store ids is still an open decision (RESEARCH.md, privacy).
+                    state::GAState::setUserId(userId);
+                }
+                else
+                {
+                    logging::GALogger::w("Storefront '%s' user id failed validation, ignoring it: %s", name.c_str(), userId.c_str());
+                }
+            }
+
+            if (!model.empty())
+            {
+                device::GADevice::setDeviceModel(model);
+            }
+            if (!manufacturer.empty())
+            {
+                device::GADevice::setDeviceManufacturer(manufacturer);
+            }
+
+            logging::GALogger::i("Storefront '%s' configured", name.c_str());
+        });
+    }
+
     void GameAnalytics::initialize(std::string const& gameKey, std::string const& gameSecret)
     {
         if(_endThread)
@@ -373,6 +440,12 @@ namespace gameanalytics
             return;
         }
         
+        // no storefront configured by the game: pick up a compiled-in store (GA_STORE_STEAM) if it is running
+        if (!device::GADevice::getStoreFront())
+        {
+            setStoreFront(MakeStoreFront());
+        }
+
         http::GAHTTPApi::getInstance().initializeClient();
         
         threading::GAThreading::performTaskOnGAThread([gameKey, gameSecret]()
@@ -888,6 +961,12 @@ namespace gameanalytics
         if(_endThread)
         {
             return;
+        }
+
+        // unregister store callbacks on the game's thread while the SDK is still alive
+        if (GAStoreFront* storeFront = device::GADevice::getStoreFront())
+        {
+            storeFront->stop();
         }
 
         try

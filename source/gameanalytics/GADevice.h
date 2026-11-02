@@ -8,6 +8,7 @@
 #include "GACommon.h"
 #include "GAHealth.h"
 #include "Platform/GAPlatform.h"
+#include "GameAnalytics/GAStoreFront.h"
 
 namespace gameanalytics
 {
@@ -57,10 +58,15 @@ namespace gameanalytics
                 static GAPlatform*  getPlatform();
                 static GAHealth*    getHealthTracker();
 
+                // the storefront (Steam, ...) set through GameAnalytics::configureStoreFront, nullptr when there is none
+                static void          setStoreFront(std::unique_ptr<GAStoreFront>&& storeFront);
+                static GAStoreFront* getStoreFront();
+
             private:
 
-                std::unique_ptr<GAPlatform> _platform;
-                std::unique_ptr<GAHealth>   _healthTracker;
+                std::unique_ptr<GAPlatform>   _platform;
+                std::unique_ptr<GAHealth>     _healthTracker;
+                std::unique_ptr<GAStoreFront> _storeFront;
 
                 void initDeviceId();
                 void initOSVersion();

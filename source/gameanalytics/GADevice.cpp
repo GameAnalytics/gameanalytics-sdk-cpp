@@ -27,6 +27,16 @@ namespace gameanalytics
             return getInstance()._platform.get();
         }
 
+        void GADevice::setStoreFront(std::unique_ptr<GAStoreFront>&& storeFront)
+        {
+            getInstance()._storeFront = std::move(storeFront);
+        }
+
+        GAStoreFront* GADevice::getStoreFront()
+        {
+            return getInstance()._storeFront.get();
+        }
+
         GADevice::GADevice():
             _platform(MakePlatform()),
             _healthTracker(std::make_unique<GAHealth>(_platform.get())),

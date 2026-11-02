@@ -7,6 +7,7 @@
 
 #include "GameAnalytics/GATypes.h"
 #include "GameAnalytics/GAHttpClient.h"
+#include "GameAnalytics/GAStoreFront.h"
 
 namespace gameanalytics
 {
@@ -69,6 +70,15 @@ namespace gameanalytics
          static void configureHttpClient(args_t&&... args)
          {
             return setHttpClient(std::make_unique<T>(std::forward<args_t>(args)...));
+         }
+
+         // Set a storefront integration (e.g. Steam). Call it on the game's thread after the store's own SDK is
+         // initialized and before initialize(). The SDK then takes the user id, device info and store events from it;
+         // nothing else is required from the game. A storefront that reports itself unavailable is ignored.
+         template<typename T, typename ...args_t>
+         static void configureStoreFront(args_t&&... args)
+         {
+            return setStoreFront(std::make_unique<T>(std::forward<args_t>(args)...));
          }
 
          // initialize - starting SDK (need configuration before starting)
@@ -143,6 +153,7 @@ namespace gameanalytics
      private:
 
         static void setHttpClient(std::unique_ptr<GAHttpClient>&& httpClient);
+        static void setStoreFront(std::unique_ptr<GAStoreFront>&& storeFront);
 
         static bool _endThread;
         static bool isSdkReady(bool needsInitialized, bool warn = true, std::string const& message = "");

@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="920" viewBox="0 0 1500 920">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+    <style>
+      text { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #222; }
+      .actor     { fill: #ECECFF; stroke: #9370DB; stroke-width: 1.5; }
+      .actorText { font-size: 17px; font-weight: 600; text-anchor: middle; dominant-baseline: middle; }
+      .life      { stroke: #999; stroke-width: 1.2; stroke-dasharray: 3 3; }
+      .msg       { stroke: #333; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .reply     { stroke-dasharray: 7 5; }
+      .label     { font-size: 15px; text-anchor: middle; paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+      .note      { font-size: 13px; fill: #6a51a3; font-style: italic; }
+      .loopBox   { fill: none; stroke: #8a8a8a; stroke-width: 1.4; }
+      .loopTag   { fill: #ECECFF; stroke: #8a8a8a; stroke-width: 1.4; }
+      .loopText  { font-size: 14px; font-weight: 600; }
+    </style>
+  </defs>
+
+  <rect width="1500" height="920" fill="#fff"/>
+
+  <!-- lifelines -->
+  <line class="life" x1="150"  y1="85" x2="150"  y2="835"/>
+  <line class="life" x1="520"  y1="85" x2="520"  y2="835"/>
+  <line class="life" x1="900"  y1="85" x2="900"  y2="835"/>
+  <line class="life" x1="1300" y1="85" x2="1300" y2="835"/>
+
+  <!-- participants (top) -->
+  <rect class="actor" x="70"   y="30" width="160" height="55" rx="4"/><text class="actorText" x="150"  y="58">Game</text>
+  <rect class="actor" x="410"  y="30" width="220" height="55" rx="4"/><text class="actorText" x="520"  y="58">GameAnalytics SDK</text>
+  <rect class="actor" x="800"  y="30" width="200" height="55" rx="4"/><text class="actorText" x="900"  y="58">GASteamFront</text>
+  <rect class="actor" x="1200" y="30" width="200" height="55" rx="4"/><text class="actorText" x="1300" y="58">Steam client</text>
+
+  <!-- 1 -->
+  <line class="msg" x1="150" y1="135" x2="1300" y2="135"/>
+  <text class="label" x="725" y="125">SteamAPI_Init()</text>
+
+  <!-- 2 -->
+  <line class="msg" x1="150" y1="195" x2="520" y2="195"/>
+  <text class="label" x="335" y="185">configureStoreFront() with GASteamFront</text>
+
+  <!-- 3 -->
+  <line class="msg" x1="520" y1="255" x2="900" y2="255"/>
+  <text class="label" x="710" y="245">isAvailable()? then start()</text>
+  <text class="note" x="710" y="275" text-anchor="middle">game thread</text>
+
+  <!-- 4 -->
+  <line class="msg" x1="900" y1="335" x2="1300" y2="335"/>
+  <text class="label" x="1100" y="305">GetSteamID, hardware type, app info,</text>
+  <text class="label" x="1100" y="325">RequestPrices, LoadItemDefinitions</text>
+
+  <!-- 5 -->
+  <line class="msg reply" x1="900" y1="395" x2="520" y2="395"/>
+  <text class="label" x="710" y="385">user id, device model, manufacturer</text>
+
+  <!-- 6 -->
+  <line class="msg" x1="150" y1="455" x2="520" y2="455"/>
+  <text class="label" x="335" y="445">initialize(gameKey, gameSecret)</text>
+
+  <!-- loop -->
+  <rect class="loopBox" x="95" y="485" width="1265" height="210"/>
+  <path class="loopTag" d="M95,485 h70 v22 l-10,10 h-60 z"/>
+  <text class="loopText" x="110" y="502">loop</text>
+  <text class="loopText" x="200" y="502" fill="#555">[every frame]</text>
+
+  <!-- 7 -->
+  <line class="msg" x1="150" y1="545" x2="1300" y2="545"/>
+  <text class="label" x="725" y="535">SteamAPI_RunCallbacks()</text>
+
+  <!-- 8 -->
+  <line class="msg reply" x1="1300" y1="610" x2="900" y2="610"/>
+  <text class="label" x="1100" y="580">achievement / purchase / DLC /</text>
+  <text class="label" x="1100" y="600">inventory / shutdown callbacks</text>
+
+  <!-- 9 -->
+  <line class="msg" x1="900" y1="665" x2="520" y2="665"/>
+  <text class="label" x="710" y="655">send* helpers → public API → GA thread</text>
+
+  <!-- 10 -->
+  <line class="msg" x1="150" y1="740" x2="520" y2="740"/>
+  <text class="label" x="335" y="730">onQuit()</text>
+
+  <!-- 11 -->
+  <line class="msg" x1="520" y1="800" x2="900" y2="800"/>
+  <text class="label" x="710" y="790">stop()</text>
+  <text class="note" x="710" y="820" text-anchor="middle">game thread</text>
+
+  <!-- participants (bottom) -->
+  <rect class="actor" x="70"   y="835" width="160" height="55" rx="4"/><text class="actorText" x="150"  y="863">Game</text>
+  <rect class="actor" x="410"  y="835" width="220" height="55" rx="4"/><text class="actorText" x="520"  y="863">GameAnalytics SDK</text>
+  <rect class="actor" x="800"  y="835" width="200" height="55" rx="4"/><text class="actorText" x="900"  y="863">GASteamFront</text>
+  <rect class="actor" x="1200" y="835" width="200" height="55" rx="4"/><text class="actorText" x="1300" y="863">Steam client</text>
+</svg>
