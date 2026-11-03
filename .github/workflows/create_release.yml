@@ -34,8 +34,17 @@ jobs:
 
       - name: Push tag ${{ inputs.tag_name }}
         run: |
-          git tag ${{ inputs.tag_name }}
-          git push origin ${{ inputs.tag_name }}
+          # release.py pushes the tag before triggering this workflow
+          if git rev-parse -q --verify "refs/tags/${{ inputs.tag_name }}" >/dev/null; then
+            if [ "$(git rev-list -n 1 ${{ inputs.tag_name }})" != "$(git rev-parse HEAD)" ]; then
+              echo "::error::Tag ${{ inputs.tag_name }} exists but does not point at $(git rev-parse --short HEAD)"
+              exit 1
+            fi
+            echo "Tag ${{ inputs.tag_name }} already exists at HEAD"
+          else
+            git tag ${{ inputs.tag_name }}
+            git push origin ${{ inputs.tag_name }}
+          fi
     
       - name: Download Artifacts
         uses: actions/download-artifact@v8
