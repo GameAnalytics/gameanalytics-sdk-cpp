@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.4.2
+
+### Fixed
+
+- **Linux: build used -fPIC**
+- **Windows: cpu model detection has been improved**
+- **Windows: windows version is now more reliable**
+
 ## 5.4.1
 
 ### Fixed
