@@ -38,8 +38,8 @@ namespace fs = std::filesystem;
 
 namespace
 {
-    constexpr const char* kGameKey      = "bd624ee6f8e6efb32a054f8d7ba11618";
-    constexpr const char* kGameSecret   = "7f5c3f682cbd217841efba92e92ffb1b3b6612bc";
+    constexpr const char* kGameKey      = "0123456789abcdef0123456789abcdef";
+    constexpr const char* kGameSecret   = "0123456789abcdef0123456789abcdef01234567";
     constexpr const char* kDatabaseName = "ga.sqlite3";
     constexpr const char* kFolderName   = "GameAnalytics";
 
@@ -228,16 +228,35 @@ TEST_F(GAPersistentPathTest, PlatformPathPreservesUnicodeHome)
     EXPECT_TRUE(sameDirectory(path, home / kFolderName)) << path;
 }
 
-TEST_F(GAPersistentPathTest, PlatformPathCreatesMissingDirectories)
+// a home directory that does not exist is an environment problem, not the
+// SDK's: macOS and Linux fall back to a relative folder rather than creating
+// it. Windows has no such guard and creates the missing tree.
+TEST_F(GAPersistentPathTest, PlatformPathFallsBackWhenHomeIsMissing)
 {
     const fs::path home = _root / "missing" / "nested" / "home";
     ASSERT_FALSE(fs::exists(home));
     ScopedHomeVariable scopedHome(home);
 
+#if IS_WIN32
+    const fs::path expected = home / kFolderName;
+#else
+    const fs::path expected      = fs::current_path() / kFolderName;
+    const bool     existedBefore = fs::exists(expected);
+#endif
+
     const std::string path = platformPath();
 
     ASSERT_FALSE(path.empty());
-    EXPECT_TRUE(sameDirectory(path, home / kFolderName)) << path;
+    EXPECT_TRUE(sameDirectory(path, expected)) << path;
+
+#if !IS_WIN32
+    EXPECT_EQ(kFolderName, path);
+    if (!existedBefore)
+    {
+        std::error_code ec;
+        fs::remove_all(expected, ec);
+    }
+#endif
 }
 
 TEST_F(GAPersistentPathTest, PlatformPathFallsBackToRelativeDirectoryWithoutHome)
