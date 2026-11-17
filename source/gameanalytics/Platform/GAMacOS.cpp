@@ -51,9 +51,14 @@ std::string gameanalytics::GAPlatformMacOS::getPersistentPath()
         }
     }
     
-    if(!std::filesystem::exists(path))
+    std::error_code ec;
+    if(!std::filesystem::exists(path, ec))
     {
-        std::filesystem::create_directory(path);
+        std::filesystem::create_directories(path, ec);
+        if(ec)
+        {
+            return "";
+        }
     }
     
     return path;

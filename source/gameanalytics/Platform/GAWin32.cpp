@@ -149,20 +149,25 @@ std::string GAPlatformWin32::getBuildPlatform()
 
 std::string GAPlatformWin32::getPersistentPath()
 {
-    std::string path = "GameAnalytics";
+    namespace fs = std::filesystem;
 
-    char* appData = std::getenv("LOCALAPPDATA");
-    if (appData && strlen(appData))
+    fs::path path = L"GameAnalytics";
+
+    wchar_t* appData = nullptr;
+    size_t   length  = 0;
+    if (_wdupenv_s(&appData, &length, L"LOCALAPPDATA") == 0 && appData && *appData)
     {
-        path = std::string(appData) + '\\' + path;
+        path = fs::path(appData) / path;
+    }
+    free(appData);
+
+    std::error_code ec;
+    if (!fs::exists(path, ec))
+    {
+        fs::create_directories(path, ec);
     }
 
-    if(!std::filesystem::exists(path))
-    {
-        std::filesystem::create_directories(path);
-    }
-
-    return path;
+    return ec ? "" : path.u8string();
 }
 
 std::string getRegistryKey(HKEY key, const TCHAR* subkey, const TCHAR* value)
