@@ -90,7 +90,8 @@ namespace gameanalytics
                 return;
             }
 
-             std::string logFilePath = writablepath + "/" + LOG_FILE_NAME;
+            std::filesystem::path logFilePath = std::filesystem::u8path(writablepath);
+            logFilePath /= LOG_FILE_NAME;
 
             logFile.open(logFilePath, std::ios::out | std::ios::trunc);
 
