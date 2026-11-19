@@ -117,19 +117,28 @@ std::string gameanalytics::GAPlatformLinux::getBuildPlatform()
 
 std::string gameanalytics::GAPlatformLinux::getPersistentPath()
 {
-    std::string path = std::getenv("HOME");
-    path += "/GameAnalytics";
-
-    mode_t nMode = 0733;
-    int result = mkdir(path.c_str(), nMode);
-    if (result == 0 || errno == EEXIST)
+    std::string path = "GameAnalytics";
+    std::error_code ec;
+    
+    const char* homeDir = std::getenv("HOME");
+    if(homeDir && strlen(homeDir))
     {
-        return path;
+        if(std::filesystem::exists(homeDir, ec) && !ec)
+        {
+            path = std::string(homeDir) + "/" + path;
+        }
     }
-    else
+    
+    if(!std::filesystem::exists(path, ec))
     {
-        return "";
+        std::filesystem::create_directories(path, ec);
+        if(ec)
+        {
+            return "";
+        }
     }
+    
+    return path;
 }
 
 std::string gameanalytics::GAPlatformLinux::getDeviceModel()

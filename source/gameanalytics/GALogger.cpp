@@ -90,13 +90,14 @@ namespace gameanalytics
                 return;
             }
 
-             std::string logFilePath = writablepath + "/" + LOG_FILE_NAME;
+            std::filesystem::path logFilePath = std::filesystem::u8path(writablepath);
+            logFilePath /= LOG_FILE_NAME;
 
             logFile.open(logFilePath, std::ios::out | std::ios::trunc);
 
             if (!logFile.is_open())
             {
-                ZF_LOGW("Failed to open log file %s", logFilePath.c_str());
+                std::cerr << "Failed to open log file:" << logFilePath << std::endl;
                 return;
             }
 
@@ -105,9 +106,8 @@ namespace gameanalytics
             logInitialized  = true;
             currentLogCount = 0;
 
-            GALogger::i("Log file added under: %s", logFilePath.c_str());
+            GALogger::i("Log file added under: %s", logFilePath.string().c_str());
         }
-
 
         void GALogger::sendNotificationMessage(std::string const& message, EGALoggerMessageType type)
         {

@@ -31,8 +31,8 @@ using namespace gameanalytics;
 
 namespace
 {
-    constexpr const char* kGameKey    = "bd624ee6f8e6efb32a054f8d7ba11618";
-    constexpr const char* kGameSecret = "7f5c3f682cbd217841efba92e92ffb1b3b6612bc";
+    constexpr const char* kGameKey    = "0123456789abcdef0123456789abcdef";
+    constexpr const char* kGameSecret = "0123456789abcdef0123456789abcdef01234567";
 
     // shared handle so the client installed through the public
     // configureHttpClient<T>() template stays inspectable from the test

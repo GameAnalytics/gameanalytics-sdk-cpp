@@ -15,7 +15,7 @@ using namespace gameanalytics;
 
 namespace
 {
-    constexpr const char* kGameKey = "bd624ee6f8e6efb32a054f8d7ba11618";
+    constexpr const char* kGameKey = "0123456789abcdef0123456789abcdef";
 
     void seedCachedConfig(std::string const& lastUsedIdentifier, std::string const& configsHash)
     {
