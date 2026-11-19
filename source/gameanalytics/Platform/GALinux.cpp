@@ -118,17 +118,17 @@ std::string gameanalytics::GAPlatformLinux::getBuildPlatform()
 std::string gameanalytics::GAPlatformLinux::getPersistentPath()
 {
     std::string path = "GameAnalytics";
+    std::error_code ec;
     
     const char* homeDir = std::getenv("HOME");
     if(homeDir && strlen(homeDir))
     {
-        if(std::filesystem::exists(homeDir))
+        if(std::filesystem::exists(homeDir, ec) && !ec)
         {
             path = std::string(homeDir) + "/" + path;
         }
     }
     
-    std::error_code ec;
     if(!std::filesystem::exists(path, ec))
     {
         std::filesystem::create_directories(path, ec);
