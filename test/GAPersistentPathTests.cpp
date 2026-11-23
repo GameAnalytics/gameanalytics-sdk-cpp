@@ -229,8 +229,19 @@ TEST_F(GAPersistentPathTest, PlatformPathPreservesUnicodeHome)
 }
 
 // a home directory that does not exist is an environment problem, not the
-// SDK's: macOS and Linux fall back to a relative folder rather than creating
-// it. Windows has no such guard and creates the missing tree.
+// SDK's: Linux reports no path and macOS falls back to a relative folder,
+// neither creates it. Windows has no such guard and creates the missing tree.
+#if IS_LINUX
+TEST_F(GAPersistentPathTest, PlatformPathIsEmptyWhenHomeIsMissing)
+{
+    const fs::path home = _root / "missing" / "nested" / "home";
+    ASSERT_FALSE(fs::exists(home));
+    ScopedHomeVariable scopedHome(home);
+
+    EXPECT_TRUE(platformPath().empty());
+    EXPECT_FALSE(fs::exists(home));
+}
+#else
 TEST_F(GAPersistentPathTest, PlatformPathFallsBackWhenHomeIsMissing)
 {
     const fs::path home = _root / "missing" / "nested" / "home";
@@ -258,16 +269,10 @@ TEST_F(GAPersistentPathTest, PlatformPathFallsBackWhenHomeIsMissing)
     }
 #endif
 }
+#endif
 
 TEST_F(GAPersistentPathTest, PlatformPathFallsBackToRelativeDirectoryWithoutHome)
 {
-#if IS_LINUX
-    // cannot be asserted in-process: the current Linux implementation builds a
-    // std::string from the null getenv() result, which would take the whole
-    // test binary down rather than fail this one test
-    GTEST_SKIP() << "Linux getPersistentPath() dereferences a null HOME";
-#endif
-
     const fs::path fallback      = fs::current_path() / kFolderName;
     const bool     existedBefore = fs::exists(fallback);
     ScopedHomeVariable scopedHome{fs::path()};

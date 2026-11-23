@@ -121,17 +121,14 @@ std::string gameanalytics::GAPlatformLinux::getPersistentPath()
     std::error_code ec;
     
     const char* homeDir = std::getenv("HOME");
-    if(homeDir && strlen(homeDir))
+    if(homeDir)
     {
-        if(std::filesystem::exists(homeDir, ec) && !ec)
-        {
-            path = std::string(homeDir) + "/" + path;
-        }
+        path = std::string(homeDir) + "/" + path;
     }
     
     if(!std::filesystem::exists(path, ec))
     {
-        std::filesystem::create_directories(path, ec);
+        std::filesystem::create_directory(path, ec);
         if(ec)
         {
             return "";
