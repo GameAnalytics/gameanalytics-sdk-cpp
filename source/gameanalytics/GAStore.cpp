@@ -258,7 +258,7 @@ namespace gameanalytics
             constexpr const char* sql_ga_session = "CREATE TABLE IF NOT EXISTS ga_session(session_id CHAR(50) PRIMARY KEY NOT NULL, timestamp CHAR(50) NOT NULL, event TEXT NOT NULL);";
             constexpr const char* sql_ga_state = "CREATE TABLE IF NOT EXISTS ga_state(key CHAR(255) PRIMARY KEY NOT NULL, value TEXT);";
             constexpr const char* sql_ga_progression = "CREATE TABLE IF NOT EXISTS ga_progression(progression CHAR(255) PRIMARY KEY NOT NULL, tries CHAR(255));";
-            constexpr const char* sql_ga_players = "CREATE TABLE IF NOT EXISTS ga_players(user_id CHAR(255) PRIMARY KEY NOT NULL, data TEXT NOT NULL);";
+            constexpr const char* sql_ga_players = "CREATE TABLE IF NOT EXISTS ga_players(user_id CHAR(255) PRIMARY KEY NOT NULL, data TEXT NOT NULL, last_seen INTEGER NOT NULL DEFAULT 0);";
 
             if (!GAStore::executeQuerySync(sql_ga_events))
             {
@@ -330,7 +330,7 @@ namespace gameanalytics
                 return false;
             }
 
-            if (!GAStore::executeQuerySync("SELECT user_id FROM ga_players LIMIT 0,1"))
+            if (!GAStore::executeQuerySync("SELECT user_id, last_seen FROM ga_players LIMIT 0,1"))
             {
                 logging::GALogger::d("ga_players corrupt, recreating.");
                 GAStore::executeQuerySync("DROP TABLE ga_players");
@@ -363,7 +363,7 @@ namespace gameanalytics
             }
         }
 
-        void GAStore::setPlayer(std::string const& userId, std::string const& data)
+        void GAStore::setPlayer(std::string const& userId, std::string const& data, int64_t lastSeenTs)
         {
             if (userId.empty())
             {
@@ -376,8 +376,53 @@ namespace gameanalytics
                 return;
             }
 
-            StringVector parameterArray = {userId, data};
-            executeQuerySync("INSERT OR REPLACE INTO ga_players (user_id, data) VALUES(?, ?);", parameterArray, true);
+            StringVector parameterArray = {userId, data, std::to_string(lastSeenTs)};
+            executeQuerySync("INSERT OR REPLACE INTO ga_players (user_id, data, last_seen) VALUES(?, ?, ?);", parameterArray, true);
+        }
+
+        int64_t GAStore::countPlayers()
+        {
+            json rows;
+            executeQuerySync("SELECT COUNT(*) AS n FROM ga_players;", rows);
+
+            if (rows.is_array() && !rows.empty())
+            {
+                return utilities::getOptionalValue<int64_t>(rows[0], "n", 0);
+            }
+
+            return 0;
+        }
+
+        int64_t GAStore::evictPlayersInactiveSince(int64_t cutoffTs)
+        {
+            const int64_t before = countPlayers();
+
+            StringVector parameterArray = {std::to_string(cutoffTs)};
+            executeQuerySync("DELETE FROM ga_players WHERE last_seen < ?;", parameterArray);
+
+            return before - countPlayers();
+        }
+
+        int64_t GAStore::trimPlayers(int64_t maxPlayers)
+        {
+            if (maxPlayers < 0)
+            {
+                return 0;
+            }
+
+            const int64_t before = countPlayers();
+            if (before <= maxPlayers)
+            {
+                return 0;
+            }
+
+            // keep the maxPlayers most recently seen rows
+            const std::string sql = utilities::printString(
+                "DELETE FROM ga_players WHERE user_id IN (SELECT user_id FROM ga_players ORDER BY last_seen DESC, user_id LIMIT -1 OFFSET %lld);",
+                static_cast<long long>(maxPlayers));
+            executeQuerySync(sql);
+
+            return before - countPlayers();
         }
 
         void GAStore::removePlayer(std::string const& userId)

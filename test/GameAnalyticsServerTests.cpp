@@ -85,7 +85,7 @@ namespace
 
             http = std::make_shared<MockHttpState>();
             setHttpResponse(200, json{
-                {"server_ts", utilities::getTimestamp()},
+                {"server_ts", utilities::GAUtilities::timeIntervalSince1970()},
                 {"configs_hash", "hash1"},
                 {"ab_id", "ab1"},
                 {"ab_variant_id", "var1"}
@@ -457,4 +457,83 @@ TEST_F(GameAnalyticsServerTest, PlayerEventsAreKeptSeparatePerPlayer)
     EXPECT_EQ(1u, storedEvents("design", "p1").size());
     EXPECT_EQ(2u, storedEvents("design", "p2").size());
     EXPECT_TRUE(storedEvents("design", "server_1").empty());
+}
+
+// ---- remote configs per player ----
+
+TEST_F(GameAnalyticsServerTest, SessionStartDeliversRemoteConfigsToThePlayer)
+{
+    setHttpResponse(201, json{
+        {"server_ts", utilities::GAUtilities::timeIntervalSince1970()},
+        {"configs_hash", "hash_p1"},
+        {"ab_id", "exp_a"},
+        {"ab_variant_id", "variant_b"},
+        {"configs", json::array({
+            {{"key", "spawn_rate"}, {"value", "0.25"}, {"id", "cfg_1"}, {"vsn", 3}},
+            {{"key", "hardcore"},   {"value", "true"}, {"id", "cfg_2"}, {"vsn", 1}}
+        })}
+    }.dump());
+
+    startSession("p1");
+    Player& p = server->getPlayer("p1");
+
+    EXPECT_TRUE(p.isRemoteConfigsReady());
+    EXPECT_EQ("exp_a", p.getABId());
+    EXPECT_EQ("variant_b", p.getABVariantId());
+    EXPECT_EQ("hash_p1", p.getConfigsHash());
+    EXPECT_DOUBLE_EQ(0.25, p.getRemoteConfigsValueAsFloat("spawn_rate"));
+    EXPECT_TRUE(p.getRemoteConfigsValueAsBool("hardcore"));
+
+    server->addPlayerDesignEvent("p1", "match:start");
+    ASSERT_TRUE(drainGAThread());
+
+    std::vector<json> events = storedEvents("design", "p1");
+    ASSERT_EQ(1u, events.size());
+    EXPECT_EQ("exp_a", events[0].value("ab_id", ""));
+    EXPECT_EQ("variant_b", events[0].value("ab_variant_id", ""));
+    ASSERT_TRUE(events[0].contains("configurations_v3"));
+    ASSERT_EQ(2u, events[0]["configurations_v3"].size());
+    EXPECT_EQ("spawn_rate", events[0]["configurations_v3"][0].value("key", ""));
+    EXPECT_EQ("cfg_1", events[0]["configurations_v3"][0].value("id", ""));
+    EXPECT_EQ(3, events[0]["configurations_v3"][0].value("vsn", 0));
+
+    // the backend answers 200 without configs when the hash matches: keep what we have
+    setHttpResponse(200, json{{"server_ts", utilities::GAUtilities::timeIntervalSince1970()}}.dump());
+    server->endPlayerSession("p1");
+    ASSERT_TRUE(drainGAThread());
+    startSession("p1");
+
+    EXPECT_EQ("hash_p1", server->getPlayer("p1").getConfigsHash());
+    EXPECT_DOUBLE_EQ(0.25, server->getPlayer("p1").getRemoteConfigsValueAsFloat("spawn_rate"));
+    EXPECT_EQ("exp_a", server->getPlayer("p1").getABId());
+}
+
+TEST_F(GameAnalyticsServerTest, PlayerRetentionIsAppliedOnInitialize)
+{
+    constexpr int64_t DAY = 24 * 60 * 60;
+    auto storeAged = [](std::string const& uid, int64_t age)
+    {
+        const int64_t ts = utilities::GAUtilities::timeIntervalSince1970() - age;
+        json j = json::parse(Player(uid, "").serialize());
+        j["last_seen_ts"] = ts;
+        store::GAStore::setPlayer(uid, j.dump(), ts);
+    };
+    storeAged("stale", 90 * DAY);
+    storeAged("recent", 2 * DAY);
+
+    // a second server instance over the same store, with a policy, picks up only the recent player
+    GameAnalyticsServer other("server_1", "ext_server_1", "1.0.0");
+    other.setPlayerRetention(30, 100);
+    other.initialize(kGameKey, kGameSecret);
+    ASSERT_TRUE(drainGAThread());
+
+    EXPECT_FALSE(other.isExistingPlayer("stale"));
+    EXPECT_TRUE(other.isExistingPlayer("recent"));
+    EXPECT_EQ(1, store::GAStore::countPlayers());
+
+    EXPECT_EQ(0u, other.evictPlayersInactiveSince(7));
+    EXPECT_EQ(1u, other.evictPlayersInactiveSince(1));
+    EXPECT_FALSE(other.isExistingPlayer("recent"));
+    ASSERT_TRUE(drainGAThread());
+    EXPECT_EQ(0, store::GAStore::countPlayers());
 }

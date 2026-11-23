@@ -24,7 +24,11 @@ namespace gameanalytics
         std::recursive_mutex _mutex;
         bool _storeLoaded = false;
 
-        static void writeToStore(std::string const& userId, std::string const& data);
+        // retention policy, 0 = unlimited
+        int64_t _maxIdleSeconds = 0;
+        size_t  _maxPlayers     = 0;
+
+        static void writeToStore(std::string const& userId, std::string const& data, int64_t lastSeenTs);
         static void eraseFromStore(std::string const& userId);
 
         public:
@@ -52,6 +56,20 @@ namespace gameanalytics
 
             // writes every registered player to the store
             void    persistAll();
+
+            // retention. Inactive players (no running session) are dropped from memory and
+            // the store when they were last seen before the cutoff, or when the registry
+            // exceeds maxPlayers (oldest first). The policy is applied on load, when a
+            // player is added and by applyRetention(); all return the number evicted.
+            void    setRetention(int64_t maxIdleSeconds, size_t maxPlayers);
+            size_t  evictPlayersInactiveSince(int64_t cutoffTs);
+            size_t  trimToMaxPlayers(size_t maxPlayers);
+            size_t  applyRetention();
+
+            // applies an init response (configs hash, A/B ids, remote configs) to a player.
+            // Remote configs are replaced only when the response carries a "configs" array,
+            // otherwise the cached ones are kept (the backend omits them when the hash matches).
+            static void applyInitResponse(Player& player, json& initResponse);
 
             static json getPlayerAnnotations(Player const& player);
             static json getInitAnnotations(Player const& player);

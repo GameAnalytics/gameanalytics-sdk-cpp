@@ -47,6 +47,17 @@ namespace gameanalytics
             // number of players registered on this server (in memory)
             size_t getPlayerCount() const;
 
+            // Retention for the stored players (0 = unlimited). Players without a running
+            // session are evicted from memory and the database when they were last seen more
+            // than maxInactiveDays ago, or when more than maxStoredPlayers are registered
+            // (least recently seen first). Applied on initialize and when players are added.
+            // Call before initialize so the stored table is trimmed before it is loaded.
+            void setPlayerRetention(int maxInactiveDays, size_t maxStoredPlayers);
+
+            // evicts players without a running session that were last seen more than
+            // the given number of days ago; returns how many were removed
+            size_t evictPlayersInactiveSince(int days);
+
             void startPlayerSession(std::string const& userId);
             void endPlayerSession(std::string const& userId);
 

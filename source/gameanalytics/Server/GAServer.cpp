@@ -84,6 +84,23 @@ namespace gameanalytics
         return _playerDatabase->countPlayers();
     }
 
+    void GameAnalyticsServer::setPlayerRetention(int maxInactiveDays, size_t maxStoredPlayers)
+    {
+        constexpr int64_t SECONDS_PER_DAY = 24 * 60 * 60;
+        _playerDatabase->setRetention(maxInactiveDays > 0 ? maxInactiveDays * SECONDS_PER_DAY : 0, maxStoredPlayers);
+    }
+
+    size_t GameAnalyticsServer::evictPlayersInactiveSince(int days)
+    {
+        constexpr int64_t SECONDS_PER_DAY = 24 * 60 * 60;
+        if(days < 0)
+        {
+            return 0;
+        }
+
+        return _playerDatabase->evictPlayersInactiveSince(utilities::GAUtilities::timeIntervalSince1970() - days * SECONDS_PER_DAY);
+    }
+
     void GameAnalyticsServer::startPlayerSession(std::string const& userId)
     {
         threading::GAThreading::performTaskOnGAThread(
@@ -166,9 +183,7 @@ namespace gameanalytics
         // init is ok
         if ((initResponse == http::Ok || initResponse == http::Created) && !initResponseDict.empty())
         {
-            player._configsHash = utilities::getOptionalValue<std::string>(initResponseDict, "configs_hash");
-            player._abId        = utilities::getOptionalValue<std::string>(initResponseDict, "ab_id");
-            player._abVariantId = utilities::getOptionalValue<std::string>(initResponseDict, "ab_variant_id");
+            PlayerDatabase::applyInitResponse(player, initResponseDict);
 
             if(_playerCallbacks)
             {

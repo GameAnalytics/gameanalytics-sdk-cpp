@@ -7,6 +7,9 @@
 #include "GAState.h"
 #include "GAThreading.h"
 
+#include <algorithm>
+#include <limits>
+
 namespace gameanalytics
 {
     PlayerNotFound::PlayerNotFound(std::string const& userId):
@@ -37,6 +40,12 @@ namespace gameanalytics
 
         _players[uid] = std::forward<Player>(player);
         persistPlayer(_players[uid]);
+
+        if(_maxPlayers > 0 && _players.size() > _maxPlayers)
+        {
+            trimToMaxPlayers(_maxPlayers);
+        }
+
         return true;
     }
 
@@ -109,6 +118,25 @@ namespace gameanalytics
 
         try
         {
+            // trim the store first so evicted players are never loaded
+            if(_maxIdleSeconds > 0)
+            {
+                const int64_t evicted = store::GAStore::evictPlayersInactiveSince(utilities::GAUtilities::timeIntervalSince1970() - _maxIdleSeconds);
+                if(evicted > 0)
+                {
+                    logging::GALogger::i("Player database: evicted %lld stored players inactive for more than %lld seconds", (long long)evicted, (long long)_maxIdleSeconds);
+                }
+            }
+
+            if(_maxPlayers > 0)
+            {
+                const int64_t trimmed = store::GAStore::trimPlayers(static_cast<int64_t>(_maxPlayers));
+                if(trimmed > 0)
+                {
+                    logging::GALogger::i("Player database: trimmed %lld stored players over the limit of %zu", (long long)trimmed, _maxPlayers);
+                }
+            }
+
             json rows;
             store::GAStore::getPlayers(rows);
 
@@ -164,7 +192,167 @@ namespace gameanalytics
         }
 
         logging::GALogger::i("Player database: restored %zu players, %zu registered in total", restored, _players.size());
+
+        // players registered before the load count against the policy too
+        applyRetention();
+
         return restored;
+    }
+
+    void PlayerDatabase::setRetention(int64_t maxIdleSeconds, size_t maxPlayers)
+    {
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        _maxIdleSeconds = maxIdleSeconds > 0 ? maxIdleSeconds : 0;
+        _maxPlayers     = maxPlayers;
+    }
+
+    size_t PlayerDatabase::evictPlayersInactiveSince(int64_t cutoffTs)
+    {
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+
+        size_t evicted = 0;
+        for(auto it = _players.begin(); it != _players.end(); )
+        {
+            Player const& p = it->second;
+            if(!p.isActive() && p.getLastSeen() < cutoffTs)
+            {
+                eraseFromStore(it->first);
+                it = _players.erase(it);
+                ++evicted;
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        if(evicted > 0)
+        {
+            logging::GALogger::i("Player database: evicted %zu players last seen before %lld", evicted, (long long)cutoffTs);
+        }
+
+        return evicted;
+    }
+
+    size_t PlayerDatabase::trimToMaxPlayers(size_t maxPlayers)
+    {
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+
+        if(maxPlayers == 0 || _players.size() <= maxPlayers)
+        {
+            return 0;
+        }
+
+        // candidates: inactive players, oldest first
+        std::vector<std::pair<int64_t, std::string>> candidates;
+        candidates.reserve(_players.size());
+        for(auto const& [uid, p] : _players)
+        {
+            if(!p.isActive())
+            {
+                candidates.emplace_back(p.getLastSeen(), uid);
+            }
+        }
+        std::sort(candidates.begin(), candidates.end());
+
+        size_t evicted = 0;
+        for(auto const& [lastSeen, uid] : candidates)
+        {
+            if(_players.size() <= maxPlayers)
+            {
+                break;
+            }
+
+            (void)lastSeen;
+            eraseFromStore(uid);
+            _players.erase(uid);
+            ++evicted;
+        }
+
+        if(evicted > 0)
+        {
+            logging::GALogger::i("Player database: evicted %zu players to stay within %zu", evicted, maxPlayers);
+        }
+
+        if(_players.size() > maxPlayers)
+        {
+            logging::GALogger::w("Player database: %zu active players exceed the limit of %zu, none were evicted", _players.size(), maxPlayers);
+        }
+
+        return evicted;
+    }
+
+    size_t PlayerDatabase::applyRetention()
+    {
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+
+        size_t evicted = 0;
+        if(_maxIdleSeconds > 0)
+        {
+            evicted += evictPlayersInactiveSince(utilities::GAUtilities::timeIntervalSince1970() - _maxIdleSeconds);
+        }
+        if(_maxPlayers > 0)
+        {
+            evicted += trimToMaxPlayers(_maxPlayers);
+        }
+        return evicted;
+    }
+
+    void PlayerDatabase::applyInitResponse(Player& player, json& response)
+    {
+        player._configsHash = utilities::getOptionalValue<std::string>(response, "configs_hash", player._configsHash);
+        player._abId        = utilities::getOptionalValue<std::string>(response, "ab_id", player._abId);
+        player._abVariantId = utilities::getOptionalValue<std::string>(response, "ab_variant_id", player._abVariantId);
+
+        if(!response.contains("configs") || !response["configs"].is_array())
+        {
+            // hash matched: the backend sends no configs, keep the cached ones
+            player._remoteConfigsReady = true;
+            return;
+        }
+
+        try
+        {
+            json content  = json::array();
+            json tracking = json::array();
+
+            const int64_t now = state::GAState::getClientTsAdjusted();
+
+            for(json& cfg : response["configs"])
+            {
+                if(!cfg.is_object() || cfg.empty())
+                {
+                    continue;
+                }
+
+                const std::string key = utilities::getOptionalValue<std::string>(cfg, "key", "");
+                const int64_t start_ts = utilities::getOptionalValue<int64_t>(cfg, "start_ts", std::numeric_limits<int64_t>::min());
+                const int64_t end_ts   = utilities::getOptionalValue<int64_t>(cfg, "end_ts",   std::numeric_limits<int64_t>::max());
+
+                if(key.empty() || !cfg.contains("value") || now <= start_ts || now >= end_ts)
+                {
+                    continue;
+                }
+
+                content.push_back({{"key", key}, {"value", cfg["value"]}});
+                tracking.push_back({
+                    {"key", key},
+                    {"id",  utilities::getOptionalValue<std::string>(cfg, "id", "")},
+                    {"vsn", utilities::getOptionalValue<int>(cfg, "vsn", 0)}
+                });
+            }
+
+            player._remoteConfigsContent = content.dump();
+            player._remoteConfigs        = tracking.dump();
+            player._remoteConfigsReady   = true;
+            player.rebuildRemoteConfigValues();
+
+            logging::GALogger::d("Remote configs for player %s: %s", player._userId.c_str(), player._remoteConfigsContent.c_str());
+        }
+        catch(std::exception const& e)
+        {
+            logging::GALogger::e("Failed to apply remote configs for player %s: %s", player._userId.c_str(), e.what());
+        }
     }
 
     bool PlayerDatabase::isStoreLoaded() const
@@ -187,7 +375,7 @@ namespace gameanalytics
             return;
         }
 
-        writeToStore(uid, data);
+        writeToStore(uid, data, player.getLastSeen());
     }
 
     bool PlayerDatabase::persistPlayer(std::string const& uid)
@@ -214,16 +402,16 @@ namespace gameanalytics
         }
     }
 
-    void PlayerDatabase::writeToStore(std::string const& uid, std::string const& data)
+    void PlayerDatabase::writeToStore(std::string const& uid, std::string const& data, int64_t lastSeenTs)
     {
         threading::GAThreading::performTaskOnGAThread(
-            [uid, data]()
+            [uid, data, lastSeenTs]()
             {
                 // before initialize the store does not exist yet; loadFromStore
                 // writes the registered players back once it does
                 if(store::GAStore::getTableReady())
                 {
-                    store::GAStore::setPlayer(uid, data);
+                    store::GAStore::setPlayer(uid, data, lastSeenTs);
                 }
             }
         );

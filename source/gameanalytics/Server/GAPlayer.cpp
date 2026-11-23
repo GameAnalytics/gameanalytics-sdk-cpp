@@ -6,7 +6,8 @@
 
 namespace gameanalytics
 {
-    Player::Player()
+    Player::Player():
+        _lastSeenTs(utilities::GAUtilities::timeIntervalSince1970())
     {
         generateRandomId();
 
@@ -19,6 +20,7 @@ namespace gameanalytics
 
     Player::Player(std::string const& userId, std::string const& externalId):
         _userId(userId),
+        _lastSeenTs(utilities::GAUtilities::timeIntervalSince1970()),
         extUserId(externalId)
     {
         osVersion      = "windows 10";
@@ -53,6 +55,7 @@ namespace gameanalytics
         _sessionId = utilities::GAUtilities::generateUUID();
 
         _lastSessionTimestamp = std::chrono::steady_clock::now();
+        _lastSeenTs = utilities::GAUtilities::timeIntervalSince1970();
 
         _isActive = true;
     }
@@ -61,8 +64,104 @@ namespace gameanalytics
     {
         _sessionLength = currentSessionPlaytime();
         _totalSessionLength += _sessionLength;
+        _lastSeenTs = utilities::GAUtilities::timeIntervalSince1970();
 
         _isActive = false;
+    }
+
+    int64_t Player::totalPlaytime() const
+    {
+        return _totalSessionLength;
+    }
+
+    int64_t Player::getLastSeen() const
+    {
+        return _lastSeenTs;
+    }
+
+    std::string Player::getABId() const
+    {
+        return _abId;
+    }
+
+    std::string Player::getABVariantId() const
+    {
+        return _abVariantId;
+    }
+
+    bool Player::isRemoteConfigsReady() const
+    {
+        return _remoteConfigsReady;
+    }
+
+    std::string Player::getRemoteConfigs() const
+    {
+        return _remoteConfigsContent.empty() ? "[]" : _remoteConfigsContent;
+    }
+
+    std::string Player::getRemoteConfigsValueAsString(std::string const& key, std::string const& defaultValue) const
+    {
+        auto it = _remoteConfigValues.find(key);
+        return it != _remoteConfigValues.end() ? it->second : defaultValue;
+    }
+
+    int64_t Player::getRemoteConfigsValueAsInt(std::string const& key, int64_t defaultValue) const
+    {
+        try
+        {
+            const std::string s = getRemoteConfigsValueAsString(key);
+            if(!s.empty())
+            {
+                return std::stoll(s);
+            }
+        }
+        catch(std::exception const&)
+        {
+        }
+
+        return defaultValue;
+    }
+
+    uint64_t Player::getRemoteConfigsValueAsUInt(std::string const& key, uint64_t defaultValue) const
+    {
+        try
+        {
+            const std::string s = getRemoteConfigsValueAsString(key);
+            if(!s.empty())
+            {
+                return std::stoull(s);
+            }
+        }
+        catch(std::exception const&)
+        {
+        }
+
+        return defaultValue;
+    }
+
+    bool Player::getRemoteConfigsValueAsBool(std::string const& key, bool defaultValue) const
+    {
+        const std::string s = utilities::toLowerCase(getRemoteConfigsValueAsString(key));
+        if(s == "true"  || s == "1") return true;
+        if(s == "false" || s == "0") return false;
+        return defaultValue;
+    }
+
+    double Player::getRemoteConfigsValueAsFloat(std::string const& key, double defaultValue) const
+    {
+        try
+        {
+            const std::string s = getRemoteConfigsValueAsString(key);
+            if(!s.empty())
+            {
+                return std::stod(s);
+            }
+        }
+        catch(std::exception const&)
+        {
+        }
+
+        return defaultValue;
     }
 
     int Player::getSessionCount() const
@@ -73,6 +172,37 @@ namespace gameanalytics
     void Player::generateRandomId()
     {
         _userId = utilities::GAUtilities::generateUUID();
+    }
+
+    void Player::rebuildRemoteConfigValues()
+    {
+        _remoteConfigValues.clear();
+
+        if(_remoteConfigsContent.empty())
+        {
+            return;
+        }
+
+        try
+        {
+            json content = json::parse(_remoteConfigsContent);
+            for(json& cfg : content)
+            {
+                const std::string key = utilities::getOptionalValue<std::string>(cfg, "key", "");
+                if(key.empty() || !cfg.contains("value"))
+                {
+                    continue;
+                }
+
+                const json& value = cfg["value"];
+                _remoteConfigValues[key] = value.is_string() ? value.get<std::string>() : value.dump();
+            }
+        }
+        catch(std::exception const& e)
+        {
+            logging::GALogger::e("Failed to parse remote configs for player %s: %s", _userId.c_str(), e.what());
+            _remoteConfigValues.clear();
+        }
     }
 
     bool Player::isNewUser() const
@@ -169,6 +299,8 @@ namespace gameanalytics
             data["connection_type"]         = connectionType;
             data["country_code"]            = countryCode;
             data["transaction_num"]         = _transactionNum;
+            data["last_seen_ts"]            = _lastSeenTs;
+            data["remote_configs_ready"]    = _remoteConfigsReady;
 
             utilities::addIfNotEmpty(data, "ab_id", _abId);
             utilities::addIfNotEmpty(data, "ab_variant_id", _abVariantId); 
@@ -176,6 +308,8 @@ namespace gameanalytics
             utilities::addIfNotEmpty(data, "user_id_ext", extUserId);
             utilities::addIfNotEmpty(data, "gpu_model", gpuModel);
             utilities::addIfNotEmpty(data, "cpu_model", cpuModel);
+            utilities::addIfNotEmpty(data, "remote_configs", _remoteConfigs);
+            utilities::addIfNotEmpty(data, "remote_configs_content", _remoteConfigsContent);
 
             utilities::addIfNotEmpty(data, "custom_01", _customDimension1);
             utilities::addIfNotEmpty(data, "custom_02", _customDimension2);
@@ -225,6 +359,12 @@ namespace gameanalytics
             _abVariantId    = utilities::getOptionalValue<std::string>(data, "ab_variant_id", "");
             _configsHash    = utilities::getOptionalValue<std::string>(data, "configs_hash", "");
             _transactionNum = utilities::getOptionalValue<int>(data, "transaction_num", 0);
+            _lastSeenTs     = utilities::getOptionalValue<int64_t>(data, "last_seen_ts", 0);
+
+            _remoteConfigsReady   = utilities::getOptionalValue<bool>(data, "remote_configs_ready", false);
+            _remoteConfigs        = utilities::getOptionalValue<std::string>(data, "remote_configs", "");
+            _remoteConfigsContent = utilities::getOptionalValue<std::string>(data, "remote_configs_content", "");
+            rebuildRemoteConfigValues();
 
             extUserId      = utilities::getOptionalValue<std::string>(data, "user_id_ext", "");
             osVersion      = utilities::getOptionalValue<std::string>(data, "os_version", "");

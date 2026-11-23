@@ -18,7 +18,14 @@ namespace gameanalytics
         std::string _abId;
         std::string _abVariantId;
         std::string _configsHash;
+
+        // remote configs delivered by the init call for this player:
+        // _remoteConfigs is the tracking info (key/id/vsn) sent with every event,
+        // _remoteConfigsContent the key/value list, _remoteConfigValues the lookup table
         std::string _remoteConfigs;
+        std::string _remoteConfigsContent;
+        std::unordered_map<std::string, std::string> _remoteConfigValues;
+        bool _remoteConfigsReady = false;
 
         std::string _customDimension1;
         std::string _customDimension2;
@@ -35,9 +42,13 @@ namespace gameanalytics
         bool _isActive    = false;
         bool _isNewPlayer = false;
 
+        // unix time (seconds) of the last session start or end, used for retention
+        int64_t _lastSeenTs = 0;
+
         std::chrono::steady_clock::time_point _lastSessionTimestamp;
 
         void generateRandomId();
+        void rebuildRemoteConfigValues();
 
         public:
 
@@ -61,8 +72,22 @@ namespace gameanalytics
             std::string getUserId() const;
             std::string getABId() const;
             std::string getABVariantId() const;
-            std::string getRemoteConfigs() const;
             std::string getConfigsHash() const;
+
+            // remote configs (populated by the init call made on session start, cached across restarts)
+            bool        isRemoteConfigsReady() const;
+
+            // json array of {"key", "value"} objects, same format as GameAnalytics::getRemoteConfigsContentAsString
+            std::string getRemoteConfigs() const;
+
+            std::string getRemoteConfigsValueAsString(std::string const& key, std::string const& defaultValue = "") const;
+            int64_t     getRemoteConfigsValueAsInt(std::string const& key, int64_t defaultValue = 0) const;
+            uint64_t    getRemoteConfigsValueAsUInt(std::string const& key, uint64_t defaultValue = 0) const;
+            bool        getRemoteConfigsValueAsBool(std::string const& key, bool defaultValue = false) const;
+            double      getRemoteConfigsValueAsFloat(std::string const& key, double defaultValue = 0.0) const;
+
+            // unix time (seconds) the player last started or ended a session
+            int64_t     getLastSeen() const;
 
             bool setCustomDimension1(std::string const& dimension);
             bool setCustomDimension2(std::string const& dimension);
@@ -99,8 +124,8 @@ namespace gameanalytics
             // return playtime of the last session, valid only after onExit has been called
             int64_t getLastSessionLength() const;
 
-            // total session playtime
-            int  totalPlaytime() const;
+            // total session playtime in seconds, excluding the running session
+            int64_t totalPlaytime() const;
 
             // total session count
             int  getSessionCount() const;

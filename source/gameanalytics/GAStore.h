@@ -28,9 +28,15 @@ namespace gameanalytics
             static void setState(std::string const& key, std::string const& value);
 
             // server-side player persistence (ga_players table)
-            static void setPlayer(std::string const& userId, std::string const& data);
-            static void removePlayer(std::string const& userId);
-            static void getPlayers(json& out);
+            static void    setPlayer(std::string const& userId, std::string const& data, int64_t lastSeenTs);
+            static void    removePlayer(std::string const& userId);
+            static void    getPlayers(json& out);
+            static int64_t countPlayers();
+
+            // retention: drop players last seen before the given unix timestamp, and keep
+            // at most maxPlayers rows (the most recently seen). Both return the rows removed.
+            static int64_t evictPlayersInactiveSince(int64_t cutoffTs);
+            static int64_t trimPlayers(int64_t maxPlayers);
 
             static bool executeQuerySync(std::string const& sql);
             static void executeQuerySync(std::string const& sql, json& out);
