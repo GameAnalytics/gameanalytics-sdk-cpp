@@ -95,6 +95,9 @@ namespace
             server    = std::make_unique<GameAnalyticsServer>("server_1", "ext_server_1", "1.0.0");
             callbacks = std::make_shared<RecordingCallbacks>();
             server->setPlayerCallbacks(callbacks);
+            server->configureAvailableCurrencyTypes({"gems", "gold"});
+            server->configureAvailableResourceItemTypes({"boost", "weapon"});
+            GameAnalytics::configureAvailableCustomDimensions01({"ninja", "samurai"});
             server->initialize(kGameKey, kGameSecret);
             ASSERT_TRUE(drainGAThread());
             ASSERT_TRUE(state::GAState::isInitialized());
@@ -151,6 +154,21 @@ namespace
                 }
             }
             return events;
+        }
+
+        // starts a session and waits for it so the player exists for the userId overloads
+        void startSession(std::string const& userId)
+        {
+            server->startPlayerSession(userId);
+            ASSERT_TRUE(drainGAThread());
+            ASSERT_TRUE(server->isExistingPlayer(userId));
+        }
+
+        static CustomFields fields(std::string const& key, std::string const& value)
+        {
+            CustomFields f;
+            f.setString(key, value);
+            return f;
         }
 
         std::shared_ptr<MockHttpState> http;
@@ -233,4 +251,210 @@ TEST_F(GameAnalyticsServerTest, PlayerProgressionEventOmitsScoreWhenNotRequested
     EXPECT_EQ("Fail:w1:l1", events[0].value("event_id", ""));
     EXPECT_FALSE(events[0].contains("score"));
     EXPECT_EQ(1, server->getPlayer("p1").progressionTries.getTries("w1:l1"));
+}
+
+// ---- player event payloads ----
+
+TEST_F(GameAnalyticsServerTest, PlayerEventsCarryThePlayerAnnotations)
+{
+    startSession("p1");
+
+    Player& p = server->getPlayer("p1");
+    p.extUserId   = "steam_1";
+    p.countryCode = "dk";
+    p.device      = "dedicated";
+    p.setCustomDimension1("ninja");
+    p.customFields.setInt("level", 12);
+
+    server->addPlayerDesignEvent("p1", "menu:open");
+    ASSERT_TRUE(drainGAThread());
+
+    std::vector<json> events = storedEvents("design", "p1");
+    ASSERT_EQ(1u, events.size());
+    const json& ev = events[0];
+
+    EXPECT_EQ(2, ev.value("v", 0));
+    EXPECT_FALSE(ev.value("event_uuid", "").empty());
+    EXPECT_FALSE(ev.value("sdk_version", "").empty());
+    EXPECT_EQ("steam_1", ev.value("user_id_ext", ""));
+    EXPECT_EQ("dk", ev.value("country_code", ""));
+    EXPECT_EQ("dedicated", ev.value("device", ""));
+    EXPECT_EQ("ninja", ev.value("custom_01", ""));
+    EXPECT_EQ(1, ev.value("session_num", 0));
+    EXPECT_EQ("1.0.0", ev.value("build", ""));
+
+    ASSERT_TRUE(ev.contains("custom_fields"));
+    EXPECT_EQ(12, ev["custom_fields"].value("level", 0));
+}
+
+TEST_F(GameAnalyticsServerTest, PlayerDesignEventPayload)
+{
+    startSession("p1");
+    server->getPlayer("p1").customFields.setString("tier", "gold");
+
+    server->addPlayerDesignEvent("p1", "shop:buy:potion", 2.5, fields("source", "quest"));
+    ASSERT_TRUE(drainGAThread());
+
+    std::vector<json> events = storedEvents("design", "p1");
+    ASSERT_EQ(1u, events.size());
+    const json& ev = events[0];
+
+    EXPECT_EQ("design", ev.value("category", ""));
+    EXPECT_EQ("shop:buy:potion", ev.value("event_id", ""));
+    EXPECT_DOUBLE_EQ(2.5, ev.value("value", 0.0));
+
+    // event fields are merged on top of the player's own fields
+    ASSERT_TRUE(ev.contains("custom_fields"));
+    EXPECT_EQ("quest", ev["custom_fields"].value("source", ""));
+    EXPECT_EQ("gold", ev["custom_fields"].value("tier", ""));
+}
+
+TEST_F(GameAnalyticsServerTest, PlayerDesignEventWithInvalidIdIsRejected)
+{
+    startSession("p1");
+
+    server->addPlayerDesignEvent("p1", "a:b:c:d:e:f");  // more than 5 parts
+    ASSERT_TRUE(drainGAThread());
+
+    EXPECT_TRUE(storedEvents("design", "p1").empty());
+}
+
+TEST_F(GameAnalyticsServerTest, PlayerBusinessEventPayload)
+{
+    startSession("p1");
+
+    server->addPlayerBusinessEvent("p1", "USD", 499, "iap", "starter_pack", "shop", fields("promo", "launch"));
+    server->addPlayerBusinessEvent("p1", "EUR", 100, "iap", "coins_small", "");
+    ASSERT_TRUE(drainGAThread());
+
+    std::vector<json> events = storedEvents("business", "p1");
+    ASSERT_EQ(2u, events.size());
+
+    const json& first = events[0];
+    EXPECT_EQ("business", first.value("category", ""));
+    EXPECT_EQ("iap:starter_pack", first.value("event_id", ""));
+    EXPECT_EQ("USD", first.value("currency", ""));
+    EXPECT_EQ(499, first.value("amount", 0));
+    EXPECT_EQ("shop", first.value("cart_type", ""));
+    ASSERT_TRUE(first.contains("custom_fields"));
+    EXPECT_EQ("launch", first["custom_fields"].value("promo", ""));
+
+    const json& second = events[1];
+    EXPECT_EQ("iap:coins_small", second.value("event_id", ""));
+    EXPECT_FALSE(second.contains("cart_type"));
+
+    // transaction numbers are per player and strictly increasing
+    ASSERT_TRUE(first.contains("transaction_num"));
+    ASSERT_TRUE(second.contains("transaction_num"));
+    EXPECT_EQ(first["transaction_num"].get<int64_t>() + 1, second["transaction_num"].get<int64_t>());
+}
+
+TEST_F(GameAnalyticsServerTest, PlayerBusinessEventWithInvalidCurrencyIsRejected)
+{
+    startSession("p1");
+
+    server->addPlayerBusinessEvent("p1", "NOT_A_CURRENCY", 100, "iap", "coins", "shop");
+    ASSERT_TRUE(drainGAThread());
+
+    EXPECT_TRUE(storedEvents("business", "p1").empty());
+}
+
+TEST_F(GameAnalyticsServerTest, PlayerResourceEventPayload)
+{
+    startSession("p1");
+
+    server->addPlayerResourceEvent("p1", EGAResourceFlowType::Source, "gems", 50.0f, "boost", "double_xp", fields("from", "daily"));
+    server->addPlayerResourceEvent("p1", EGAResourceFlowType::Sink, "gold", 25.0f, "weapon", "sword");
+    ASSERT_TRUE(drainGAThread());
+
+    std::vector<json> events = storedEvents("resource", "p1");
+    ASSERT_EQ(2u, events.size());
+
+    const json& source = events[0];
+    EXPECT_EQ("resource", source.value("category", ""));
+    EXPECT_EQ("Source:gems:boost:double_xp", source.value("event_id", ""));
+    EXPECT_FLOAT_EQ(50.0f, source.value("amount", 0.0f));
+    ASSERT_TRUE(source.contains("custom_fields"));
+    EXPECT_EQ("daily", source["custom_fields"].value("from", ""));
+
+    // sink amounts are negated on the wire
+    const json& sink = events[1];
+    EXPECT_EQ("Sink:gold:weapon:sword", sink.value("event_id", ""));
+    EXPECT_FLOAT_EQ(-25.0f, sink.value("amount", 0.0f));
+}
+
+TEST_F(GameAnalyticsServerTest, PlayerResourceEventWithUnknownCurrencyOrItemTypeIsRejected)
+{
+    startSession("p1");
+
+    server->addPlayerResourceEvent("p1", EGAResourceFlowType::Source, "diamonds", 5.0f, "boost", "x");
+    server->addPlayerResourceEvent("p1", EGAResourceFlowType::Source, "gems", 5.0f, "armor", "x");
+    server->addPlayerResourceEvent("p1", EGAResourceFlowType::Source, "gems", 0.0f, "boost", "x");
+    ASSERT_TRUE(drainGAThread());
+
+    EXPECT_TRUE(storedEvents("resource", "p1").empty());
+}
+
+TEST_F(GameAnalyticsServerTest, PlayerErrorEventPayload)
+{
+    startSession("p1");
+
+    server->addPlayerErrorEvent("p1", EGAErrorSeverity::Critical, "null deref in matchmaking", fields("map", "arena_2"));
+    server->addPlayerErrorEvent("p1", EGAErrorSeverity::Info, "");
+    ASSERT_TRUE(drainGAThread());
+
+    std::vector<json> events = storedEvents("error", "p1");
+    ASSERT_EQ(2u, events.size());
+
+    const json& critical = events[0];
+    EXPECT_EQ("error", critical.value("category", ""));
+    EXPECT_EQ("critical", critical.value("severity", ""));
+    EXPECT_EQ("null deref in matchmaking", critical.value("message", ""));
+    ASSERT_TRUE(critical.contains("custom_fields"));
+    EXPECT_EQ("arena_2", critical["custom_fields"].value("map", ""));
+
+    const json& info = events[1];
+    EXPECT_EQ("info", info.value("severity", ""));
+    EXPECT_EQ("", info.value("message", "missing"));
+    EXPECT_FALSE(info.contains("custom_fields"));
+}
+
+TEST_F(GameAnalyticsServerTest, PlayerErrorEventWithTooLongMessageIsRejected)
+{
+    startSession("p1");
+
+    server->addPlayerErrorEvent("p1", EGAErrorSeverity::Error, std::string(8193, 'x'));
+    ASSERT_TRUE(drainGAThread());
+
+    EXPECT_TRUE(storedEvents("error", "p1").empty());
+}
+
+TEST_F(GameAnalyticsServerTest, PlayerEventsForUnknownPlayersAreDropped)
+{
+    server->addPlayerDesignEvent("ghost", "menu:open");
+    server->addPlayerBusinessEvent("ghost", "USD", 1, "iap", "x", "");
+    server->addPlayerResourceEvent("ghost", EGAResourceFlowType::Source, "gems", 1.0f, "boost", "x");
+    server->addPlayerErrorEvent("ghost", EGAErrorSeverity::Error, "boom");
+    ASSERT_TRUE(drainGAThread());
+
+    EXPECT_TRUE(storedEvents("design", "ghost").empty());
+    EXPECT_TRUE(storedEvents("business", "ghost").empty());
+    EXPECT_TRUE(storedEvents("resource", "ghost").empty());
+    EXPECT_TRUE(storedEvents("error", "ghost").empty());
+    EXPECT_FALSE(server->isExistingPlayer("ghost"));
+}
+
+TEST_F(GameAnalyticsServerTest, PlayerEventsAreKeptSeparatePerPlayer)
+{
+    startSession("p1");
+    startSession("p2");
+
+    server->addPlayerDesignEvent("p1", "level:start");
+    server->addPlayerDesignEvent("p2", "level:start");
+    server->addPlayerDesignEvent("p2", "level:end");
+    ASSERT_TRUE(drainGAThread());
+
+    EXPECT_EQ(1u, storedEvents("design", "p1").size());
+    EXPECT_EQ(2u, storedEvents("design", "p2").size());
+    EXPECT_TRUE(storedEvents("design", "server_1").empty());
 }

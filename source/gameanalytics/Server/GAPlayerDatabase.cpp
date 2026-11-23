@@ -4,6 +4,7 @@
 #include "GADevice.h"
 #include "GASerialize.h"
 #include "GAStore.h"
+#include "GAState.h"
 #include "GAThreading.h"
 
 namespace gameanalytics
@@ -277,7 +278,7 @@ namespace gameanalytics
         data["session_id"]   = p._sessionId;
         data["session_num"]  = data["random_salt"] = p._sessionNum;
 
-        utilities::addIfNotEmpty(data, "build", device::GADevice::getBuildPlatform());
+        utilities::addIfNotEmpty(data, "build", state::GAState::getBuild());
         utilities::addIfNotEmpty(data, "engine_version", device::GADevice::getGameEngineVersion());
 
         return data;
@@ -290,7 +291,7 @@ namespace gameanalytics
         data["v"] = 2;
         data["event_uuid"] = utilities::GAUtilities::generateUUID();
         
-        utilities::addIfNotEmpty(data, "build", device::GADevice::getBuildPlatform());
+        utilities::addIfNotEmpty(data, "build", state::GAState::getBuild());
         utilities::addIfNotEmpty(data, "engine_version", device::GADevice::getGameEngineVersion());
 
         data["sdk_version"]  = device::GADevice::getRelevantSdkVersion();

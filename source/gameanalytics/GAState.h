@@ -55,6 +55,7 @@ namespace gameanalytics
                 static void getGlobalCustomEventFields(json& out);
                 static std::string getGameKey();
                 static std::string getGameSecret();
+                static std::string getBuild();
                 static void setAvailableCustomDimensions01(const StringVector& dimensions);
                 static void setAvailableCustomDimensions02(const StringVector& dimensions);
                 static void setAvailableCustomDimensions03(const StringVector& dimensions);
@@ -161,7 +162,6 @@ namespace gameanalytics
             void  ensurePersistedStates();
             void  startNewSession();
             void  validateAndFixCurrentDimensions();
-            std::string getBuild();
 
             void updateTotalSessionTime();
 
