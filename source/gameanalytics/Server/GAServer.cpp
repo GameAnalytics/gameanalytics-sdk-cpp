@@ -152,7 +152,8 @@ namespace gameanalytics
             return false;
         }
 
-        const bool isNewPlayer = player.isNewUser();
+        // onJoin has not run yet, so derive newness from the persisted session count
+        const bool isNewPlayer = player.getSessionCount() == 0;
 
         json initAnnotations = PlayerDatabase::getInitAnnotations(player);
 
@@ -220,6 +221,12 @@ namespace gameanalytics
         }
 
         Player& player = getPlayer(userId);
+        if(!player.isActive())
+        {
+            logging::GALogger::w("No active session for player %s, ignoring session end", userId.c_str());
+            return false;
+        }
+
         player.onExit();
 
         if(_playerCallbacks)
@@ -599,7 +606,7 @@ namespace gameanalytics
         threading::GAThreading::performTaskOnGAThread(
             [this, &player, progressionStatus, progression01, progression02, progression03, sendScore, score, customFields]()
             {
-                addPlayerProgressionEventInternal(player, progressionStatus, progression01, progression02, progression03, sendScore, score, customFields);
+                addPlayerProgressionEventInternal(player, progressionStatus, progression01, progression02, progression03, score, sendScore, customFields);
             }
         );
     }
@@ -656,7 +663,7 @@ namespace gameanalytics
     {
         if(isExistingPlayer(userId))
         {
-            return addPlayerProgressionEvent(getPlayer(userId), progressionStatus, progression01, progression02, progression03, sendScore, score, customFields);
+            return addPlayerProgressionEvent(getPlayer(userId), progressionStatus, progression01, progression02, progression03, score, sendScore, customFields);
         }
         else
         {

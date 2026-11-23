@@ -77,7 +77,8 @@ namespace gameanalytics
 
     bool Player::isNewUser() const
     {
-        return _isNewPlayer;
+        // true until the first session has ended
+        return _sessionNum == 0 || (_isActive && _isNewPlayer);
     }
 
     bool Player::isActive() const
