@@ -148,11 +148,11 @@ TEST_F(GAPlayerDatabaseTest, AddPlayerIsWrittenToStoreAndRestored)
     ASSERT_TRUE(fresh.playerExists("user_a"));
     ASSERT_TRUE(fresh.playerExists("user_b"));
 
-    Player& a = fresh.getPlayer("user_a");
-    EXPECT_EQ("ext_user_a", a.extUserId);
-    EXPECT_EQ("dk", a.countryCode);
-    EXPECT_EQ(3, a.progressionTries.getTries("w1:l1"));
-    EXPECT_EQ(7, a.customFields.getValue<int64_t>("level", 0));
+    PlayerPtr a = fresh.getPlayer("user_a");
+    EXPECT_EQ("ext_user_a", a->extUserId);
+    EXPECT_EQ("dk", a->countryCode);
+    EXPECT_EQ(3, a->progressionTries.getTries("w1:l1"));
+    EXPECT_EQ(7, a->customFields.getValue<int64_t>("level", 0));
 }
 
 TEST_F(GAPlayerDatabaseTest, RemovePlayerDeletesStoredRow)
@@ -182,8 +182,8 @@ TEST_F(GAPlayerDatabaseTest, ChangePlayerIdMovesStoredRow)
     EXPECT_EQ(1u, fresh.loadFromStore());
     EXPECT_FALSE(fresh.playerExists("old_id"));
     ASSERT_TRUE(fresh.playerExists("new_id"));
-    EXPECT_EQ("new_id", fresh.getPlayer("new_id").getUserId());
-    EXPECT_EQ("ext_old_id", fresh.getPlayer("new_id").extUserId);
+    EXPECT_EQ("new_id", fresh.getPlayer("new_id")->getUserId());
+    EXPECT_EQ("ext_old_id", fresh.getPlayer("new_id")->extUserId);
 }
 
 TEST_F(GAPlayerDatabaseTest, PersistPlayerWritesUpdatedState)
@@ -191,17 +191,17 @@ TEST_F(GAPlayerDatabaseTest, PersistPlayerWritesUpdatedState)
     PlayerDatabase db;
     ASSERT_TRUE(db.addPlayer(makePlayer("user_up")));
 
-    Player& p = db.getPlayer("user_up");
-    p.countryCode = "se";
-    p.progressionTries.incrementTries("w1:l1");
+    PlayerPtr p = db.getPlayer("user_up");
+    p->countryCode = "se";
+    p->progressionTries.incrementTries("w1:l1");
     ASSERT_TRUE(db.persistPlayer("user_up"));
     EXPECT_FALSE(db.persistPlayer("missing"));
     ASSERT_TRUE(drainGAThread());
 
     PlayerDatabase fresh;
     ASSERT_EQ(1u, fresh.loadFromStore());
-    EXPECT_EQ("se", fresh.getPlayer("user_up").countryCode);
-    EXPECT_EQ(4, fresh.getPlayer("user_up").progressionTries.getTries("w1:l1"));
+    EXPECT_EQ("se", fresh.getPlayer("user_up")->countryCode);
+    EXPECT_EQ(4, fresh.getPlayer("user_up")->progressionTries.getTries("w1:l1"));
 }
 
 TEST_F(GAPlayerDatabaseTest, InMemoryPlayersWinOverStoreAndAreWrittenBack)
@@ -224,7 +224,7 @@ TEST_F(GAPlayerDatabaseTest, InMemoryPlayersWinOverStoreAndAreWrittenBack)
     // "shared" is in both, "only_in_memory" only in memory: nothing new restored
     EXPECT_EQ(0u, db.loadFromStore());
     EXPECT_EQ(2u, db.countPlayers());
-    EXPECT_EQ("live", db.getPlayer("shared").countryCode);
+    EXPECT_EQ("live", db.getPlayer("shared")->countryCode);
 
     ASSERT_TRUE(drainGAThread());
     json rows = storedRows();
@@ -232,7 +232,7 @@ TEST_F(GAPlayerDatabaseTest, InMemoryPlayersWinOverStoreAndAreWrittenBack)
 
     PlayerDatabase fresh;
     EXPECT_EQ(2u, fresh.loadFromStore());
-    EXPECT_EQ("live", fresh.getPlayer("shared").countryCode);
+    EXPECT_EQ("live", fresh.getPlayer("shared")->countryCode);
     EXPECT_TRUE(fresh.playerExists("only_in_memory"));
 }
 
@@ -281,7 +281,7 @@ TEST_F(GAPlayerDatabaseTest, TrimToMaxPlayersKeepsActiveAndMostRecent)
 
     PlayerDatabase db;
     ASSERT_EQ(4u, db.loadFromStore());
-    db.getPlayer("active_but_old").onJoin();
+    db.getPlayer("active_but_old")->onJoin();
 
     EXPECT_EQ(2u, db.trimToMaxPlayers(2));
     EXPECT_EQ(2u, db.countPlayers());
@@ -349,19 +349,19 @@ TEST_F(GAPlayerDatabaseTest, LastSeenIsUpdatedBySessionsAndPersisted)
 
     PlayerDatabase db;
     ASSERT_EQ(1u, db.loadFromStore());
-    const int64_t before = db.getPlayer("p").getLastSeen();
+    const int64_t before = db.getPlayer("p")->getLastSeen();
     EXPECT_LT(before, utilities::GAUtilities::timeIntervalSince1970() - 9 * DAY);
 
-    db.getPlayer("p").onJoin();
-    db.getPlayer("p").onExit();
-    EXPECT_GE(db.getPlayer("p").getLastSeen(), utilities::GAUtilities::timeIntervalSince1970() - 5);
+    db.getPlayer("p")->onJoin();
+    db.getPlayer("p")->onExit();
+    EXPECT_GE(db.getPlayer("p")->getLastSeen(), utilities::GAUtilities::timeIntervalSince1970() - 5);
     db.persistPlayer("p");
     ASSERT_TRUE(drainGAThread());
 
     PlayerDatabase fresh;
     fresh.setRetention(7 * DAY, 0);
     EXPECT_EQ(1u, fresh.loadFromStore());
-    EXPECT_EQ(1, fresh.getPlayer("p").getSessionCount());
+    EXPECT_EQ(1, fresh.getPlayer("p")->getSessionCount());
 }
 
 // ---- remote configs ----
@@ -441,13 +441,71 @@ TEST_F(GAPlayerDatabaseTest, RemoteConfigsSurviveARestart)
 
     PlayerDatabase fresh;
     ASSERT_EQ(1u, fresh.loadFromStore());
-    Player& p = fresh.getPlayer("rc");
+    PlayerPtr p = fresh.getPlayer("rc");
 
-    EXPECT_TRUE(p.isRemoteConfigsReady());
-    EXPECT_EQ("hash2", p.getConfigsHash());
-    EXPECT_EQ("ab2", p.getABId());
-    EXPECT_EQ("var2", p.getABVariantId());
-    EXPECT_DOUBLE_EQ(1.5, p.getRemoteConfigsValueAsFloat("speed"));
-    EXPECT_TRUE(p.getRemoteConfigsValueAsBool("enabled"));
-    EXPECT_EQ(3u, PlayerDatabase::getPlayerAnnotations(p)["configurations_v3"].size());
+    EXPECT_TRUE(p->isRemoteConfigsReady());
+    EXPECT_EQ("hash2", p->getConfigsHash());
+    EXPECT_EQ("ab2", p->getABId());
+    EXPECT_EQ("var2", p->getABVariantId());
+    EXPECT_DOUBLE_EQ(1.5, p->getRemoteConfigsValueAsFloat("speed"));
+    EXPECT_TRUE(p->getRemoteConfigsValueAsBool("enabled"));
+    EXPECT_EQ(3u, PlayerDatabase::getPlayerAnnotations(*p)["configurations_v3"].size());
+}
+
+// ---- shared ownership ----
+
+TEST_F(GAPlayerDatabaseTest, RemovedAndEvictedPlayersStayValidForHolders)
+{
+    PlayerDatabase db;
+    ASSERT_TRUE(db.addPlayer(makePlayer("held")));
+    ASSERT_TRUE(db.addPlayer(makePlayer("evicted")));
+
+    PlayerPtr held    = db.getPlayer("held");
+    PlayerPtr evicted = db.getPlayer("evicted");
+    EXPECT_FALSE(held->isRemoved());
+    EXPECT_EQ(nullptr, db.findPlayer("nobody"));
+    EXPECT_THROW(db.getPlayer("nobody"), PlayerNotFound);
+
+    ASSERT_TRUE(db.removePlayer("held"));
+    EXPECT_FALSE(db.playerExists("held"));
+    EXPECT_TRUE(held->isRemoved());
+    EXPECT_EQ("held", held->getUserId());
+    EXPECT_EQ("dk", held->countryCode);
+
+    // eviction marks the player the same way
+    db.getPlayer("evicted")->onJoin();
+    db.getPlayer("evicted")->onExit();
+    EXPECT_EQ(1u, db.evictPlayersInactiveSince(utilities::GAUtilities::timeIntervalSince1970() + 10));
+    EXPECT_TRUE(evicted->isRemoved());
+    EXPECT_EQ(1, evicted->getSessionCount());
+
+    // a renamed player keeps its identity for holders
+    ASSERT_TRUE(db.addPlayer(makePlayer("before")));
+    PlayerPtr renamed = db.getPlayer("before");
+    ASSERT_TRUE(db.changePlayerId("before", "after"));
+    EXPECT_FALSE(renamed->isRemoved());
+    EXPECT_EQ("after", renamed->getUserId());
+    EXPECT_EQ(renamed, db.getPlayer("after"));
+}
+
+TEST_F(GAPlayerDatabaseTest, LoadFromStoreWritesBackPlayersRegisteredBeforeLoad)
+{
+    PlayerDatabase db;
+    Player live = makePlayer("shared");
+    live.countryCode = "live";
+    ASSERT_TRUE(db.addPlayer(std::move(live)));
+    ASSERT_TRUE(drainGAThread());
+
+    // simulate the write having been dropped: the store holds an older copy
+    Player stale = makePlayer("shared");
+    stale.countryCode = "stale";
+    store::GAStore::setPlayer("shared", stale.serialize(), stale.getLastSeen());
+
+    EXPECT_EQ(0u, db.loadFromStore());
+    EXPECT_EQ("live", db.getPlayer("shared")->countryCode);
+    ASSERT_TRUE(drainGAThread());
+
+    PlayerDatabase fresh;
+    ASSERT_EQ(1u, fresh.loadFromStore());
+    EXPECT_EQ("live", fresh.getPlayer("shared")->countryCode);
 }

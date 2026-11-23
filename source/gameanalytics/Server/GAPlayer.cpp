@@ -216,6 +216,11 @@ namespace gameanalytics
         return _isActive;
     }
 
+    bool Player::isRemoved() const
+    {
+        return _isRemoved;
+    }
+
     std::string Player::getUserId() const
     {
         return _userId;

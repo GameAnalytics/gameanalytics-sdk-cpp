@@ -41,6 +41,7 @@ namespace gameanalytics
 
         bool _isActive    = false;
         bool _isNewPlayer = false;
+        bool _isRemoved   = false;
 
         // unix time (seconds) of the last session start or end, used for retention
         int64_t _lastSeenTs = 0;
@@ -106,6 +107,10 @@ namespace gameanalytics
             // returns true if the user has an active session 
             bool isActive() const;
 
+            // true once the player was removed or evicted from the server; the object
+            // stays valid for anyone still holding it, but events for it are dropped
+            bool isRemoved() const;
+
             // deserializes a player from the given json
             bool deserialize(std::string const& jsonData);
             
@@ -130,6 +135,8 @@ namespace gameanalytics
             // total session count
             int  getSessionCount() const;
     };
+
+    using PlayerPtr = std::shared_ptr<Player>;
 
     struct PlayerCallbacks
     {

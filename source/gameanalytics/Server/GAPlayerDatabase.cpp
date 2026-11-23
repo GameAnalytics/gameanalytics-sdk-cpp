@@ -38,8 +38,9 @@ namespace gameanalytics
             return false;
         }
 
-        _players[uid] = std::forward<Player>(player);
-        persistPlayer(_players[uid]);
+        PlayerPtr entry = std::make_shared<Player>(std::move(player));
+        _players[uid] = entry;
+        persistPlayer(*entry);
 
         if(_maxPlayers > 0 && _players.size() > _maxPlayers)
         {
@@ -59,13 +60,14 @@ namespace gameanalytics
             return false;
         }
 
-        Player& p = getPlayer(uid);
-        if(p.isActive())
+        PlayerPtr p = _players[uid];
+        if(p->isActive())
         {
             logging::GALogger::w("Cannot remove player while the player is active, user id: %s", uid.c_str());
             return false;
         }
 
+        p->_isRemoved = true;
         _players.erase(uid);
         eraseFromStore(uid);
         return true;
@@ -83,23 +85,23 @@ namespace gameanalytics
 
         if(playerExists(newUserId))
         {
-            logging::GALogger::w("User id is already in use: %s", uid.c_str());
+            logging::GALogger::w("User id is already in use: %s", newUserId.c_str());
             return false;
         }
 
-        Player& player = getPlayer(uid);
-        if(player.isActive())
+        PlayerPtr player = _players[uid];
+        if(player->isActive())
         {
             logging::GALogger::w("Cannot change user id while the user is active, user id: %s", uid.c_str());
             return false;
         }
 
-        player._userId = newUserId;
-        _players[newUserId] = std::move(player);
+        player->_userId = newUserId;
+        _players[newUserId] = player;
         _players.erase(uid);
 
         eraseFromStore(uid);
-        persistPlayer(_players[newUserId]);
+        persistPlayer(*player);
         return true;
     }
 
@@ -114,7 +116,7 @@ namespace gameanalytics
         }
 
         size_t restored = 0;
-        std::unordered_map<std::string, bool> inStore;
+        std::unordered_map<std::string, bool> restoredNow;
 
         try
         {
@@ -142,7 +144,7 @@ namespace gameanalytics
 
             if(rows.is_array())
             {
-                inStore.reserve(rows.size());
+                restoredNow.reserve(rows.size());
 
                 for(json& row : rows)
                 {
@@ -153,8 +155,6 @@ namespace gameanalytics
                     {
                         continue;
                     }
-
-                    inStore[uid] = true;
 
                     // players registered before the store was loaded take precedence
                     if(playerExists(uid))
@@ -170,7 +170,8 @@ namespace gameanalytics
                         continue;
                     }
 
-                    _players[uid] = std::move(player);
+                    _players[uid] = std::make_shared<Player>(std::move(player));
+                    restoredNow[uid] = true;
                     ++restored;
                 }
             }
@@ -182,12 +183,13 @@ namespace gameanalytics
 
         _storeLoaded = true;
 
-        // write back everything that was registered while the store was unavailable
+        // write back everything registered before the load: those writes were dropped
+        // while the store was unavailable, and in-memory players win over stored copies
         for(auto& [uid, player] : _players)
         {
-            if(!inStore.count(uid))
+            if(!restoredNow.count(uid))
             {
-                persistPlayer(player);
+                persistPlayer(*player);
             }
         }
 
@@ -213,9 +215,10 @@ namespace gameanalytics
         size_t evicted = 0;
         for(auto it = _players.begin(); it != _players.end(); )
         {
-            Player const& p = it->second;
-            if(!p.isActive() && p.getLastSeen() < cutoffTs)
+            PlayerPtr const& p = it->second;
+            if(!p->isActive() && p->getLastSeen() < cutoffTs)
             {
+                p->_isRemoved = true;
                 eraseFromStore(it->first);
                 it = _players.erase(it);
                 ++evicted;
@@ -248,9 +251,9 @@ namespace gameanalytics
         candidates.reserve(_players.size());
         for(auto const& [uid, p] : _players)
         {
-            if(!p.isActive())
+            if(!p->isActive())
             {
-                candidates.emplace_back(p.getLastSeen(), uid);
+                candidates.emplace_back(p->getLastSeen(), uid);
             }
         }
         std::sort(candidates.begin(), candidates.end());
@@ -264,6 +267,7 @@ namespace gameanalytics
             }
 
             (void)lastSeen;
+            _players[uid]->_isRemoved = true;
             eraseFromStore(uid);
             _players.erase(uid);
             ++evicted;
@@ -357,6 +361,7 @@ namespace gameanalytics
 
     bool PlayerDatabase::isStoreLoaded() const
     {
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
         return _storeLoaded;
     }
 
@@ -388,7 +393,7 @@ namespace gameanalytics
             return false;
         }
 
-        persistPlayer(_players[uid]);
+        persistPlayer(*_players[uid]);
         return true;
     }
 
@@ -398,7 +403,7 @@ namespace gameanalytics
 
         for(auto& [uid, player] : _players)
         {
-            persistPlayer(player);
+            persistPlayer(*player);
         }
     }
 
@@ -430,27 +435,36 @@ namespace gameanalytics
         );
     }
 
-    Player& PlayerDatabase::getPlayer(std::string const& userId)
+    PlayerPtr PlayerDatabase::getPlayer(std::string const& userId) const
     {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
-        
-        if(!playerExists(userId))
+        PlayerPtr p = findPlayer(userId);
+        if(!p)
         {
             logging::GALogger::e("Invalid user id: %s", userId.c_str());
             throw PlayerNotFound(userId);
         }
 
-        return _players[userId];
+        return p;
+    }
+
+    PlayerPtr PlayerDatabase::findPlayer(std::string const& userId) const
+    {
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+
+        auto it = _players.find(userId);
+        return it != _players.end() ? it->second : nullptr;
     }
 
     size_t PlayerDatabase::countPlayers() const
     {
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
         return _players.size();
     }
 
     bool PlayerDatabase::playerExists(std::string const& userId) const
     {
-        return _players.count(userId);
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        return _players.count(userId) > 0;
     }
 
     json PlayerDatabase::getInitAnnotations(Player const& p)

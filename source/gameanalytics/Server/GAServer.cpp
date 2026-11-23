@@ -64,9 +64,54 @@ namespace gameanalytics
         return _playerDatabase->removePlayer(uid);
     }
 
-    Player& GameAnalyticsServer::getPlayer(std::string const& uid)
+    PlayerPtr GameAnalyticsServer::getPlayer(std::string const& uid) const
     {
         return _playerDatabase->getPlayer(uid);
+    }
+
+    PlayerPtr GameAnalyticsServer::findPlayer(std::string const& uid) const
+    {
+        return _playerDatabase->findPlayer(uid);
+    }
+
+    void GameAnalyticsServer::withPlayer(std::string const& userId, std::function<void(Player&)> fn)
+    {
+        std::shared_ptr<PlayerDatabase> db = _playerDatabase;
+        threading::GAThreading::performTaskOnGAThread(
+            [db, userId, fn = std::move(fn)]()
+            {
+                PlayerPtr player = db->findPlayer(userId);
+                if(!player)
+                {
+                    logging::GALogger::w("Invalid user id: %s", userId.c_str());
+                    return;
+                }
+
+                fn(*player);
+            }
+        );
+    }
+
+    void GameAnalyticsServer::withPlayer(PlayerPtr const& player, std::function<void(Player&)> fn)
+    {
+        if(!player)
+        {
+            logging::GALogger::w("Null player");
+            return;
+        }
+
+        threading::GAThreading::performTaskOnGAThread(
+            [player, fn = std::move(fn)]()
+            {
+                if(player->isRemoved())
+                {
+                    logging::GALogger::w("Player %s was removed, event dropped", player->getUserId().c_str());
+                    return;
+                }
+
+                fn(*player);
+            }
+        );
     }
 
     bool GameAnalyticsServer::savePlayer(std::string const& uid)
@@ -162,7 +207,14 @@ namespace gameanalytics
             }
         }
 
-        Player& player = getPlayer(userId);
+        PlayerPtr playerPtr = _playerDatabase->findPlayer(userId);
+        if(!playerPtr)
+        {
+            logging::GALogger::e("Player %s disappeared before the session could start", userId.c_str());
+            return false;
+        }
+
+        Player& player = *playerPtr;
         if(player.isActive())
         {
             logging::GALogger::w("A session for player %s already exists", userId.c_str());
@@ -235,7 +287,13 @@ namespace gameanalytics
             return false;
         }
 
-        Player& player = getPlayer(userId);
+        PlayerPtr playerPtr = _playerDatabase->findPlayer(userId);
+        if(!playerPtr)
+        {
+            return false;
+        }
+
+        Player& player = *playerPtr;
         if(!player.isActive())
         {
             logging::GALogger::w("No active session for player %s, ignoring session end", userId.c_str());
@@ -576,113 +634,83 @@ namespace gameanalytics
         }
     }
 
-    void GameAnalyticsServer::addPlayerDesignEvent(Player& player, std::string const& eventId, double value, CustomFields const& customFields)
+    void GameAnalyticsServer::addPlayerDesignEvent(PlayerPtr const& player, std::string const& eventId, double value, CustomFields const& customFields)
     {
-        threading::GAThreading::performTaskOnGAThread(
-            [this, &player, eventId, value, customFields]()
-            {
-                addPlayerDesignEventInternal(player, eventId, value, customFields);
-            }
-        );
+        withPlayer(player, [this, eventId, value, customFields](Player& p)
+        {
+            addPlayerDesignEventInternal(p, eventId, value, customFields);
+        });
     }
 
-    void GameAnalyticsServer::addPlayerBusinessEvent(Player& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields)
+    void GameAnalyticsServer::addPlayerBusinessEvent(PlayerPtr const& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields)
     {
-        threading::GAThreading::performTaskOnGAThread(
-            [this, &player, currency, amount, cartType, itemType, itemId, customFields]()
-            {
-                addPlayerBusinessEventInternal(player, currency, amount, itemType, itemId, cartType, customFields);
-            }
-        );
+        withPlayer(player, [this, currency, amount, itemType, itemId, cartType, customFields](Player& p)
+        {
+            addPlayerBusinessEventInternal(p, currency, amount, itemType, itemId, cartType, customFields);
+        });
     }
 
-    void GameAnalyticsServer::addPlayerResourceEvent(Player& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, CustomFields const& customFields)
+    void GameAnalyticsServer::addPlayerResourceEvent(PlayerPtr const& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, CustomFields const& customFields)
     {
-        threading::GAThreading::performTaskOnGAThread(
-            [this, &player, flowType, currency, amount, itemType, itemId, customFields]()
-            {
-                addPlayerResourceEventInternal(player, flowType, currency, amount, itemType, itemId, customFields);
-            }
-        );
+        withPlayer(player, [this, flowType, currency, amount, itemType, itemId, customFields](Player& p)
+        {
+            addPlayerResourceEventInternal(p, flowType, currency, amount, itemType, itemId, customFields);
+        });
     }
 
-    void GameAnalyticsServer::addPlayerErrorEvent(Player& player, EGAErrorSeverity severity, std::string const& message, CustomFields const& customFields)
+    void GameAnalyticsServer::addPlayerErrorEvent(PlayerPtr const& player, EGAErrorSeverity severity, std::string const& message, CustomFields const& customFields)
     {
-        threading::GAThreading::performTaskOnGAThread(
-            [this, &player, severity, message, customFields]()
-            {
-                addPlayerErrorEventInternal(player, severity, message, customFields);
-            }
-        );
+        withPlayer(player, [this, severity, message, customFields](Player& p)
+        {
+            addPlayerErrorEventInternal(p, severity, message, customFields);
+        });
     }
 
-    void GameAnalyticsServer::addPlayerProgressionEvent(Player& player, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, CustomFields const& customFields)
+    void GameAnalyticsServer::addPlayerProgressionEvent(PlayerPtr const& player, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, CustomFields const& customFields)
     {
-        threading::GAThreading::performTaskOnGAThread(
-            [this, &player, progressionStatus, progression01, progression02, progression03, sendScore, score, customFields]()
-            {
-                addPlayerProgressionEventInternal(player, progressionStatus, progression01, progression02, progression03, score, sendScore, customFields);
-            }
-        );
+        withPlayer(player, [this, progressionStatus, progression01, progression02, progression03, score, sendScore, customFields](Player& p)
+        {
+            addPlayerProgressionEventInternal(p, progressionStatus, progression01, progression02, progression03, score, sendScore, customFields);
+        });
     }
 
     void GameAnalyticsServer::addPlayerDesignEvent(std::string const& userId, std::string const& eventId, double value, CustomFields const& customFields)
     {
-        if(isExistingPlayer(userId))
+        withPlayer(userId, [this, eventId, value, customFields](Player& p)
         {
-            return addPlayerDesignEvent(getPlayer(userId), eventId, value, customFields);
-        }
-        else
-        {
-            logging::GALogger::w("Invalid user id: %s", userId.c_str());
-        }
+            addPlayerDesignEventInternal(p, eventId, value, customFields);
+        });
     }
 
     void GameAnalyticsServer::addPlayerBusinessEvent(std::string const& userId, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields)
     {
-        if(isExistingPlayer(userId))
+        withPlayer(userId, [this, currency, amount, itemType, itemId, cartType, customFields](Player& p)
         {
-            return addPlayerBusinessEvent(getPlayer(userId), currency, amount, itemType, itemId, cartType, customFields);
-        }
-        else
-        {
-            logging::GALogger::w("Invalid user id: %s", userId.c_str());
-        }
+            addPlayerBusinessEventInternal(p, currency, amount, itemType, itemId, cartType, customFields);
+        });
     }
 
     void GameAnalyticsServer::addPlayerResourceEvent(std::string const& userId, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, CustomFields const& customFields)
     {
-        if(isExistingPlayer(userId))
+        withPlayer(userId, [this, flowType, currency, amount, itemType, itemId, customFields](Player& p)
         {
-            return addPlayerResourceEvent(getPlayer(userId), flowType, currency, amount, itemType, itemId, customFields);
-        }
-        else
-        {
-            logging::GALogger::w("Invalid user id: %s", userId.c_str());
-        }
+            addPlayerResourceEventInternal(p, flowType, currency, amount, itemType, itemId, customFields);
+        });
     }
 
     void GameAnalyticsServer::addPlayerErrorEvent(std::string const& userId, EGAErrorSeverity severity, std::string const& message, CustomFields const& customFields)
     {
-        if(isExistingPlayer(userId))
+        withPlayer(userId, [this, severity, message, customFields](Player& p)
         {
-            return addPlayerErrorEvent(getPlayer(userId), severity, message, customFields);
-        }
-        else
-        {
-            logging::GALogger::w("Invalid user id: %s", userId.c_str());
-        }
+            addPlayerErrorEventInternal(p, severity, message, customFields);
+        });
     }
 
     void GameAnalyticsServer::addPlayerProgressionEvent(std::string const& userId, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, CustomFields const& customFields)
     {
-        if(isExistingPlayer(userId))
+        withPlayer(userId, [this, progressionStatus, progression01, progression02, progression03, score, sendScore, customFields](Player& p)
         {
-            return addPlayerProgressionEvent(getPlayer(userId), progressionStatus, progression01, progression02, progression03, score, sendScore, customFields);
-        }
-        else
-        {
-            logging::GALogger::w("Invalid user id: %s", userId.c_str());
-        }
+            addPlayerProgressionEventInternal(p, progressionStatus, progression01, progression02, progression03, score, sendScore, customFields);
+        });
     }
 }

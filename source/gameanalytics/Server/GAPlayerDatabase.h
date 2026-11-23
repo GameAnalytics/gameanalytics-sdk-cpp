@@ -13,15 +13,18 @@ namespace gameanalytics
 
     // In-memory registry of players, mirrored into the ga_players table of the
     // sqlite store. Every mutation made through this class is written through;
-    // changes made directly on a Player reference are picked up by the next
-    // persistPlayer call (the server does this on session start/end).
+    // changes made directly on a Player are picked up by the next persistPlayer
+    // call (the server does this on session start/end).
+    //
+    // Players are shared: removing or evicting one drops it from the registry and
+    // marks it removed, but the object stays alive for anyone still holding it.
     //
     // All sqlite access happens on the GA thread so it never interleaves with
     // the event store's own transactions.
     class PlayerDatabase
     {
-        std::unordered_map<std::string, Player> _players;
-        std::recursive_mutex _mutex;
+        std::unordered_map<std::string, PlayerPtr> _players;
+        mutable std::recursive_mutex _mutex;
         bool _storeLoaded = false;
 
         // retention policy, 0 = unlimited
@@ -38,7 +41,13 @@ namespace gameanalytics
             size_t  countPlayers() const;
 
             bool    playerExists(std::string const& userId) const;
-            Player& getPlayer(std::string const& userId);
+
+            // throws PlayerNotFound for unknown ids
+            PlayerPtr getPlayer(std::string const& userId) const;
+
+            // nullptr for unknown ids
+            PlayerPtr findPlayer(std::string const& userId) const;
+
             bool    addPlayer(Player&& player);
             bool    removePlayer(std::string const& userId);
             bool    changePlayerId(std::string const& oldUserId, std::string const& newUserId);
@@ -73,7 +82,5 @@ namespace gameanalytics
 
             static json getPlayerAnnotations(Player const& player);
             static json getInitAnnotations(Player const& player);
-
-            inline Player& operator[](std::string const& uid) { return getPlayer(uid); }
     };
 }

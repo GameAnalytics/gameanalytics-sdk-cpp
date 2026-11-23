@@ -16,6 +16,11 @@ namespace gameanalytics
         bool startPlayerSessionInternal(std::string const& userId);
         bool endPlayerSessionInternal(std::string const& userId);
 
+        // run fn(player) on the GA thread; the player is resolved there, so a call
+        // queued right after startPlayerSession sees the player it creates
+        void withPlayer(std::string const& userId, std::function<void(Player&)> fn);
+        void withPlayer(PlayerPtr const& player, std::function<void(Player&)> fn);
+
         void addPlayerDesignEventInternal(Player& player, std::string const& eventId, double value = 0.0, CustomFields const& customFields = {});
         void addPlayerBusinessEventInternal(Player& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields = {});
         void addPlayerResourceEventInternal(Player& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, CustomFields const& customFields = {});
@@ -36,7 +41,12 @@ namespace gameanalytics
             bool isExistingPlayer(std::string const& userId) const;
             bool addPlayer(Player&& playerData);
             bool removePlayer(std::string const& userId);
-            Player& getPlayer(std::string const& userId);
+
+            // Players are shared pointers: the object outlives removal and eviction, and
+            // Player::isRemoved() tells a holder it is no longer registered.
+            // getPlayer throws PlayerNotFound for unknown ids, findPlayer returns nullptr.
+            PlayerPtr getPlayer(std::string const& userId) const;
+            PlayerPtr findPlayer(std::string const& userId) const;
 
             // Players are kept in the SDK's sqlite database and restored on initialize.
             // Sessions and progression updates are saved automatically; call savePlayer
@@ -67,11 +77,11 @@ namespace gameanalytics
             void addServerErrorEvent(EGAErrorSeverity severity, std::string const& message, CustomFields const& customFields = {});
             void addServerProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, CustomFields const& customFields = {});
 
-            void addPlayerDesignEvent(Player& player, std::string const& eventId, double value = 0.0, CustomFields const& customFields = {});
-            void addPlayerBusinessEvent(Player& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields = {});
-            void addPlayerResourceEvent(Player& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, CustomFields const& customFields = {});
-            void addPlayerErrorEvent(Player& player, EGAErrorSeverity severity, std::string const& message, CustomFields const& customFields = {});
-            void addPlayerProgressionEvent(Player& player, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, CustomFields const& customFields = {});
+            void addPlayerDesignEvent(PlayerPtr const& player, std::string const& eventId, double value = 0.0, CustomFields const& customFields = {});
+            void addPlayerBusinessEvent(PlayerPtr const& player, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields = {});
+            void addPlayerResourceEvent(PlayerPtr const& player, EGAResourceFlowType flowType, std::string const& currency, float amount, std::string const& itemType, std::string const& itemId, CustomFields const& customFields = {});
+            void addPlayerErrorEvent(PlayerPtr const& player, EGAErrorSeverity severity, std::string const& message, CustomFields const& customFields = {});
+            void addPlayerProgressionEvent(PlayerPtr const& player, EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, CustomFields const& customFields = {});
 
             void addPlayerDesignEvent(std::string const& userId, std::string const& eventId, double value = 0.0, CustomFields const& customFields = {});
             void addPlayerBusinessEvent(std::string const& userId, std::string const& currency, int amount, std::string const& itemType, std::string const& itemId, std::string const& cartType, CustomFields const& customFields = {});

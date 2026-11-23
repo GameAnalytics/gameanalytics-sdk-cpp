@@ -185,20 +185,20 @@ TEST_F(GameAnalyticsServerTest, OnNewPlayerFiresOnlyForTheFirstSession)
     EXPECT_EQ(1, callbacks->newPlayer);
     EXPECT_EQ(1, callbacks->joined);
     EXPECT_TRUE(callbacks->newUserFlagInNewPlayer);
-    EXPECT_TRUE(server->getPlayer("p1").isNewUser());
+    EXPECT_TRUE(server->getPlayer("p1")->isNewUser());
 
     server->endPlayerSession("p1");
     ASSERT_TRUE(drainGAThread());
     EXPECT_EQ(1, callbacks->exited);
-    EXPECT_FALSE(server->getPlayer("p1").isNewUser());
+    EXPECT_FALSE(server->getPlayer("p1")->isNewUser());
 
     server->startPlayerSession("p1");
     ASSERT_TRUE(drainGAThread());
 
     EXPECT_EQ(1, callbacks->newPlayer);
     EXPECT_EQ(2, callbacks->joined);
-    EXPECT_FALSE(server->getPlayer("p1").isNewUser());
-    EXPECT_EQ(2, server->getPlayer("p1").getSessionCount());
+    EXPECT_FALSE(server->getPlayer("p1")->isNewUser());
+    EXPECT_EQ(2, server->getPlayer("p1")->getSessionCount());
 }
 
 TEST_F(GameAnalyticsServerTest, EndingASessionThatWasNeverStartedIsIgnored)
@@ -210,7 +210,7 @@ TEST_F(GameAnalyticsServerTest, EndingASessionThatWasNeverStartedIsIgnored)
 
     EXPECT_EQ(0, callbacks->exited);
     EXPECT_TRUE(storedEvents("session_end", "p2").empty());
-    EXPECT_EQ(0, server->getPlayer("p2").getLastSessionLength());
+    EXPECT_EQ(0, server->getPlayer("p2")->getLastSessionLength());
 }
 
 TEST_F(GameAnalyticsServerTest, EndingASessionTwiceEmitsOneSessionEnd)
@@ -222,7 +222,7 @@ TEST_F(GameAnalyticsServerTest, EndingASessionTwiceEmitsOneSessionEnd)
 
     EXPECT_EQ(1, callbacks->exited);
     EXPECT_EQ(1u, storedEvents("session_end", "p1").size());
-    EXPECT_FALSE(server->getPlayer("p1").isActive());
+    EXPECT_FALSE(server->getPlayer("p1")->isActive());
 }
 
 TEST_F(GameAnalyticsServerTest, PlayerProgressionEventCarriesTheScore)
@@ -250,7 +250,7 @@ TEST_F(GameAnalyticsServerTest, PlayerProgressionEventOmitsScoreWhenNotRequested
     ASSERT_EQ(1u, events.size());
     EXPECT_EQ("Fail:w1:l1", events[0].value("event_id", ""));
     EXPECT_FALSE(events[0].contains("score"));
-    EXPECT_EQ(1, server->getPlayer("p1").progressionTries.getTries("w1:l1"));
+    EXPECT_EQ(1, server->getPlayer("p1")->progressionTries.getTries("w1:l1"));
 }
 
 // ---- player event payloads ----
@@ -259,12 +259,12 @@ TEST_F(GameAnalyticsServerTest, PlayerEventsCarryThePlayerAnnotations)
 {
     startSession("p1");
 
-    Player& p = server->getPlayer("p1");
-    p.extUserId   = "steam_1";
-    p.countryCode = "dk";
-    p.device      = "dedicated";
-    p.setCustomDimension1("ninja");
-    p.customFields.setInt("level", 12);
+    PlayerPtr p = server->getPlayer("p1");
+    p->extUserId   = "steam_1";
+    p->countryCode = "dk";
+    p->device      = "dedicated";
+    p->setCustomDimension1("ninja");
+    p->customFields.setInt("level", 12);
 
     server->addPlayerDesignEvent("p1", "menu:open");
     ASSERT_TRUE(drainGAThread());
@@ -290,7 +290,7 @@ TEST_F(GameAnalyticsServerTest, PlayerEventsCarryThePlayerAnnotations)
 TEST_F(GameAnalyticsServerTest, PlayerDesignEventPayload)
 {
     startSession("p1");
-    server->getPlayer("p1").customFields.setString("tier", "gold");
+    server->getPlayer("p1")->customFields.setString("tier", "gold");
 
     server->addPlayerDesignEvent("p1", "shop:buy:potion", 2.5, fields("source", "quest"));
     ASSERT_TRUE(drainGAThread());
@@ -475,14 +475,14 @@ TEST_F(GameAnalyticsServerTest, SessionStartDeliversRemoteConfigsToThePlayer)
     }.dump());
 
     startSession("p1");
-    Player& p = server->getPlayer("p1");
+    PlayerPtr p = server->getPlayer("p1");
 
-    EXPECT_TRUE(p.isRemoteConfigsReady());
-    EXPECT_EQ("exp_a", p.getABId());
-    EXPECT_EQ("variant_b", p.getABVariantId());
-    EXPECT_EQ("hash_p1", p.getConfigsHash());
-    EXPECT_DOUBLE_EQ(0.25, p.getRemoteConfigsValueAsFloat("spawn_rate"));
-    EXPECT_TRUE(p.getRemoteConfigsValueAsBool("hardcore"));
+    EXPECT_TRUE(p->isRemoteConfigsReady());
+    EXPECT_EQ("exp_a", p->getABId());
+    EXPECT_EQ("variant_b", p->getABVariantId());
+    EXPECT_EQ("hash_p1", p->getConfigsHash());
+    EXPECT_DOUBLE_EQ(0.25, p->getRemoteConfigsValueAsFloat("spawn_rate"));
+    EXPECT_TRUE(p->getRemoteConfigsValueAsBool("hardcore"));
 
     server->addPlayerDesignEvent("p1", "match:start");
     ASSERT_TRUE(drainGAThread());
@@ -503,9 +503,9 @@ TEST_F(GameAnalyticsServerTest, SessionStartDeliversRemoteConfigsToThePlayer)
     ASSERT_TRUE(drainGAThread());
     startSession("p1");
 
-    EXPECT_EQ("hash_p1", server->getPlayer("p1").getConfigsHash());
-    EXPECT_DOUBLE_EQ(0.25, server->getPlayer("p1").getRemoteConfigsValueAsFloat("spawn_rate"));
-    EXPECT_EQ("exp_a", server->getPlayer("p1").getABId());
+    EXPECT_EQ("hash_p1", server->getPlayer("p1")->getConfigsHash());
+    EXPECT_DOUBLE_EQ(0.25, server->getPlayer("p1")->getRemoteConfigsValueAsFloat("spawn_rate"));
+    EXPECT_EQ("exp_a", server->getPlayer("p1")->getABId());
 }
 
 TEST_F(GameAnalyticsServerTest, PlayerRetentionIsAppliedOnInitialize)
@@ -536,4 +536,37 @@ TEST_F(GameAnalyticsServerTest, PlayerRetentionIsAppliedOnInitialize)
     EXPECT_FALSE(other.isExistingPlayer("recent"));
     ASSERT_TRUE(drainGAThread());
     EXPECT_EQ(0, store::GAStore::countPlayers());
+}
+
+// ---- shared player handles ----
+
+TEST_F(GameAnalyticsServerTest, EventQueuedRightAfterSessionStartIsKept)
+{
+    // no drain in between: the player is resolved on the GA thread, after the session start ran
+    server->startPlayerSession("p1");
+    server->addPlayerDesignEvent("p1", "first:event");
+    ASSERT_TRUE(drainGAThread());
+
+    EXPECT_EQ(1u, storedEvents("design", "p1").size());
+}
+
+TEST_F(GameAnalyticsServerTest, EventsThroughARemovedHandleAreDropped)
+{
+    startSession("p1");
+    PlayerPtr p = server->getPlayer("p1");
+    server->addPlayerDesignEvent(p, "kept");
+
+    server->endPlayerSession("p1");
+    ASSERT_TRUE(drainGAThread());
+    ASSERT_TRUE(server->removePlayer("p1"));
+    EXPECT_TRUE(p->isRemoved());
+    EXPECT_EQ(nullptr, server->findPlayer("p1"));
+
+    server->addPlayerDesignEvent(p, "dropped");
+    server->addPlayerDesignEvent(PlayerPtr(), "null");
+    ASSERT_TRUE(drainGAThread());
+
+    std::vector<json> events = storedEvents("design", "p1");
+    ASSERT_EQ(1u, events.size());
+    EXPECT_EQ("kept", events[0].value("event_id", ""));
 }
