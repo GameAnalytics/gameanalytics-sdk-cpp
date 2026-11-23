@@ -211,7 +211,15 @@ namespace gameanalytics
         {
             constexpr const char* DATABASE_NAME = "ga.sqlite3";
             
-            std::filesystem::path p = utilities::GAUtilities::pathFromUtf8(device::GADevice::getWritablePath());
+            const std::string writablePath = device::GADevice::getWritablePath();
+#if !IS_LINUX
+            if(writablePath.empty())
+            {
+                return false;
+            }
+#endif
+
+            std::filesystem::path p = utilities::GAUtilities::pathFromUtf8(writablePath);
             
             p /= state::GAState::getGameKey();
             
@@ -229,7 +237,11 @@ namespace gameanalytics
 
         bool GAStore::ensureDatabase(bool dropDatabase, std::string const& key)
         {
-            getInstance().initDatabaseLocation();
+            if (!getInstance().initDatabaseLocation())
+            {
+                getInstance().dbReady = false;
+                return false;
+            }
             
             // Open database
             if (sqlite3_open(getInstance().dbPath.c_str(), &getInstance().sqlDatabase) != SQLITE_OK)

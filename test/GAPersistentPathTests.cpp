@@ -413,3 +413,29 @@ TEST_F(GAPersistentPathTest, UnwritableCustomPathFailsWithoutThrowing)
     fs::permissions(locked, fs::perms::owner_all);
 }
 #endif
+
+#if IS_MAC
+TEST_F(GAPersistentPathTest, DatabaseIsNotOpenedWithoutWritablePath)
+{
+    if (geteuid() == 0)
+    {
+        GTEST_SKIP() << "root is not subject to directory permissions";
+    }
+
+    const fs::path home = _root / "locked";
+    ASSERT_TRUE(fs::create_directories(home));
+    fs::permissions(home, fs::perms::owner_read | fs::perms::owner_exec);
+    ScopedHomeVariable scopedHome(home);
+    device::GADevice::setWritablePath("");
+
+    const fs::path stray         = fs::current_path() / kGameKey;
+    const bool     existedBefore = fs::exists(stray);
+
+    bool opened = true;
+    ASSERT_NO_THROW(opened = store::GAStore::ensureDatabase(false, kGameKey));
+    EXPECT_FALSE(opened);
+    EXPECT_EQ(existedBefore, fs::exists(stray));
+
+    fs::permissions(home, fs::perms::owner_all);
+}
+#endif
