@@ -167,10 +167,14 @@ namespace gameanalytics
             data["platform"]                = platform;
             data["connection_type"]         = connectionType;
             data["country_code"]            = countryCode;
+            data["transaction_num"]         = _transactionNum;
 
             utilities::addIfNotEmpty(data, "ab_id", _abId);
             utilities::addIfNotEmpty(data, "ab_variant_id", _abVariantId); 
+            utilities::addIfNotEmpty(data, "configs_hash", _configsHash);
             utilities::addIfNotEmpty(data, "user_id_ext", extUserId);
+            utilities::addIfNotEmpty(data, "gpu_model", gpuModel);
+            utilities::addIfNotEmpty(data, "cpu_model", cpuModel);
 
             utilities::addIfNotEmpty(data, "custom_01", _customDimension1);
             utilities::addIfNotEmpty(data, "custom_02", _customDimension2);
@@ -180,6 +184,16 @@ namespace gameanalytics
             {
                 json fields = serializeCustomFields(customFields);
                 data["custom_fields"] = fields;
+            }
+
+            if(!progressionTries.empty())
+            {
+                json tries = json::object();
+                for(auto const& [progression, count] : progressionTries.getAll())
+                {
+                    tries[progression] = count;
+                }
+                data["progression"] = tries;
             }
 
             return data.dump();
@@ -208,18 +222,40 @@ namespace gameanalytics
             // optional values
             _abId           = utilities::getOptionalValue<std::string>(data, "ab_id", "");
             _abVariantId    = utilities::getOptionalValue<std::string>(data, "ab_variant_id", "");
+            _configsHash    = utilities::getOptionalValue<std::string>(data, "configs_hash", "");
+            _transactionNum = utilities::getOptionalValue<int>(data, "transaction_num", 0);
 
-            extUserId    = utilities::getOptionalValue<std::string>(data, "user_id_ext", "");
-            osVersion    = utilities::getOptionalValue<std::string>(data, "os_version", "");
-            device       = utilities::getOptionalValue<std::string>(data, "device", "");
-            manufacturer = utilities::getOptionalValue<std::string>(data, "manufacturer", "");
-            platform     = utilities::getOptionalValue<std::string>(data, "platform", "");
-            countryCode  = utilities::getOptionalValue<std::string>(data, "country_code", "");
+            extUserId      = utilities::getOptionalValue<std::string>(data, "user_id_ext", "");
+            osVersion      = utilities::getOptionalValue<std::string>(data, "os_version", "");
+            device         = utilities::getOptionalValue<std::string>(data, "device", "");
+            manufacturer   = utilities::getOptionalValue<std::string>(data, "manufacturer", "");
+            platform       = utilities::getOptionalValue<std::string>(data, "platform", "");
+            connectionType = utilities::getOptionalValue<std::string>(data, "connection_type", "");
+            countryCode    = utilities::getOptionalValue<std::string>(data, "country_code", "");
+            gpuModel       = utilities::getOptionalValue<std::string>(data, "gpu_model", "");
+            cpuModel       = utilities::getOptionalValue<std::string>(data, "cpu_model", "");
+
+            progressionTries.clear();
+            if(data.contains("progression") && data["progression"].is_object())
+            {
+                for(auto& item : data["progression"].items())
+                {
+                    if(item.value().is_number_integer())
+                    {
+                        progressionTries.setTries(item.key(), item.value().get<int>());
+                    }
+                }
+            }
+
+            // a restored player never has a running session
+            _isActive    = false;
+            _isNewPlayer = false;
 
             _customDimension1 = utilities::getOptionalValue<std::string>(data, "custom_01", "");
             _customDimension2 = utilities::getOptionalValue<std::string>(data, "custom_02", "");
             _customDimension3 = utilities::getOptionalValue<std::string>(data, "custom_03", "");
 
+            customFields = CustomFields{};
             if(data.contains("custom_fields"))
             {
                 customFields = deserializeCustomFields(data["custom_fields"]);

@@ -21,6 +21,21 @@ namespace gameanalytics
         return _tries.count(s) ? _tries.at(s) : 0;
     }
 
+    void ProgressionTries::clear()
+    {
+        _tries.clear();
+    }
+
+    bool ProgressionTries::empty() const
+    {
+        return _tries.empty();
+    }
+
+    std::unordered_map<std::string, int> const& ProgressionTries::getAll() const
+    {
+        return _tries;
+    }
+
     int ProgressionTries::incrementTries(std::string const& s)
     {
         if (_tries.count(s))

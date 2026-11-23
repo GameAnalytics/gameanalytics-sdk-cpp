@@ -23,6 +23,15 @@ namespace gameanalytics
     void GameAnalyticsServer::initialize(std::string const& gameKey, std::string const& secretKey)
     {
         GameAnalytics::initialize(gameKey, secretKey);
+
+        // runs after the initialize task above, once the sqlite store is open
+        std::shared_ptr<PlayerDatabase> db = _playerDatabase;
+        threading::GAThreading::performTaskOnGAThread(
+            [db]()
+            {
+                db->loadFromStore();
+            }
+        );
     }
 
     void GameAnalyticsServer::configureAvailableCurrencyTypes(StringVector const& validTypes)
@@ -58,6 +67,21 @@ namespace gameanalytics
     Player& GameAnalyticsServer::getPlayer(std::string const& uid)
     {
         return _playerDatabase->getPlayer(uid);
+    }
+
+    bool GameAnalyticsServer::savePlayer(std::string const& uid)
+    {
+        return _playerDatabase->persistPlayer(uid);
+    }
+
+    void GameAnalyticsServer::saveAllPlayers()
+    {
+        _playerDatabase->persistAll();
+    }
+
+    size_t GameAnalyticsServer::getPlayerCount() const
+    {
+        return _playerDatabase->countPlayers();
     }
 
     void GameAnalyticsServer::startPlayerSession(std::string const& userId)
@@ -158,6 +182,7 @@ namespace gameanalytics
             try
             {
                 player.onJoin();
+                _playerDatabase->persistPlayer(player);
 
                 if(!state::GAState::isEventSubmissionEnabled())
                 {
@@ -199,6 +224,8 @@ namespace gameanalytics
 
         if(_playerCallbacks)
             _playerCallbacks->onPlayerExit(player);
+
+        _playerDatabase->persistPlayer(player);
 
         if(!state::GAState::isEventSubmissionEnabled())
         {
@@ -490,6 +517,7 @@ namespace gameanalytics
             {
                 // Increment attempt number
                 player.progressionTries.incrementTries(progressionIdentifier);
+                _playerDatabase->persistPlayer(player);
             }
 
             // increment and add attempt_num on complete and delete persisted
@@ -509,7 +537,8 @@ namespace gameanalytics
                 }
 
                 // Clear
-                state::GAState::clearProgressionTries(progressionIdentifier);
+                player.progressionTries.remove(progressionIdentifier);
+                _playerDatabase->persistPlayer(player);
             }
 
             // Log

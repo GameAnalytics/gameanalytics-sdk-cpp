@@ -3,6 +3,8 @@
 #include "GALogger.h"
 #include "GADevice.h"
 #include "GASerialize.h"
+#include "GAStore.h"
+#include "GAThreading.h"
 
 namespace gameanalytics
 {
@@ -33,6 +35,7 @@ namespace gameanalytics
         }
 
         _players[uid] = std::forward<Player>(player);
+        persistPlayer(_players[uid]);
         return true;
     }
 
@@ -54,6 +57,7 @@ namespace gameanalytics
         }
 
         _players.erase(uid);
+        eraseFromStore(uid);
         return true;
     }
 
@@ -82,7 +86,159 @@ namespace gameanalytics
 
         player._userId = newUserId;
         _players[newUserId] = std::move(player);
-        return removePlayer(uid);
+        _players.erase(uid);
+
+        eraseFromStore(uid);
+        persistPlayer(_players[newUserId]);
+        return true;
+    }
+
+    size_t PlayerDatabase::loadFromStore()
+    {
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+
+        if(!store::GAStore::getTableReady())
+        {
+            logging::GALogger::w("Player database: store is not ready, players were not restored");
+            return 0;
+        }
+
+        size_t restored = 0;
+        std::unordered_map<std::string, bool> inStore;
+
+        try
+        {
+            json rows;
+            store::GAStore::getPlayers(rows);
+
+            if(rows.is_array())
+            {
+                inStore.reserve(rows.size());
+
+                for(json& row : rows)
+                {
+                    const std::string uid  = utilities::getOptionalValue<std::string>(row, "user_id", "");
+                    const std::string data = utilities::getOptionalValue<std::string>(row, "data", "");
+
+                    if(uid.empty() || data.empty())
+                    {
+                        continue;
+                    }
+
+                    inStore[uid] = true;
+
+                    // players registered before the store was loaded take precedence
+                    if(playerExists(uid))
+                    {
+                        continue;
+                    }
+
+                    Player player;
+                    if(!player.deserialize(data) || player.getUserId() != uid)
+                    {
+                        logging::GALogger::w("Player database: dropping corrupt entry for user id: %s", uid.c_str());
+                        eraseFromStore(uid);
+                        continue;
+                    }
+
+                    _players[uid] = std::move(player);
+                    ++restored;
+                }
+            }
+        }
+        catch(std::exception& e)
+        {
+            logging::GALogger::e("Player database: failed to restore players: %s", e.what());
+        }
+
+        _storeLoaded = true;
+
+        // write back everything that was registered while the store was unavailable
+        for(auto& [uid, player] : _players)
+        {
+            if(!inStore.count(uid))
+            {
+                persistPlayer(player);
+            }
+        }
+
+        logging::GALogger::i("Player database: restored %zu players, %zu registered in total", restored, _players.size());
+        return restored;
+    }
+
+    bool PlayerDatabase::isStoreLoaded() const
+    {
+        return _storeLoaded;
+    }
+
+    void PlayerDatabase::persistPlayer(Player const& player)
+    {
+        const std::string uid = player.getUserId();
+        if(uid.empty())
+        {
+            return;
+        }
+
+        const std::string data = player.serialize();
+        if(data.empty())
+        {
+            logging::GALogger::w("Player database: could not serialize player, user id: %s", uid.c_str());
+            return;
+        }
+
+        writeToStore(uid, data);
+    }
+
+    bool PlayerDatabase::persistPlayer(std::string const& uid)
+    {
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+
+        if(!playerExists(uid))
+        {
+            logging::GALogger::w("Invalid user id: %s", uid.c_str());
+            return false;
+        }
+
+        persistPlayer(_players[uid]);
+        return true;
+    }
+
+    void PlayerDatabase::persistAll()
+    {
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+
+        for(auto& [uid, player] : _players)
+        {
+            persistPlayer(player);
+        }
+    }
+
+    void PlayerDatabase::writeToStore(std::string const& uid, std::string const& data)
+    {
+        threading::GAThreading::performTaskOnGAThread(
+            [uid, data]()
+            {
+                // before initialize the store does not exist yet; loadFromStore
+                // writes the registered players back once it does
+                if(store::GAStore::getTableReady())
+                {
+                    store::GAStore::setPlayer(uid, data);
+                }
+            }
+        );
+    }
+
+    void PlayerDatabase::eraseFromStore(std::string const& uid)
+    {
+        threading::GAThreading::performTaskOnGAThread(
+            [uid]()
+            {
+                if(store::GAStore::getTableReady())
+                {
+                    store::GAStore::removePlayer(uid);
+                }
+            }
+        );
     }
 
     Player& PlayerDatabase::getPlayer(std::string const& userId)

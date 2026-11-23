@@ -249,6 +249,7 @@ namespace gameanalytics
                 GAStore::executeQuerySync("DROP TABLE ga_state");
                 GAStore::executeQuerySync("DROP TABLE ga_session");
                 GAStore::executeQuerySync("DROP TABLE ga_progression");
+                GAStore::executeQuerySync("DROP TABLE ga_players");
                 GAStore::executeQuerySync("VACUUM");
             }
 
@@ -257,6 +258,7 @@ namespace gameanalytics
             constexpr const char* sql_ga_session = "CREATE TABLE IF NOT EXISTS ga_session(session_id CHAR(50) PRIMARY KEY NOT NULL, timestamp CHAR(50) NOT NULL, event TEXT NOT NULL);";
             constexpr const char* sql_ga_state = "CREATE TABLE IF NOT EXISTS ga_state(key CHAR(255) PRIMARY KEY NOT NULL, value TEXT);";
             constexpr const char* sql_ga_progression = "CREATE TABLE IF NOT EXISTS ga_progression(progression CHAR(255) PRIMARY KEY NOT NULL, tries CHAR(255));";
+            constexpr const char* sql_ga_players = "CREATE TABLE IF NOT EXISTS ga_players(user_id CHAR(255) PRIMARY KEY NOT NULL, data TEXT NOT NULL);";
 
             if (!GAStore::executeQuerySync(sql_ga_events))
             {
@@ -323,6 +325,22 @@ namespace gameanalytics
                 }
             }
 
+            if (!GAStore::executeQuerySync(sql_ga_players))
+            {
+                return false;
+            }
+
+            if (!GAStore::executeQuerySync("SELECT user_id FROM ga_players LIMIT 0,1"))
+            {
+                logging::GALogger::d("ga_players corrupt, recreating.");
+                GAStore::executeQuerySync("DROP TABLE ga_players");
+                if (!GAStore::executeQuerySync(sql_ga_players))
+                {
+                    logging::GALogger::w("ga_players corrupt, could not recreate it.");
+                    return false;
+                }
+            }
+
             getInstance().trimEventTable();
             getInstance().tableReady = true;
 
@@ -343,6 +361,39 @@ namespace gameanalytics
                 StringVector parameterArray = {key, value};
                 executeQuerySync("INSERT OR REPLACE INTO ga_state (key, value) VALUES(?, ?);", parameterArray, true);
             }
+        }
+
+        void GAStore::setPlayer(std::string const& userId, std::string const& data)
+        {
+            if (userId.empty())
+            {
+                return;
+            }
+
+            if (data.empty())
+            {
+                removePlayer(userId);
+                return;
+            }
+
+            StringVector parameterArray = {userId, data};
+            executeQuerySync("INSERT OR REPLACE INTO ga_players (user_id, data) VALUES(?, ?);", parameterArray, true);
+        }
+
+        void GAStore::removePlayer(std::string const& userId)
+        {
+            if (userId.empty())
+            {
+                return;
+            }
+
+            StringVector parameterArray = {userId};
+            executeQuerySync("DELETE FROM ga_players WHERE user_id = ?;", parameterArray);
+        }
+
+        void GAStore::getPlayers(json& out)
+        {
+            executeQuerySync("SELECT user_id, data FROM ga_players;", out);
         }
 
         int64_t GAStore::getDbSizeBytes()

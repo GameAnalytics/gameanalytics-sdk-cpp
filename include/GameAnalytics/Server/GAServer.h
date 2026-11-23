@@ -38,6 +38,15 @@ namespace gameanalytics
             bool removePlayer(std::string const& userId);
             Player& getPlayer(std::string const& userId);
 
+            // Players are kept in the SDK's sqlite database and restored on initialize.
+            // Sessions and progression updates are saved automatically; call savePlayer
+            // after changing a player's fields directly (custom fields, country, ...).
+            bool savePlayer(std::string const& userId);
+            void saveAllPlayers();
+
+            // number of players registered on this server (in memory)
+            size_t getPlayerCount() const;
+
             void startPlayerSession(std::string const& userId);
             void endPlayerSession(std::string const& userId);
 

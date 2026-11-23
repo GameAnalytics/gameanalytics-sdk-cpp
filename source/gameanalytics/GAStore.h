@@ -27,6 +27,11 @@ namespace gameanalytics
 
             static void setState(std::string const& key, std::string const& value);
 
+            // server-side player persistence (ga_players table)
+            static void setPlayer(std::string const& userId, std::string const& data);
+            static void removePlayer(std::string const& userId);
+            static void getPlayers(json& out);
+
             static bool executeQuerySync(std::string const& sql);
             static void executeQuerySync(std::string const& sql, json& out);
 
