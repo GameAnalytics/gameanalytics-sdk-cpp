@@ -9,6 +9,7 @@
 #include <cstring>
 #include <array>
 #include <functional>
+#include <unordered_map>
 
 namespace gameanalytics
 {

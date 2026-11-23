@@ -695,7 +695,7 @@ namespace gameanalytics
 
         void GAEvents::fixMissingSessionEndEvents()
         {
-            if(!state::GAState::isEventSubmissionEnabled())
+            if(!state::GAState::isEventSubmissionEnabled() || !getInstance().doFixMissingSessionEnd)
             {
                 return;
             }
@@ -723,6 +723,14 @@ namespace gameanalytics
                     try
                     {
                         json sessionEndEvent = json::parse(session["event"].get<std::string>());
+
+                        std::string userId = sessionEndEvent["user_id"];
+
+                        // workaround for server based implementation, we want to skip player events
+                        if(userId != state::GAState::getUserId())
+                        {
+                            continue;
+                        }
 
                         int64_t event_ts = utilities::getOptionalValue<int64_t>(sessionEndEvent, "client_ts", 0);
                         int64_t start_ts = std::stoll(utilities::getOptionalValue<std::string>(session, "timestamp", "0"));
@@ -796,7 +804,7 @@ namespace gameanalytics
                 json ev;
                 state::GAState::getEventAnnotations(ev);
                 
-                logging::GALogger::i(ev.dump().c_str());
+                logging::GALogger::v("Event annotations: %s", ev.dump().c_str());
                 
                 ev.merge_patch(eventData);
 

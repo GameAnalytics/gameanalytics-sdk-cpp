@@ -118,7 +118,13 @@ namespace gameanalytics
         std::string printArray(const StringVector& v, std::string const& delimiter = ", ");
         int64_t getNumberFromCache(json& node, std::string const& key, int64_t defValue = 0ll);
 
-        std::pair<std::string, int32_t> getRelevantFunctionFromCallStack();
+        struct FunctionInfo
+        {
+            std::string functionName;
+            int32_t     lineNumber = 0;
+        };
+
+        FunctionInfo getRelevantFunctionFromCallStack();
 
         struct GAUtilities
         {

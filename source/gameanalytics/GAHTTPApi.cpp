@@ -82,6 +82,14 @@ namespace gameanalytics
 
         EGAHTTPApiResponse GAHTTPApi::requestInitReturningDict(json& json_out, std::string const& configsHash)
         {
+            json initAnnotations;
+            state::GAState::getInitAnnotations(initAnnotations);
+
+            return requestInitReturningDict(json_out, initAnnotations, configsHash);
+        }
+
+        EGAHTTPApiResponse GAHTTPApi::requestInitReturningDict(json& json_out, json& initAnnotations, std::string const& configsHash)
+        {
             if(!impl)
             {
                 logging::GALogger::e("Invalid http implmentation");
@@ -95,9 +103,6 @@ namespace gameanalytics
 
             logging::GALogger::d("Sending 'init' URL: %s", url.c_str());
 
-            json initAnnotations;
-            state::GAState::getInitAnnotations(initAnnotations);
-            
             try
             {
                 std::string jsonString = initAnnotations.dump();

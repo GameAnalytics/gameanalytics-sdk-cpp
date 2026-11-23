@@ -39,8 +39,9 @@ namespace gameanalytics
 
             bool enableSDKInitEvent{false};
             bool enableHealthEvent{false};
+            bool doFixMissingSessionEnd{false};
 
-        private:
+            void addEventToStore(json& eventData);
 
             static constexpr const char* CategorySessionStart           = "user";
             static constexpr const char* CategorySessionEnd             = "session_end";
@@ -51,8 +52,10 @@ namespace gameanalytics
             static constexpr const char* CategoryError                  = "error";
             static constexpr const char* CategorySDKInit                = "sdk_init";
             static constexpr const char* CategoryHealth                 = "health";
-            static constexpr int         MaxEventCount                  = 500;
 
+        private:
+
+            static constexpr int MaxEventCount = 500;
             static constexpr std::chrono::milliseconds PROCESS_EVENTS_INTERVAL{8000};
 
             GAEvents();
@@ -63,7 +66,6 @@ namespace gameanalytics
             void processEventQueue();
             void cleanupEvents();
             void fixMissingSessionEndEvents();
-            void addEventToStore(json& eventData);
             void addDimensionsToEvent(json& eventData);
             void addCustomFieldsToEvent(json& eventData, json& fields);
             void updateSessionTime();

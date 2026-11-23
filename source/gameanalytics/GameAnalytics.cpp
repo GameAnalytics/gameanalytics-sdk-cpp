@@ -426,7 +426,6 @@ namespace gameanalytics
             }
 
             // Send to events
-
             try
             {
                 json fieldsJson = utilities::parseFields(fields);
@@ -557,13 +556,7 @@ namespace gameanalytics
 
         const std::string message = utilities::trimString(message_, maxErrMsgSize);
 
-        std::string function;
-        int32_t line = -1;
-
-        std::pair<std::string, int32_t> inFunction = utilities::getRelevantFunctionFromCallStack();
-        
-        function = inFunction.first;
-        line     = inFunction.second;
+        utilities::FunctionInfo finfo = utilities::getRelevantFunctionFromCallStack();
         
         if(fields.size() > maxFieldsSize)
         {
@@ -581,7 +574,7 @@ namespace gameanalytics
             try
             {
                 json fieldsJson = utilities::parseFields(fields);
-                events::GAEvents::addErrorEvent(severity, message, function, line, fieldsJson, mergeFields);
+                events::GAEvents::addErrorEvent(severity, message, finfo.functionName, finfo.lineNumber, fieldsJson, mergeFields);
             }
             catch(std::exception& e)
             {
@@ -759,6 +752,66 @@ namespace gameanalytics
     std::string GameAnalytics::getRemoteConfigsValueAsString(std::string const& key, std::string const& defaultValue)
     {
         return state::GAState::getRemoteConfigsValue<std::string>(key, defaultValue);
+    }
+
+    int64_t GameAnalytics::getRemoteConfigsValueAsInt(std::string const& key, int64_t defaultValue)
+    {
+        try
+        {
+            std::string s = getRemoteConfigsValueAsString(key);
+            if(!s.empty())
+            {
+                return std::stoll(s);
+            }
+        }
+        catch(std::exception& e)
+        {
+            (void)e;
+        }
+
+        return defaultValue;
+    }
+
+    uint64_t GameAnalytics::getRemoteConfigsValueAsUInt(std::string const& key, uint64_t defaultValue)
+    {
+        try
+        {
+            std::string s = getRemoteConfigsValueAsString(key);
+            if(!s.empty())
+            {
+                return std::stoull(s);
+            }
+        }
+        catch(std::exception& e)
+        {
+            (void)e;
+        }
+
+        return defaultValue;
+    }
+
+    double GameAnalytics::getRemoteConfigsValueAsFloat(std::string const& key, double defaultValue)
+    {
+        try
+        {
+            std::string s = getRemoteConfigsValueAsString(key);
+            if(!s.empty())
+            {
+                return std::stod(s);
+            }
+        }
+        catch(std::exception& e)
+        {
+            (void)e;
+        }
+
+        return defaultValue;
+    }
+
+    bool GameAnalytics::getRemoteConfigsValueAsBool(std::string const& key, bool defaultValue)
+    {
+        std::string s = getRemoteConfigsValueAsString(key, "false");
+        return utilities::toLowerCase(s) == "true";
     }
 
     std::string GameAnalytics::getRemoteConfigsValueAsJson(std::string const& key)
@@ -956,6 +1009,7 @@ namespace gameanalytics
             }
             return false;
         }
+        
         return true;
     }
 
