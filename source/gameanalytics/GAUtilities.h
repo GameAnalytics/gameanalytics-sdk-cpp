@@ -157,6 +157,18 @@ namespace gameanalytics
                     return L"";
                 }
             }
+
+            inline static std::filesystem::path pathFromUtf8(const std::string& str)
+            {
+                try
+                {
+                    return std::filesystem::u8path(str);
+                }
+                catch(const std::exception& e)
+                {
+                    return std::filesystem::path(str);
+                }
+            }
         };
     }
 }
