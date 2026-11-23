@@ -349,7 +349,7 @@ namespace gameanalytics
 
         int64_t GAStore::getDbSizeBytes()
         {
-            std::ifstream in(getInstance().dbPath, std::ifstream::ate | std::ifstream::binary);
+            std::ifstream in(std::filesystem::u8path(getInstance().dbPath), std::ifstream::ate | std::ifstream::binary);
             return in.tellg();
         }
 

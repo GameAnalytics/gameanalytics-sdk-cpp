@@ -362,6 +362,8 @@ TEST_F(GAPersistentPathTest, CustomUnicodePathIsUsedForDatabase)
     ASSERT_TRUE(rows.is_array());
     ASSERT_EQ(1u, rows.size());
     EXPECT_EQ("ok", rows[0]["value"].get<std::string>());
+
+    EXPECT_GT(store::GAStore::getDbSizeBytes(), 0);
 }
 
 TEST_F(GAPersistentPathTest, CustomPathIsCreatedWhenMissing)
