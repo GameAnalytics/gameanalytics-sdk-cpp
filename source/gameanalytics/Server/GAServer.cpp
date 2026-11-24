@@ -9,6 +9,7 @@
 #include "GAState.h"
 #include "GAValidator.h"
 #include "GASerialize.h"
+#include "GAUtilities.h"
 
 namespace gameanalytics
 {
@@ -188,10 +189,26 @@ namespace gameanalytics
 
     void GameAnalyticsServer::addServerProgressionEvent(EGAProgressionStatus progressionStatus, std::string const& progression01, std::string const& progression02, std::string const& progression03, int score, bool sendScore, CustomFields const& customFields)
     {
-        if(sendScore)
-            GameAnalytics::addProgressionEvent(progressionStatus, score, progression01, progression02, progression03, customFields.toString());
-        else
-            GameAnalytics::addProgressionEvent(progressionStatus, score, progression01, progression02, progression03, customFields.toString());
+        // the public SDK wrappers always send the score, so go to the event layer
+        // directly to honor sendScore
+        const std::string fields = customFields.toString();
+        threading::GAThreading::performTaskOnGAThread([=]()
+        {
+            if(!GameAnalytics::isSdkReady(true, true, "Could not add progression event"))
+            {
+                return;
+            }
+
+            try
+            {
+                json fieldsJson = utilities::parseFields(fields);
+                events::GAEvents::addProgressionEvent(progressionStatus, progression01, progression02, progression03, score, sendScore, fieldsJson, false);
+            }
+            catch(std::exception const& e)
+            {
+                logging::GALogger::e("addServerProgressionEvent - Exception thrown: %s", e.what());
+            }
+        });
     }
 
     bool GameAnalyticsServer::startPlayerSessionInternal(std::string const& userId)

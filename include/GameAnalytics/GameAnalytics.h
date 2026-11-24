@@ -143,12 +143,15 @@ namespace gameanalytics
 
          static bool isThreadEnding();
 
+     protected:
+
+        static bool isSdkReady(bool needsInitialized, bool warn = true, std::string const& message = "");
+
      private:
 
         static void setHttpClient(std::unique_ptr<GAHttpClient>&& httpClient);
 
         static bool _endThread;
-        static bool isSdkReady(bool needsInitialized, bool warn = true, std::string const& message = "");
     };
 
 } // namespace gameanalytics
