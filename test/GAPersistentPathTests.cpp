@@ -229,8 +229,19 @@ TEST_F(GAPersistentPathTest, PlatformPathPreservesUnicodeHome)
 }
 
 // a home directory that does not exist is an environment problem, not the
-// SDK's: macOS and Linux fall back to a relative folder rather than creating
-// it. Windows has no such guard and creates the missing tree.
+// SDK's: Linux reports no path and macOS falls back to a relative folder,
+// neither creates it. Windows has no such guard and creates the missing tree.
+#if IS_LINUX
+TEST_F(GAPersistentPathTest, PlatformPathIsEmptyWhenHomeIsMissing)
+{
+    const fs::path home = _root / "missing" / "nested" / "home";
+    ASSERT_FALSE(fs::exists(home));
+    ScopedHomeVariable scopedHome(home);
+
+    EXPECT_TRUE(platformPath().empty());
+    EXPECT_FALSE(fs::exists(home));
+}
+#else
 TEST_F(GAPersistentPathTest, PlatformPathFallsBackWhenHomeIsMissing)
 {
     const fs::path home = _root / "missing" / "nested" / "home";
@@ -258,16 +269,10 @@ TEST_F(GAPersistentPathTest, PlatformPathFallsBackWhenHomeIsMissing)
     }
 #endif
 }
+#endif
 
 TEST_F(GAPersistentPathTest, PlatformPathFallsBackToRelativeDirectoryWithoutHome)
 {
-#if IS_LINUX
-    // cannot be asserted in-process: the current Linux implementation builds a
-    // std::string from the null getenv() result, which would take the whole
-    // test binary down rather than fail this one test
-    GTEST_SKIP() << "Linux getPersistentPath() dereferences a null HOME";
-#endif
-
     const fs::path fallback      = fs::current_path() / kFolderName;
     const bool     existedBefore = fs::exists(fallback);
     ScopedHomeVariable scopedHome{fs::path()};
@@ -357,6 +362,8 @@ TEST_F(GAPersistentPathTest, CustomUnicodePathIsUsedForDatabase)
     ASSERT_TRUE(rows.is_array());
     ASSERT_EQ(1u, rows.size());
     EXPECT_EQ("ok", rows[0]["value"].get<std::string>());
+
+    EXPECT_GT(store::GAStore::getDbSizeBytes(), 0);
 }
 
 TEST_F(GAPersistentPathTest, CustomPathIsCreatedWhenMissing)
@@ -404,5 +411,31 @@ TEST_F(GAPersistentPathTest, UnwritableCustomPathFailsWithoutThrowing)
     EXPECT_FALSE(fs::exists(custom));
 
     fs::permissions(locked, fs::perms::owner_all);
+}
+#endif
+
+#if IS_MAC
+TEST_F(GAPersistentPathTest, DatabaseIsNotOpenedWithoutWritablePath)
+{
+    if (geteuid() == 0)
+    {
+        GTEST_SKIP() << "root is not subject to directory permissions";
+    }
+
+    const fs::path home = _root / "locked";
+    ASSERT_TRUE(fs::create_directories(home));
+    fs::permissions(home, fs::perms::owner_read | fs::perms::owner_exec);
+    ScopedHomeVariable scopedHome(home);
+    device::GADevice::setWritablePath("");
+
+    const fs::path stray         = fs::current_path() / kGameKey;
+    const bool     existedBefore = fs::exists(stray);
+
+    bool opened = true;
+    ASSERT_NO_THROW(opened = store::GAStore::ensureDatabase(false, kGameKey));
+    EXPECT_FALSE(opened);
+    EXPECT_EQ(existedBefore, fs::exists(stray));
+
+    fs::permissions(home, fs::perms::owner_all);
 }
 #endif
