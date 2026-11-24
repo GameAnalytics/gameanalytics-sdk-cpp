@@ -212,12 +212,10 @@ namespace gameanalytics
             constexpr const char* DATABASE_NAME = "ga.sqlite3";
             
             const std::string writablePath = device::GADevice::getWritablePath();
-#if !IS_LINUX
             if(writablePath.empty())
             {
                 return false;
             }
-#endif
 
             std::filesystem::path p = utilities::GAUtilities::pathFromUtf8(writablePath);
             
