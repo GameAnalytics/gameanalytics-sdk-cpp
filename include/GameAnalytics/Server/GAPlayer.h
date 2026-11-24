@@ -4,6 +4,9 @@
 #include "GameAnalytics/Server/GACustomFields.h"
 #include "GameAnalytics/GAProgressionTries.h"
 #include <chrono>
+#include <cstdint>
+#include <limits>
+#include <vector>
 
 namespace gameanalytics
 {
@@ -19,13 +22,33 @@ namespace gameanalytics
         std::string _abVariantId;
         std::string _configsHash;
 
-        // remote configs delivered by the init call for this player:
-        // _remoteConfigs is the tracking info (key/id/vsn) sent with every event,
-        // _remoteConfigsContent the key/value list, _remoteConfigValues the lookup table
-        std::string _remoteConfigs;
-        std::string _remoteConfigsContent;
-        std::unordered_map<std::string, std::string> _remoteConfigValues;
+        // remote configs delivered by the init call for this player. Every config is
+        // kept with its time window and filtered when read, so a config that expires
+        // or starts between two init calls switches over at the right moment.
+        struct RemoteConfig
+        {
+            std::string key;
+            std::string value;      // string form, used by the typed getters
+            std::string valueJson;  // original json value, used by getRemoteConfigs
+            std::string id;
+            int         vsn     = 0;
+            int64_t     startTs = std::numeric_limits<int64_t>::min();
+            int64_t     endTs   = std::numeric_limits<int64_t>::max();
+
+            bool isActiveAt(int64_t ts) const { return ts > startTs && ts < endTs; }
+        };
+
+        std::vector<RemoteConfig> _remoteConfigs;
         bool _remoteConfigsReady = false;
+
+        // the first config with this key that is active right now, or nullptr
+        RemoteConfig const* findActiveRemoteConfig(std::string const& key) const;
+        std::vector<RemoteConfig const*> activeRemoteConfigs() const;
+
+        // clock the config windows are evaluated against (adjusted client time, unix seconds)
+        static int64_t defaultClock();
+        static int64_t (*_now)();
+        friend struct PlayerTestAccessor;
 
         std::string _customDimension1;
         std::string _customDimension2;
@@ -49,7 +72,6 @@ namespace gameanalytics
         std::chrono::steady_clock::time_point _lastSessionTimestamp;
 
         void generateRandomId();
-        void rebuildRemoteConfigValues();
 
         public:
 
@@ -78,10 +100,14 @@ namespace gameanalytics
             // remote configs (populated by the init call made on session start, cached across restarts)
             bool        isRemoteConfigsReady() const;
 
-            // json array of {"key", "value"} objects, same format as GameAnalytics::getRemoteConfigsContentAsString
+            // json array of {"key", "value"} objects for the configs active right now,
+            // same format as GameAnalytics::getRemoteConfigsContentAsString
             std::string getRemoteConfigs() const;
 
             std::string getRemoteConfigsValueAsString(std::string const& key, std::string const& defaultValue = "") const;
+
+            // the value when it is valid json (object, array, number, ...), "" otherwise
+            std::string getRemoteConfigsValueAsJson(std::string const& key) const;
             int64_t     getRemoteConfigsValueAsInt(std::string const& key, int64_t defaultValue = 0) const;
             uint64_t    getRemoteConfigsValueAsUInt(std::string const& key, uint64_t defaultValue = 0) const;
             bool        getRemoteConfigsValueAsBool(std::string const& key, bool defaultValue = false) const;

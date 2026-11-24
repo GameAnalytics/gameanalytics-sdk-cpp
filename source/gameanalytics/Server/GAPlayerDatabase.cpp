@@ -317,10 +317,8 @@ namespace gameanalytics
 
         try
         {
-            json content  = json::array();
-            json tracking = json::array();
-
-            const int64_t now = state::GAState::getClientTsAdjusted();
+            std::vector<Player::RemoteConfig> configs;
+            configs.reserve(response["configs"].size());
 
             for(json& cfg : response["configs"])
             {
@@ -329,29 +327,30 @@ namespace gameanalytics
                     continue;
                 }
 
-                const std::string key = utilities::getOptionalValue<std::string>(cfg, "key", "");
-                const int64_t start_ts = utilities::getOptionalValue<int64_t>(cfg, "start_ts", std::numeric_limits<int64_t>::min());
-                const int64_t end_ts   = utilities::getOptionalValue<int64_t>(cfg, "end_ts",   std::numeric_limits<int64_t>::max());
-
-                if(key.empty() || !cfg.contains("value") || now <= start_ts || now >= end_ts)
+                Player::RemoteConfig entry;
+                entry.key = utilities::getOptionalValue<std::string>(cfg, "key", "");
+                if(entry.key.empty() || !cfg.contains("value"))
                 {
                     continue;
                 }
 
-                content.push_back({{"key", key}, {"value", cfg["value"]}});
-                tracking.push_back({
-                    {"key", key},
-                    {"id",  utilities::getOptionalValue<std::string>(cfg, "id", "")},
-                    {"vsn", utilities::getOptionalValue<int>(cfg, "vsn", 0)}
-                });
+                const json& value = cfg["value"];
+                entry.value     = value.is_string() ? value.get<std::string>() : value.dump();
+                entry.valueJson = value.dump();
+                entry.id        = utilities::getOptionalValue<std::string>(cfg, "id", "");
+                entry.vsn       = utilities::getOptionalValue<int>(cfg, "vsn", 0);
+                entry.startTs   = utilities::getOptionalValue<int64_t>(cfg, "start_ts", std::numeric_limits<int64_t>::min());
+                entry.endTs     = utilities::getOptionalValue<int64_t>(cfg, "end_ts",   std::numeric_limits<int64_t>::max());
+
+                configs.push_back(std::move(entry));
             }
 
-            player._remoteConfigsContent = content.dump();
-            player._remoteConfigs        = tracking.dump();
-            player._remoteConfigsReady   = true;
-            player.rebuildRemoteConfigValues();
+            // the time window is evaluated on every read, so expired and future
+            // configs are kept here and simply not visible yet / any more
+            player._remoteConfigs      = std::move(configs);
+            player._remoteConfigsReady = true;
 
-            logging::GALogger::d("Remote configs for player %s: %s", player._userId.c_str(), player._remoteConfigsContent.c_str());
+            logging::GALogger::d("Remote configs for player %s: %s", player._userId.c_str(), player.getRemoteConfigs().c_str());
         }
         catch(std::exception const& e)
         {
@@ -524,28 +523,15 @@ namespace gameanalytics
             data["custom_fields"] = fields;
         }
 
-        if(!p._remoteConfigs.empty())
+        for(Player::RemoteConfig const* cfg : p.activeRemoteConfigs())
         {
-            try
-            {
-                json configs = json::parse(p._remoteConfigs);
-                for(json& obj : configs)
-                {
-                    json cfg;
-                    cfg["vsn"] = utilities::getOptionalValue<int>(obj, "vsn", 0);
-                    cfg["key"] = utilities::getOptionalValue<std::string>(obj, "key", "");
-                    cfg["id"]  = utilities::getOptionalValue<std::string>(obj, "id", "");
-
-                    data["configurations_v3"].push_back(cfg);
-                }
-
-            }
-            catch(std::exception& e)
-            {
-                logging::GALogger::e("Failed to parse remote configs: %s", e.what());
-            }
+            json entry;
+            entry["vsn"] = cfg->vsn;
+            entry["key"] = cfg->key;
+            entry["id"]  = cfg->id;
+            data["configurations_v3"].push_back(std::move(entry));
         }
-        
+
         return data;
     }
 }

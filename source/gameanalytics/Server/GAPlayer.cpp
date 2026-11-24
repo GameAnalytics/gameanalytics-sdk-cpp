@@ -3,6 +3,9 @@
 #include "GALogger.h"
 #include "GAValidator.h"
 #include "GASerialize.h"
+#include "GAState.h"
+
+#include <limits>
 
 namespace gameanalytics
 {
@@ -94,15 +97,68 @@ namespace gameanalytics
         return _remoteConfigsReady;
     }
 
+    int64_t Player::defaultClock()
+    {
+        return state::GAState::getClientTsAdjusted();
+    }
+
+    int64_t (*Player::_now)() = &Player::defaultClock;
+
+    Player::RemoteConfig const* Player::findActiveRemoteConfig(std::string const& key) const
+    {
+        const int64_t now = _now();
+        for(RemoteConfig const& cfg : _remoteConfigs)
+        {
+            if(cfg.key == key && cfg.isActiveAt(now))
+            {
+                return &cfg;
+            }
+        }
+        return nullptr;
+    }
+
+    std::vector<Player::RemoteConfig const*> Player::activeRemoteConfigs() const
+    {
+        std::vector<RemoteConfig const*> active;
+        const int64_t now = _now();
+        for(RemoteConfig const& cfg : _remoteConfigs)
+        {
+            if(cfg.isActiveAt(now))
+            {
+                active.push_back(&cfg);
+            }
+        }
+        return active;
+    }
+
     std::string Player::getRemoteConfigs() const
     {
-        return _remoteConfigsContent.empty() ? "[]" : _remoteConfigsContent;
+        try
+        {
+            json content = json::array();
+            for(RemoteConfig const* cfg : activeRemoteConfigs())
+            {
+                content.push_back({{"key", cfg->key}, {"value", json::parse(cfg->valueJson)}});
+            }
+            return content.dump();
+        }
+        catch(std::exception const& e)
+        {
+            logging::GALogger::e("Failed to serialize remote configs for player %s: %s", _userId.c_str(), e.what());
+            return "[]";
+        }
     }
 
     std::string Player::getRemoteConfigsValueAsString(std::string const& key, std::string const& defaultValue) const
     {
-        auto it = _remoteConfigValues.find(key);
-        return it != _remoteConfigValues.end() ? it->second : defaultValue;
+        RemoteConfig const* cfg = findActiveRemoteConfig(key);
+        return cfg ? cfg->value : defaultValue;
+    }
+
+    std::string Player::getRemoteConfigsValueAsJson(std::string const& key) const
+    {
+        const std::string value = getRemoteConfigsValueAsString(key);
+        return json::accept(value) ? value : "";
     }
 
     int64_t Player::getRemoteConfigsValueAsInt(std::string const& key, int64_t defaultValue) const
@@ -172,37 +228,6 @@ namespace gameanalytics
     void Player::generateRandomId()
     {
         _userId = utilities::GAUtilities::generateUUID();
-    }
-
-    void Player::rebuildRemoteConfigValues()
-    {
-        _remoteConfigValues.clear();
-
-        if(_remoteConfigsContent.empty())
-        {
-            return;
-        }
-
-        try
-        {
-            json content = json::parse(_remoteConfigsContent);
-            for(json& cfg : content)
-            {
-                const std::string key = utilities::getOptionalValue<std::string>(cfg, "key", "");
-                if(key.empty() || !cfg.contains("value"))
-                {
-                    continue;
-                }
-
-                const json& value = cfg["value"];
-                _remoteConfigValues[key] = value.is_string() ? value.get<std::string>() : value.dump();
-            }
-        }
-        catch(std::exception const& e)
-        {
-            logging::GALogger::e("Failed to parse remote configs for player %s: %s", _userId.c_str(), e.what());
-            _remoteConfigValues.clear();
-        }
     }
 
     bool Player::isNewUser() const
@@ -313,8 +338,22 @@ namespace gameanalytics
             utilities::addIfNotEmpty(data, "user_id_ext", extUserId);
             utilities::addIfNotEmpty(data, "gpu_model", gpuModel);
             utilities::addIfNotEmpty(data, "cpu_model", cpuModel);
-            utilities::addIfNotEmpty(data, "remote_configs", _remoteConfigs);
-            utilities::addIfNotEmpty(data, "remote_configs_content", _remoteConfigsContent);
+            if(!_remoteConfigs.empty())
+            {
+                json configs = json::array();
+                for(RemoteConfig const& cfg : _remoteConfigs)
+                {
+                    json entry;
+                    entry["key"]   = cfg.key;
+                    entry["value"] = json::parse(cfg.valueJson);
+                    entry["id"]    = cfg.id;
+                    entry["vsn"]   = cfg.vsn;
+                    if(cfg.startTs != std::numeric_limits<int64_t>::min()) entry["start_ts"] = cfg.startTs;
+                    if(cfg.endTs   != std::numeric_limits<int64_t>::max()) entry["end_ts"]   = cfg.endTs;
+                    configs.push_back(std::move(entry));
+                }
+                data["remote_configs"] = configs;
+            }
 
             utilities::addIfNotEmpty(data, "custom_01", _customDimension1);
             utilities::addIfNotEmpty(data, "custom_02", _customDimension2);
@@ -366,10 +405,29 @@ namespace gameanalytics
             _transactionNum = utilities::getOptionalValue<int>(data, "transaction_num", 0);
             _lastSeenTs     = utilities::getOptionalValue<int64_t>(data, "last_seen_ts", 0);
 
-            _remoteConfigsReady   = utilities::getOptionalValue<bool>(data, "remote_configs_ready", false);
-            _remoteConfigs        = utilities::getOptionalValue<std::string>(data, "remote_configs", "");
-            _remoteConfigsContent = utilities::getOptionalValue<std::string>(data, "remote_configs_content", "");
-            rebuildRemoteConfigValues();
+            _remoteConfigsReady = utilities::getOptionalValue<bool>(data, "remote_configs_ready", false);
+            _remoteConfigs.clear();
+            if(data.contains("remote_configs") && data["remote_configs"].is_array())
+            {
+                for(json& entry : data["remote_configs"])
+                {
+                    RemoteConfig cfg;
+                    cfg.key = utilities::getOptionalValue<std::string>(entry, "key", "");
+                    if(cfg.key.empty() || !entry.contains("value"))
+                    {
+                        continue;
+                    }
+
+                    const json& value = entry["value"];
+                    cfg.value     = value.is_string() ? value.get<std::string>() : value.dump();
+                    cfg.valueJson = value.dump();
+                    cfg.id        = utilities::getOptionalValue<std::string>(entry, "id", "");
+                    cfg.vsn       = utilities::getOptionalValue<int>(entry, "vsn", 0);
+                    cfg.startTs   = utilities::getOptionalValue<int64_t>(entry, "start_ts", std::numeric_limits<int64_t>::min());
+                    cfg.endTs     = utilities::getOptionalValue<int64_t>(entry, "end_ts",   std::numeric_limits<int64_t>::max());
+                    _remoteConfigs.push_back(std::move(cfg));
+                }
+            }
 
             extUserId      = utilities::getOptionalValue<std::string>(data, "user_id_ext", "");
             osVersion      = utilities::getOptionalValue<std::string>(data, "os_version", "");

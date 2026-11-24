@@ -14,6 +14,7 @@
 #include <GAUtilities.h>
 #include <Server/GAPlayerDatabase.h>
 #include "GameAnalytics/Server/GAPlayer.h"
+#include "helpers/GAPlayerTestAccessor.h"
 
 using namespace gameanalytics;
 
@@ -22,11 +23,21 @@ namespace
     constexpr const char* kGameKey    = "bd624ee6f8e6efb32a054f8d7ba11618";
     constexpr const char* kGameSecret = "7f5c3f682cbd217841efba92e92ffb1b3b6612bc";
 
+    // seconds added to the clock remote config windows are checked against
+    int64_t g_clockOffset = 0;
+
+    int64_t shiftedClock()
+    {
+        return utilities::GAUtilities::timeIntervalSince1970() + g_clockOffset;
+    }
+
     class GAPlayerDatabaseTest : public ::testing::Test
     {
     protected:
         void SetUp() override
         {
+            g_clockOffset = 0;
+            PlayerTestAccessor::setClock(&shiftedClock);
             state::GAState::setKeys(kGameKey, kGameSecret);
             ASSERT_TRUE(store::GAStore::ensureDatabase(false, kGameKey));
             clearPlayers();
@@ -34,6 +45,7 @@ namespace
 
         void TearDown() override
         {
+            PlayerTestAccessor::resetClock();
             ASSERT_TRUE(drainGAThread());
             clearPlayers();
         }
@@ -450,6 +462,123 @@ TEST_F(GAPlayerDatabaseTest, RemoteConfigsSurviveARestart)
     EXPECT_DOUBLE_EQ(1.5, p->getRemoteConfigsValueAsFloat("speed"));
     EXPECT_TRUE(p->getRemoteConfigsValueAsBool("enabled"));
     EXPECT_EQ(3u, PlayerDatabase::getPlayerAnnotations(*p)["configurations_v3"].size());
+}
+
+TEST_F(GAPlayerDatabaseTest, RemoteConfigsSwitchOverWhenTheirWindowOpensOrCloses)
+{
+    const int64_t now = utilities::GAUtilities::timeIntervalSince1970();
+    constexpr int64_t HOUR = 60 * 60;
+
+    json response = json{
+        {"configs_hash", "h"},
+        {"configs", json::array({
+            {{"key", "event"},    {"value", "halloween"}, {"id", "e1"}, {"vsn", 1}, {"end_ts",   now + HOUR}},
+            {{"key", "event"},    {"value", "xmas"},      {"id", "e2"}, {"vsn", 1}, {"start_ts", now + HOUR}, {"end_ts", now + 3 * HOUR}},
+            {{"key", "always"},   {"value", "1"},         {"id", "a1"}, {"vsn", 1}}
+        })}
+    };
+
+    Player p = makePlayer("rc");
+    PlayerDatabase::applyInitResponse(p, response);
+
+    auto configIds = [&]()
+    {
+        std::vector<std::string> ids;
+        json annotations = PlayerDatabase::getPlayerAnnotations(p);
+        for (auto& cfg : annotations["configurations_v3"])
+        {
+            ids.push_back(cfg.value("id", ""));
+        }
+        return ids;
+    };
+
+    // now: the first window is open
+    EXPECT_EQ("halloween", p.getRemoteConfigsValueAsString("event"));
+    EXPECT_EQ((std::vector<std::string>{"e1", "a1"}), configIds());
+    EXPECT_EQ(2u, json::parse(p.getRemoteConfigs()).size());
+
+    // two hours later, with no new init call: the second window is open
+    g_clockOffset = 2 * HOUR;
+    EXPECT_EQ("xmas", p.getRemoteConfigsValueAsString("event"));
+    EXPECT_EQ((std::vector<std::string>{"e2", "a1"}), configIds());
+
+    // four hours later: both windows are closed, the untimed config stays
+    g_clockOffset = 4 * HOUR;
+    EXPECT_EQ("none", p.getRemoteConfigsValueAsString("event", "none"));
+    EXPECT_EQ((std::vector<std::string>{"a1"}), configIds());
+    EXPECT_EQ(1, p.getRemoteConfigsValueAsInt("always"));
+    EXPECT_TRUE(p.isRemoteConfigsReady());
+}
+
+TEST_F(GAPlayerDatabaseTest, RemoteConfigWindowsSurviveARestart)
+{
+    const int64_t now = utilities::GAUtilities::timeIntervalSince1970();
+    constexpr int64_t HOUR = 60 * 60;
+
+    {
+        PlayerDatabase db;
+        Player p = makePlayer("rc");
+        json response = json{
+            {"configs_hash", "h"},
+            {"configs", json::array({
+                {{"key", "later"}, {"value", "yes"}, {"id", "l1"}, {"vsn", 2}, {"start_ts", now + HOUR}, {"end_ts", now + 2 * HOUR}},
+                {{"key", "obj"},   {"value", json{{"a", 1}}}, {"id", "o1"}, {"vsn", 1}}
+            })}
+        };
+        PlayerDatabase::applyInitResponse(p, response);
+        EXPECT_EQ("def", p.getRemoteConfigsValueAsString("later", "def"));
+        ASSERT_TRUE(db.addPlayer(std::move(p)));
+    }
+    ASSERT_TRUE(drainGAThread());
+
+    PlayerDatabase fresh;
+    ASSERT_EQ(1u, fresh.loadFromStore());
+    PlayerPtr p = fresh.getPlayer("rc");
+
+    // the future config was stored with its window and becomes visible on time
+    EXPECT_EQ("def", p->getRemoteConfigsValueAsString("later", "def"));
+    g_clockOffset = 90 * 60;
+    EXPECT_EQ("yes", p->getRemoteConfigsValueAsString("later", "def"));
+
+    // response order is kept
+    json annotations = PlayerDatabase::getPlayerAnnotations(*p);
+    ASSERT_EQ(2u, annotations["configurations_v3"].size());
+    EXPECT_EQ("l1", annotations["configurations_v3"][0].value("id", ""));
+    EXPECT_EQ(2, annotations["configurations_v3"][0].value("vsn", 0));
+    EXPECT_EQ("o1", annotations["configurations_v3"][1].value("id", ""));
+
+    // non-string values keep their json type through the store
+    json content = json::parse(p->getRemoteConfigs());
+    ASSERT_EQ(2u, content.size());
+    EXPECT_EQ("yes", content[0].value("value", ""));
+    ASSERT_TRUE(content[1]["value"].is_object());
+    EXPECT_EQ(1, content[1]["value"].value("a", 0));
+}
+
+TEST_F(GAPlayerDatabaseTest, GetRemoteConfigsValueAsJson)
+{
+    json response = json{
+        {"configs", json::array({
+            {{"key", "obj_str"}, {"value", "{\"lives\":3,\"tags\":[\"a\"]}"}},
+            {{"key", "obj"},     {"value", json{{"speed", 1.5}}}},
+            {{"key", "list"},    {"value", json::array({1, 2, 3})}},
+            {{"key", "num"},     {"value", "1.5"}},
+            {{"key", "text"},    {"value", "plain text"}}
+        })}
+    };
+
+    Player p = makePlayer("rc");
+    PlayerDatabase::applyInitResponse(p, response);
+
+    EXPECT_EQ(3,   json::parse(p.getRemoteConfigsValueAsJson("obj_str")).value("lives", 0));
+    EXPECT_EQ(1.5, json::parse(p.getRemoteConfigsValueAsJson("obj")).value("speed", 0.0));
+    EXPECT_EQ(3u,  json::parse(p.getRemoteConfigsValueAsJson("list")).size());
+    EXPECT_EQ("1.5", p.getRemoteConfigsValueAsJson("num"));
+
+    // not json, or unknown: empty, like the client SDK
+    EXPECT_EQ("", p.getRemoteConfigsValueAsJson("text"));
+    EXPECT_EQ("plain text", p.getRemoteConfigsValueAsString("text"));
+    EXPECT_EQ("", p.getRemoteConfigsValueAsJson("missing"));
 }
 
 // ---- shared ownership ----
