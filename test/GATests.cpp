@@ -27,9 +27,9 @@
      gameanalytics::logging::GALogger::setVerboseInfoLog(true);
      gameanalytics::logging::GALogger::i("Verbose logging enabled");
 
-     gameanalytics::state::GAState::setKeys("bd624ee6f8e6efb32a054f8d7ba11618", "7f5c3f682cbd217841efba92e92ffb1b3b6612bc");
+     gameanalytics::state::GAState::setKeys("0123456789abcdef0123456789abcdef", "0123456789abcdef0123456789abcdef01234567");
 
-     ASSERT_TRUE(gameanalytics::store::GAStore::ensureDatabase(false, "bd624ee6f8e6efb32a054f8d7ba11618"));
+     ASSERT_TRUE(gameanalytics::store::GAStore::ensureDatabase(false, "0123456789abcdef0123456789abcdef"));
 
      gameanalytics::state::GAState::internalInitialize();
  }

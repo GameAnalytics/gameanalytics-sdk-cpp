@@ -211,14 +211,22 @@ namespace gameanalytics
         {
             constexpr const char* DATABASE_NAME = "ga.sqlite3";
             
-            std::filesystem::path p = device::GADevice::getWritablePath();
+            const std::string writablePath = device::GADevice::getWritablePath();
+            if(writablePath.empty())
+            {
+                return false;
+            }
+
+            std::filesystem::path p = utilities::GAUtilities::pathFromUtf8(writablePath);
             
             p /= state::GAState::getGameKey();
             
-            dbPath = (p / DATABASE_NAME).string();
-            if(!std::filesystem::exists(p))
+            dbPath = (p / DATABASE_NAME).u8string();
+            std::error_code ec;
+            if(!std::filesystem::exists(p, ec))
             {
-                if(!std::filesystem::create_directory(p))
+                std::filesystem::create_directories(p, ec);
+                if(ec)
                     return false;
             }
             
@@ -227,7 +235,11 @@ namespace gameanalytics
 
         bool GAStore::ensureDatabase(bool dropDatabase, std::string const& key)
         {
-            getInstance().initDatabaseLocation();
+            if (!getInstance().initDatabaseLocation())
+            {
+                getInstance().dbReady = false;
+                return false;
+            }
             
             // Open database
             if (sqlite3_open(getInstance().dbPath.c_str(), &getInstance().sqlDatabase) != SQLITE_OK)
@@ -347,8 +359,9 @@ namespace gameanalytics
 
         int64_t GAStore::getDbSizeBytes()
         {
-            std::ifstream in(getInstance().dbPath, std::ifstream::ate | std::ifstream::binary);
-            return in.tellg();
+            std::error_code ec;
+            const std::uintmax_t size = std::filesystem::file_size(utilities::GAUtilities::pathFromUtf8(getInstance().dbPath), ec);
+            return ec ? -1 : static_cast<int64_t>(size);
         }
 
         bool GAStore::getTableReady()

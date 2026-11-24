@@ -460,7 +460,7 @@ TEST(GAValidator, testValidateResourceCurrencies)
          isValid = validationResult.result;
          ASSERT_TRUE(isValid) << "Error event should allow empty message";
      }
-     isValid = gameanalytics::validators::GAValidator::validateSdkErrorEvent("c6cfc80ff69d1e7316bf1e0c8194eda6", "e0ae4809f70e2fa96916c7060f417ae53895f18d", gameanalytics::http::EventValidation, gameanalytics::http::ResourceEvent, gameanalytics::http::InvalidFlowType);
+     isValid = gameanalytics::validators::GAValidator::validateSdkErrorEvent("fedcba9876543210fedcba9876543210", "fedcba9876543210fedcba9876543210fedcba98", gameanalytics::http::EventValidation, gameanalytics::http::ResourceEvent, gameanalytics::http::InvalidFlowType);
      ASSERT_TRUE(isValid) << "Error event should validate";
  }
 
