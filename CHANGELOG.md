@@ -1,5 +1,14 @@
 # Changelog
 
+## 5.4.3
+
+### Fixed
+
+- **Non-ASCII writable paths** — the log file and SQLite database are now created correctly when the persistent directory contains non-ASCII characters (e.g. a user name with accents or CJK characters). Paths are handled as UTF-8 on all platforms, and Windows reads `LOCALAPPDATA` as a wide string.
+- **Database initialization** — a failed persistent-path lookup or directory creation now disables the store instead of continuing with a broken path; directory creation uses `create_directories` with error codes instead of throwing.
+- **Linux: missing `HOME`** — no longer crashes when `HOME` is unset; falls back to a relative `GameAnalytics` directory, matching macOS.
+- **Database size** — `getDbSizeBytes` now uses `std::filesystem::file_size` and returns `-1` when the file is missing instead of a bogus value.
+
 ## 5.4.2
 
 ### Fixed
