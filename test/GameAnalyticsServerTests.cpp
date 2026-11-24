@@ -864,6 +864,36 @@ TEST_F(GameAnalyticsServerTest, RemovePlayerRules)
     EXPECT_FALSE(server->getPlayer("p1")->isRemoved());
 }
 
+TEST_F(GameAnalyticsServerTest, RemovePlayerWithEndSessionEndsTheSessionFirst)
+{
+    EXPECT_FALSE(server->removePlayer("nobody", true));
+
+    startSession("p1");
+    PlayerPtr p = server->getPlayer("p1");
+    server->addPlayerDesignEvent("p1", "last:event");
+
+    // the plain call still refuses an active player; the ending one is accepted
+    EXPECT_FALSE(server->removePlayer("p1"));
+    EXPECT_TRUE(server->removePlayer("p1", true));
+    ASSERT_TRUE(drainGAThread());
+
+    EXPECT_EQ(1, callbacks->exited);
+    EXPECT_EQ(1u, storedEvents("design", "p1").size());
+    EXPECT_EQ(1u, storedEvents("session_end", "p1").size());
+    EXPECT_FALSE(p->isActive());
+    EXPECT_TRUE(p->isRemoved());
+    EXPECT_FALSE(server->isExistingPlayer("p1"));
+    EXPECT_EQ(0, store::GAStore::countPlayers());
+
+    // an inactive player is removed without a session end
+    ASSERT_TRUE(server->addPlayer(Player("p2", "")));
+    EXPECT_TRUE(server->removePlayer("p2", true));
+    ASSERT_TRUE(drainGAThread());
+    EXPECT_FALSE(server->isExistingPlayer("p2"));
+    EXPECT_EQ(1, callbacks->exited);
+    EXPECT_TRUE(storedEvents("session_end", "p2").empty());
+}
+
 TEST_F(GameAnalyticsServerTest, StartingASessionRegistersAnUnknownPlayer)
 {
     EXPECT_FALSE(server->isExistingPlayer("p9"));

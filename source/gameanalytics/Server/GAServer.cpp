@@ -60,9 +60,32 @@ namespace gameanalytics
         return _playerDatabase->addPlayer(std::forward<Player>(player));
     }
 
-    bool GameAnalyticsServer::removePlayer(std::string const& uid)
+    bool GameAnalyticsServer::removePlayer(std::string const& uid, bool endSession)
     {
-        return _playerDatabase->removePlayer(uid);
+        if(!endSession)
+        {
+            return _playerDatabase->removePlayer(uid);
+        }
+
+        if(!isExistingPlayer(uid))
+        {
+            logging::GALogger::w("Invalid user id: %s", uid.c_str());
+            return false;
+        }
+
+        // the session end runs on the GA thread; queue the removal behind it so no
+        // event already queued for this player is dropped
+        threading::GAThreading::performTaskOnGAThread(
+            [this, uid]()
+            {
+                endPlayerSessionInternal(uid);
+                if(!_playerDatabase->removePlayer(uid))
+                {
+                    logging::GALogger::w("Player %s could not be removed after ending its session", uid.c_str());
+                }
+            }
+        );
+        return true;
     }
 
     PlayerPtr GameAnalyticsServer::getPlayer(std::string const& uid) const

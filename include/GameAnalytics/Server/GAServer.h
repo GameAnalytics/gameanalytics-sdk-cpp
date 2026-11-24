@@ -40,7 +40,12 @@ namespace gameanalytics
 
             bool isExistingPlayer(std::string const& userId) const;
             bool addPlayer(Player&& playerData);
-            bool removePlayer(std::string const& userId);
+
+            // Removes a player from the server and the store. A player with a running
+            // session is refused unless endSession is set, in which case the session is
+            // ended on the GA thread (emitting session end) and the player removed right
+            // after; the call then returns true as soon as the request was queued.
+            bool removePlayer(std::string const& userId, bool endSession = false);
 
             // Players are shared pointers: the object outlives removal and eviction, and
             // Player::isRemoved() tells a holder it is no longer registered.
