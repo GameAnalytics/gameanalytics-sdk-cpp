@@ -115,6 +115,11 @@ namespace gameanalytics
             getInstance().queueBlock(std::move(b));
         }
 
+        bool GAThreading::isOnGAThread()
+        {
+            return std::this_thread::get_id() == getInstance()._thread.get_id();
+        }
+
         void GAThreading::endThread()
         {
             getInstance()._endThread = true;

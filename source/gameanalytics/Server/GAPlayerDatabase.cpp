@@ -406,9 +406,24 @@ namespace gameanalytics
         }
     }
 
+    // Store writes run on the GA thread. A write requested from a GA-thread task (session
+    // start, session end, progression) runs right away rather than being queued behind
+    // everything already waiting, so the stored player is current when that task finishes.
+    void PlayerDatabase::runOnGAThread(threading::GAThreading::Block&& task)
+    {
+        if(threading::GAThreading::isOnGAThread())
+        {
+            task();
+        }
+        else
+        {
+            threading::GAThreading::performTaskOnGAThread(std::move(task));
+        }
+    }
+
     void PlayerDatabase::writeToStore(std::string const& uid, std::string const& data, int64_t lastSeenTs)
     {
-        threading::GAThreading::performTaskOnGAThread(
+        runOnGAThread(
             [uid, data, lastSeenTs]()
             {
                 // before initialize the store does not exist yet; loadFromStore
@@ -423,7 +438,7 @@ namespace gameanalytics
 
     void PlayerDatabase::eraseFromStore(std::string const& uid)
     {
-        threading::GAThreading::performTaskOnGAThread(
+        runOnGAThread(
             [uid]()
             {
                 if(store::GAStore::getTableReady())

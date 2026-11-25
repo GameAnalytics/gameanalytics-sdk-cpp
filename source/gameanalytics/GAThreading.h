@@ -32,6 +32,9 @@ namespace gameanalytics
 
             static void performTaskOnGAThread(Block taskBlock);
 
+            // true when called from a task running on the GA thread
+            static bool isOnGAThread();
+
             static void endThread();
 
             static bool isThreadFinished();

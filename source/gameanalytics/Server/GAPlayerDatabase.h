@@ -2,6 +2,7 @@
 
 #include "GameAnalytics/Server/GAPlayer.h"
 #include "GACommon.h"
+#include "GAThreading.h"
 
 namespace gameanalytics
 {
@@ -31,6 +32,7 @@ namespace gameanalytics
         int64_t _maxIdleSeconds = 0;
         size_t  _maxPlayers     = 0;
 
+        static void runOnGAThread(threading::GAThreading::Block&& task);
         static void writeToStore(std::string const& userId, std::string const& data, int64_t lastSeenTs);
         static void eraseFromStore(std::string const& userId);
 
